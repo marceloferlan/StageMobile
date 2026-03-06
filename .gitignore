@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# OS X
+.DS_Store
+
+# Log files
+*.log
+
+# Secrets
+**/google-services.json
+**/fabric.properties
+**/secrets.properties

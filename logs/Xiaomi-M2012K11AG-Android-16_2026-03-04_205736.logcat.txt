@@ -1,0 +1,56 @@
+2026-03-05 21:06:22.634  2185-3700  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-03-05 21:06:22.689  2185-4351  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-03-05 21:06:22.771  2185-2642  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-03-05 21:06:22.792  2185-5989  TransitionChain         system_server                        E  Mismatch between current collecting (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    }) and chain (TransitionRecord{9b10bbf id=454 type=CHANGE flags=0x0 c=[
+                                                                                                       ChangeInfo{c588450 container=Task{aa2681b #126 type=standard A=10366:com.example.stagemobile} flags=0x0}
+                                                                                                       ChangeInfo{471b78 container=Display{#0 state=ON size=2400x1080 ROTATION_90} flags=0x1}
+                                                                                                       ChangeInfo{fe0e649 container=DefaultTaskDisplayArea@231528086 flags=0x0}
+                                                                                                    ]
+                                                                                                    })
+2026-03-05 21:06:22.875 18534-16684 FramePredict            com.example.stagemobile              E  registerContentObserver fail
+2026-03-05 21:06:24.287 18534-18534 NativeTurb...ManagerJni com.example.stagemobile              E  open /dev/metis failed!
+2026-03-05 21:06:24.288 18534-18534 NativeTurb...ManagerJni com.example.stagemobile              E  open /dev/metis failed!
+2026-03-05 21:06:24.344 18534-18534 AudioTrack              com.example.stagemobile              E  Failed to load XML file: odm/etc/audio/audio_lowpower_app_list.xml
+2026-03-05 21:06:24.382  2185-2255  AppOps                  system_server                        E  attributionTag  not declared in manifest of com.example.stagemobile
+2026-03-05 21:06:24.383  2185-2255  AppOps                  system_server                        E  attributionTag  not declared in manifest of com.example.stagemobile
+2026-03-05 21:06:24.419 18534-18534 NativeTurb...ManagerJni com.example.stagemobile              E  open /dev/metis failed!
+2026-03-05 21:06:24.419 18534-18534 NativeTurb...ManagerJni com.example.stagemobile              E  open /dev/metis failed!
+2026-03-05 21:06:29.456 18534-16664 ple.stagemobile         com.example.stagemobile              E  FrameInsert open fail: No such file or directory
+2026-03-05 21:06:56.546 18534-16664 LB                      com.example.stagemobile              E  fail to open file: No such file or directory
+2026-03-05 21:06:56.547 18534-16664 LB                      com.example.stagemobile              E  fail to open node: No such file or directory
+2026-03-05 21:06:56.547 18534-16664 LB                      com.example.stagemobile              E  fail to open node: No such file or directory

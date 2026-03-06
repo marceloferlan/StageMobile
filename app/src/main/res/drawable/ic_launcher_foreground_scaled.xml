@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Adiciona padding de 12dp nas bordas para reduzir agressivamente a escala da imagem central -->
+    <item
+        android:drawable="@drawable/logo_stage_mobile"
+        android:bottom="12dp"
+        android:left="12dp"
+        android:right="12dp"
+        android:top="12dp" />
+</layer-list>
