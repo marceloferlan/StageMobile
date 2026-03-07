@@ -67,7 +67,7 @@ fun InfoPanel(
             // Seção 1: Stage Set & Program
             Column(
                 modifier = Modifier.weight(1.5f),
-                verticalArrangement = if (isTablet) Arrangement.Top else Arrangement.spacedBy(4.dp)
+                verticalArrangement = if (isTablet) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = if (isTablet) "ACTIVE STAGE SET" else "STAGE SET",
@@ -93,7 +93,7 @@ fun InfoPanel(
             // Seção 2: Monitor MIDI
             Column(
                 modifier = Modifier.weight(1.5f),
-                verticalArrangement = if (isTablet) Arrangement.Top else Arrangement.spacedBy(4.dp)
+                verticalArrangement = if (isTablet) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = if (isTablet) "MIDI CHANNEL / DEVICE" else "MIDI DEVICE",
@@ -119,7 +119,7 @@ fun InfoPanel(
             // Seção 3: System Status & Events
             Column(
                 modifier = Modifier.weight(2f),
-                verticalArrangement = if (isTablet) Arrangement.Top else Arrangement.spacedBy(4.dp)
+                verticalArrangement = if (isTablet) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = if (isTablet) "SYSTEM LOGS / STATUS" else "SYSTEM LOGS",
@@ -142,7 +142,7 @@ fun InfoPanel(
             Column(
                 modifier = Modifier.weight(0.8f),
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = if (isTablet) Arrangement.Top else Arrangement.spacedBy(4.dp)
+                verticalArrangement = if (isTablet) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = "RAM: ${ramUsage}MB",
