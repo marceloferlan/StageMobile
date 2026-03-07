@@ -30,7 +30,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.StageMobile">
+            android:theme="@style/Theme.StageMobile.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

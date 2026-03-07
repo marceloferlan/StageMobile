@@ -9,6 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.border
@@ -33,7 +35,8 @@ import com.example.stagemobile.R
 fun VerticalFader(
     value: Float,
     onValueChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    thumbResourceId: Int = R.drawable.fader_thumb
 ) {
     // All possible dB marks: position = (dB + 60) / 66
     val fullScale = listOf(
@@ -67,8 +70,15 @@ fun VerticalFader(
         val heightPx = constraints.maxHeight.toFloat()
         val heightDp = with(LocalDensity.current) { heightPx.toDp() }
 
-        // Choose scale based on available height
-        val scaleMarks = if (heightDp >= 400.dp) fullScale else compactScale
+        // Choose scale and sizes based on available height
+        val isLargeScreen = heightDp >= 400.dp
+        val scaleMarks = if (isLargeScreen) fullScale else compactScale
+        
+        val labelFontSize = if (isLargeScreen) 11.sp else 8.sp
+        val infinityFontSize = if (isLargeScreen) 13.sp else 10.sp
+        
+        val thumbHeight = if (isLargeScreen) 50.dp else 40.dp // 25% increase
+        val thumbWidth = if (isLargeScreen) 108.dp else 86.dp // 25% increase
 
         // Inset area so labels at top/bottom are visible
         val labelInset = with(LocalDensity.current) { 14.dp.toPx() }
@@ -104,7 +114,7 @@ fun VerticalFader(
                 
                 Text(
                     text = label,
-                    fontSize = if (isInfinity) 10.sp else 8.sp,
+                    fontSize = if (isInfinity) infinityFontSize else labelFontSize,
                     textAlign = TextAlign.End,
                     color = if (label == "0") Color(0xFF4CAF50) else Color(0xFF888888),
                     modifier = Modifier
@@ -186,26 +196,41 @@ fun VerticalFader(
                 )
             }
 
-            // Thumb
-            val thumbHeight = 40.dp
+            // Thumb with Blur Shadow effect
             val thumbHeightPx = with(LocalDensity.current) { thumbHeight.toPx() }
 
-            Image(
-                painter = painterResource(id = R.drawable.fader_thumb),
-                contentDescription = "Fader Thumb",
+            Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset {
-                        // Center the thumb on the track position
                         val halfThumb = thumbHeightPx / 2f
                         val yCenter = labelInset + (1f - value) * usableHeight
                         val yOffset = (yCenter - halfThumb).coerceIn(0f, heightPx - thumbHeightPx)
                         IntOffset(0, yOffset.toInt())
                     }
-                    .requiredWidth(86.dp)
+                    .requiredWidth(thumbWidth)
                     .height(thumbHeight)
-                    .clip(RoundedCornerShape(8.dp))
-            )
+            ) {
+                // 1. Shadow Layer: Black-tinted blurred copy of the thumb
+                Image(
+                    painter = painterResource(id = thumbResourceId),
+                    contentDescription = null,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset(y = 4.dp) // Slightly more offset for better depth
+                        .blur(radius = 10.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                )
+
+                // 2. Main Thumb Layer
+                Image(
+                    painter = painterResource(id = thumbResourceId),
+                    contentDescription = "Fader Thumb",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
         }
     }
 }

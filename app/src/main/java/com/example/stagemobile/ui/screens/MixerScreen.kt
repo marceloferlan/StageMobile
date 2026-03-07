@@ -3,6 +3,7 @@ package com.example.stagemobile.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -38,16 +39,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import com.example.stagemobile.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stagemobile.viewmodel.MixerViewModel
 import com.example.stagemobile.ui.mixer.ChannelStrip
 import com.example.stagemobile.ui.mixer.MasterChannelStrip
 import com.example.stagemobile.ui.mixer.VirtualKeyboard
 import com.example.stagemobile.ui.mixer.AdvancedParamsDialog
+import com.example.stagemobile.ui.components.InfoPanel
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -61,6 +66,8 @@ fun MixerScreen(
     onNavigateToDownloads: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isTablet = configuration.smallestScreenWidthDp >= 600
     val channels by viewModel.channels.collectAsState()
     val midiConnected by viewModel.midiDeviceConnected.collectAsState()
     val midiDeviceName by viewModel.midiDeviceName.collectAsState()
@@ -81,6 +88,7 @@ fun MixerScreen(
     var showRangeDialogForChannel by remember { mutableIntStateOf(-1) }
     var rangeDialogSettingMin by remember { mutableStateOf(true) }
     var showAdvancedParamsForChannel by remember { mutableStateOf<Int?>(null) }
+    var showInfoPanel by remember { mutableStateOf(false) }
     
     // Obter canais e informações extras do ViewModel
     val activeMidiDevices by viewModel.activeMidiDevices.collectAsState()
@@ -97,7 +105,7 @@ fun MixerScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.initMidi(context)
+        viewModel.initMidi(context, isTablet)
     }
 
     // === Remove SF2 Confirmation Dialog ===
@@ -217,7 +225,6 @@ fun MixerScreen(
     Box(modifier = Modifier.fillMaxSize()) {
 
         Column(modifier = Modifier.fillMaxSize()) {
-
             // === Top Bar ===
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -227,7 +234,7 @@ fun MixerScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -282,14 +289,22 @@ fun MixerScreen(
 
                     // Center Menu (Weight 1, Aligned Center)
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Stage Mobile ®",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            maxLines = 1,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                painter = painterResource(id = R.drawable.logo_stage_mobile),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Stage Mobile ®",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                maxLines = 1,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
 
                     // Right Menu Icons (Weight 1, Aligned End)
@@ -305,21 +320,7 @@ fun MixerScreen(
                             ) {
                                 Icon(Icons.Outlined.CloudDownload, contentDescription = "Downloads", modifier = Modifier.size(20.dp))
                             }
-
-                            // Keyboard Toggle
-                            Button(
-                                onClick = { showKeyboard = !showKeyboard },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.Piano, contentDescription = "Teclado", modifier = Modifier.size(20.dp))
-                            }
-
+                            
                             // MIDI Learn (Placeholder)
                             Button(
                                 onClick = { /* TODO: Implementar MIDI Learn futuramente */ },
@@ -334,7 +335,7 @@ fun MixerScreen(
                                 Icon(Icons.Default.Star, contentDescription = "MIDI Learn", modifier = Modifier.size(20.dp))
                             }
 
-                            // Add Channel
+                            // Add Channel (+ CH)
                             Button(
                                 onClick = {
                                     val nextNum = channels.size + 1
@@ -351,10 +352,49 @@ fun MixerScreen(
                             ) {
                                 Text("+ CH", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
+
+                            // Keyboard Toggle
+                            Button(
+                                onClick = { showKeyboard = !showKeyboard },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (showKeyboard) Color(0xFF81C784) else Color(0xFF424242),
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(Icons.Outlined.Piano, contentDescription = "Teclado", modifier = Modifier.size(20.dp))
+                            }
+
+                            // Master Toggle Icon
+                            Button(
+                                onClick = { viewModel.toggleMasterVisibility() },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isMasterVisible) Color(0xFF81C784) else Color(0xFF424242),
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(Icons.Outlined.GraphicEq, contentDescription = "Master", modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 }
             }
+
+            // === Info Panel (Tablet & Phone) ===
+            InfoPanel(
+                ramUsage = ramUsageMb,
+                cpuUsage = cpuUsagePercent.toInt(),
+                activeSet = "LIVE PERFORMANCE ALPHA",
+                midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
+                lastEvent = "ENGINE READY - BUFFER: $bufferSize",
+                sampleRate = sampleRate,
+                isTablet = isTablet
+            )
 
             // === Mixer Area ===
             BoxWithConstraints(
@@ -363,8 +403,15 @@ fun MixerScreen(
                     .fillMaxWidth()
                     .background(Color(0xFF1F1F1F))
             ) {
-                // To fit exactly 7 channels, we compute the max width divided by 7
-                val channelWidth = maxWidth / 7
+                // To fit exactly 7 (phone) or 8 (tablet) channels
+                val channelWidth = if (isTablet) maxWidth / 8 else maxWidth / 7
+                val heightPx = constraints.maxHeight.toFloat()
+                val density = LocalDensity.current.density
+                val isLargeScreen = heightPx >= 400f * density
+                
+                // Master width is 122dp on phone, 183dp on tablet. 
+                // We add a bit of buffer for the master's left padding (8dp)
+                val masterPadding = if (isLargeScreen) 166.5.dp else 130.dp
 
                 // Dynamic Channels Horizontal Scroll Area
                 val scrollState = rememberScrollState()
@@ -373,7 +420,7 @@ fun MixerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .horizontalScroll(scrollState)
-                        .padding(end = if (isMasterVisible) 130.dp else 0.dp),
+                        .padding(end = if (isMasterVisible) masterPadding else 0.dp),
                     horizontalArrangement = Arrangement.Start
                 ) {
                     channels.forEach { channel ->
@@ -444,78 +491,6 @@ fun MixerScreen(
                     }
                 }
 
-                // === Bottom Status Bar ===
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(26.6.dp),
-                color = Color(0xFF111111),
-                tonalElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Left: Audio Engine Info
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.GraphicEq, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Oboe Engine",
-                                color = Color(0xFF4CAF50),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "(${bufferSize} frames @ ${sampleRate} Hz)",
-                                color = Color(0xFFAAAAAA),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-                    
-                    // Center: Performance Monitor
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Memory, contentDescription = null, tint = if (cpuUsagePercent > 70f) Color(0xFFEF5350) else Color(0xFFAAAAAA), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "CPU: ${cpuUsagePercent}%",
-                                color = if (cpuUsagePercent > 70f) Color(0xFFEF5350) else Color(0xFFAAAAAA),
-                                fontSize = 10.sp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "RAM: ${ramUsageMb} MB",
-                                color = Color(0xFFAAAAAA),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    // Right: MIDI Status
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(
-                                        if (midiConnected) Color.Green else Color.Red,
-                                        shape = androidx.compose.foundation.shape.CircleShape
-                                    )
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (midiConnected) midiDeviceName else "Nenhum MIDI",
-                                color = if (midiConnected) Color.White else Color(0xFFAAAAAA),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         // === Floating Draggable Virtual Keyboard ===

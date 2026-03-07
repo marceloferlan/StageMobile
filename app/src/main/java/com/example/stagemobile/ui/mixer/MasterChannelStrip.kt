@@ -12,9 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
+import com.example.stagemobile.R
 
 @Composable
 fun MasterChannelStrip(
@@ -23,18 +25,27 @@ fun MasterChannelStrip(
     onVolumeChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    BoxWithConstraints(
         modifier = modifier
-            .padding(start = 8.dp, top = 8.dp, bottom = 8.dp) // Sem padding no lado "end" para grudar
-            .width(122.dp) // Largura reduzida em 5%
+            .padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
             .fillMaxHeight()
-            .background(
-                color = Color(0xFF1E1E1E), 
-                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp) // Canto reto à direita
-            )
-            .padding(12.dp) // Um pouco mais de espaço interno respirável dado a nova largura
     ) {
+        val heightPx = constraints.maxHeight.toFloat()
+        val density = LocalDensity.current.density
+        val isLargeScreen = heightPx >= 400f * density
+        val currentWidth = if (isLargeScreen) 158.5.dp else 122.dp
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .width(currentWidth)
+                .fillMaxHeight()
+                .background(
+                    color = Color(0xFF1E1E1E), 
+                    shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                )
+                .padding(if (isLargeScreen) 16.dp else 12.dp)
+        ) {
         // Label
         Surface(
             modifier = Modifier
@@ -70,43 +81,56 @@ fun MasterChannelStrip(
             VerticalFader(
                 value = volume,
                 onValueChange = onVolumeChange,
-                modifier = Modifier
+                modifier = Modifier,
+                thumbResourceId = R.drawable.fader_master_thumb
             )
 
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(if (isLargeScreen) 12.dp else 4.dp))
 
             // VU Meter Segmented
-            Column(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .width(10.dp)
+                    .width(12.dp)
                     .fillMaxHeight()
+                    .padding(top = 6.dp)
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
-                    .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.SpaceEvenly
+                    .padding(vertical = 4.dp)
             ) {
-                val ledCount = 30
+                val vuHeightPx = constraints.maxHeight.toFloat()
+                val vuDensity = LocalDensity.current.density
+                
+                // 60 LEDs for large screens (tablets), 30 for small screens
+                // Using the exact same threshold as ChannelStrip.kt
+                val ledCount = if (vuHeightPx >= 400f * vuDensity) 60 else 30
                 val activeLeds = (level * ledCount).toInt().coerceIn(0, ledCount)
 
-                for (i in 0 until ledCount) {
-                    val ledIndexFromBottom = ledCount - 1 - i
-                    val isLit = ledIndexFromBottom < activeLeds
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    for (i in 0 until ledCount) {
+                        val ledIndexFromBottom = ledCount - 1 - i
+                        val isLit = ledIndexFromBottom < activeLeds
 
-                    val ledColor = when {
-                        !isLit -> Color(0xFF2C2C2C)
-                        i < 4 -> Color(0xFFFF3B30) // Red zone
-                        i < 10 -> Color(0xFFFFCC00) // Yellow zone
-                        else -> Color(0xFF4CAF50) // Green zone
+                        val ledColor = when {
+                            !isLit -> Color(0xFF2C2C2C)
+                            // Proportional color zones: Red (top 13%), Yellow (next 20%), Green (rest)
+                            i < (ledCount * 0.13f).toInt() -> Color(0xFFFF3B30) // Red zone
+                            i < (ledCount * 0.33f).toInt() -> Color(0xFFFFCC00) // Yellow zone
+                            else -> Color(0xFF4CAF50) // Green zone
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                                .background(ledColor, RoundedCornerShape(1.dp))
+                        )
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                            .background(ledColor, RoundedCornerShape(1.dp))
-                    )
                 }
             }
+        }
         }
     }
 }

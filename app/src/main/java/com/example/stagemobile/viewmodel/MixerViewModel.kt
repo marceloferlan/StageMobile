@@ -15,6 +15,7 @@ import com.example.stagemobile.data.SettingsRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import android.provider.OpenableColumns
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -34,17 +35,7 @@ class MixerViewModel : ViewModel() {
 
     // --- State Flows ---
 
-    private val _channels = MutableStateFlow(
-        listOf(
-            InstrumentChannel(0, "Instrumento 01", program = 0),
-            InstrumentChannel(1, "Instrumento 02", program = 0),
-            InstrumentChannel(2, "Instrumento 03", program = 0),
-            InstrumentChannel(3, "Instrumento 04", program = 0),
-            InstrumentChannel(4, "Instrumento 05", program = 0),
-            InstrumentChannel(5, "Instrumento 06", program = 0),
-            InstrumentChannel(6, "Instrumento 07", program = 0)
-        )
-    )
+    private val _channels = MutableStateFlow<List<InstrumentChannel>>(emptyList())
     val channels: StateFlow<List<InstrumentChannel>> = _channels
 
     private val _midiDeviceConnected = MutableStateFlow(false)
@@ -103,19 +94,32 @@ class MixerViewModel : ViewModel() {
     private var nextId = 7
 
     init {
+        // Initial set of channels (7 default)
+        val initialChannels = (1..7).map { i ->
+            InstrumentChannel(i - 1, "Instrumento ${i.toString().padStart(2, '0')}", program = 0)
+        }
+        _channels.value = initialChannels
         startVuMeterUpdate()
     }
 
     // --- Audio Engine ---
     
-    fun initSettings(context: Context) {
-        if (settingsRepo != null) return
-        val repo = SettingsRepository(context)
-        settingsRepo = repo
-        _bufferSize.value = repo.bufferSize
-        _sampleRate.value = repo.sampleRate
-        _midiChannel.value = repo.midiChannel
-        _isMasterVisible.value = repo.showMaster
+    fun initSettings(context: Context, isTablet: Boolean = false) {
+        if (settingsRepo == null) {
+            val repo = SettingsRepository(context)
+            settingsRepo = repo
+            _bufferSize.value = repo.bufferSize
+            _sampleRate.value = repo.sampleRate
+            _midiChannel.value = repo.midiChannel
+            _isMasterVisible.value = repo.showMaster
+        }
+
+        // Add 8th channel if on Tablet and we are at default 7 channels
+        if (isTablet && _channels.value.size == 7) {
+            val eighthChannel = InstrumentChannel(7, "Instrumento 08", program = 0)
+            _channels.value = _channels.value + eighthChannel
+            nextId = 8 // Ensure next manual Add Channel (+ CH) starts at 9 (id 8)
+        }
     }
 
     fun loadSoundFontForChannel(context: Context, channelId: Int, uri: Uri) {
@@ -188,8 +192,8 @@ class MixerViewModel : ViewModel() {
 
     // --- MIDI ---
 
-    fun initMidi(context: Context) {
-        initSettings(context)
+    fun initMidi(context: Context, isTablet: Boolean = false) {
+        initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
         if (deviceAudioManager == null) {
@@ -205,9 +209,18 @@ class MixerViewModel : ViewModel() {
 
         // Override with Real audio engine if full context is provided
         if (audioEngine is DummyAudioEngine) {
+            Log.i(TAG, "Initializing FluidSynthEngine...")
             audioEngine = FluidSynthEngine()
             val deviceId = _selectedAudioDeviceId.value
-            audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
+            try {
+                Log.d(TAG, "Calling audioEngine.init (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
+                audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
+                Log.i(TAG, "FluidSynthEngine initialized successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "CRITICAL: AudioEngine.init failed: ${e.message}", e)
+            }
+            
+            Log.d(TAG, "Starting Resource Monitor...")
             startResourceMonitor(context)
         }
 
@@ -274,10 +287,25 @@ class MixerViewModel : ViewModel() {
 
         midiManager?.start()
         
-        // Track available devices
+        // Track available devices and update Status Bar indicators
         scope.launch {
-            midiManager?.availableDevices?.collect { devices ->
-                _availableMidiDevices.value = devices
+            combine(
+                midiManager?.availableDevices ?: MutableStateFlow(emptyList()),
+                _activeMidiDevices
+            ) { available, active ->
+                Pair(available, active)
+            }.collect { (available, active) ->
+                _availableMidiDevices.value = available
+                
+                // Only count as connected if the device is physically present AND enabled by the user
+                val activeConnected = available.filter { active.contains(it.name) }
+                
+                _midiDeviceConnected.value = activeConnected.isNotEmpty()
+                _midiDeviceName.value = when {
+                    activeConnected.isEmpty() -> "Nenhum MIDI"
+                    activeConnected.size == 1 -> activeConnected.first().name
+                    else -> "[${activeConnected.size}] Controladores"
+                }
             }
         }
     }

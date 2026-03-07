@@ -10,16 +10,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stagemobile.viewmodel.MixerViewModel
-import com.example.stagemobile.ui.screens.SettingsScreen
-import com.example.stagemobile.ui.screens.MixerScreen
-import com.example.stagemobile.ui.screens.SetsScreen
-import com.example.stagemobile.ui.screens.DrumpadsScreen
-import com.example.stagemobile.ui.screens.ContinuousPadsScreen
-import com.example.stagemobile.ui.screens.DownloadsScreen
+import com.example.stagemobile.ui.screens.*
 import com.example.stagemobile.ui.theme.StageMobileTheme
+import com.example.stagemobile.ui.components.SplashScreen
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // We let the manifest theme (Theme.StageMobile.Splash) stay active
+        // until the first Frame is drawn by Compose setContent.
         super.onCreate(savedInstanceState)
         
         // Hide system bars (Immersive Mode)
@@ -32,33 +31,44 @@ class MainActivity : ComponentActivity() {
             StageMobileTheme(dynamicColor = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF1A1A1A)
+                    color = Color(0xFF131313) // Exact same as splash_bg
                 ) {
-                    val viewModel: MixerViewModel = viewModel()
+                    var showSplashScreen by remember { mutableStateOf(true) }
                     var currentScreen by remember { mutableStateOf("mixer") }
 
-                    if (currentScreen == "mixer") {
-                        MixerScreen(
-                            viewModel = viewModel,
-                            onNavigateToSettings = { currentScreen = "settings" },
-                            onNavigateToSets = { currentScreen = "sets" },
-                            onNavigateToDrumpads = { currentScreen = "drumpads" },
-                            onNavigateToContinuousPads = { currentScreen = "continuous_pads" },
-                            onNavigateToDownloads = { currentScreen = "downloads" }
-                        )
-                    } else if (currentScreen == "settings") {
-                        SettingsScreen(
-                            viewModel = viewModel,
-                            onNavigateBack = { currentScreen = "mixer" }
-                        )
-                    } else if (currentScreen == "sets") {
-                        SetsScreen(onNavigateBack = { currentScreen = "mixer" })
-                    } else if (currentScreen == "drumpads") {
-                        DrumpadsScreen(onNavigateBack = { currentScreen = "mixer" })
-                    } else if (currentScreen == "continuous_pads") {
-                        ContinuousPadsScreen(onNavigateBack = { currentScreen = "mixer" })
-                    } else if (currentScreen == "downloads") {
-                        DownloadsScreen(onNavigateBack = { currentScreen = "mixer" })
+                    LaunchedEffect(Unit) {
+                        delay(2500) // Show our branded splash for 2.5s
+                        showSplashScreen = false
+                    }
+
+                    if (showSplashScreen) {
+                        SplashScreen()
+                    } else {
+                        // Lazy initialization: ViewModel is only created AFTER splash ends
+                        val viewModel: MixerViewModel = viewModel()
+                        
+                        when (currentScreen) {
+                            "mixer" -> {
+                                MixerScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToSettings = { currentScreen = "settings" },
+                                    onNavigateToSets = { currentScreen = "sets" },
+                                    onNavigateToDrumpads = { currentScreen = "drumpads" },
+                                    onNavigateToContinuousPads = { currentScreen = "continuous_pads" },
+                                    onNavigateToDownloads = { currentScreen = "downloads" }
+                                )
+                            }
+                            "settings" -> {
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { currentScreen = "mixer" }
+                                )
+                            }
+                            "sets" -> SetsScreen(onNavigateBack = { currentScreen = "mixer" })
+                            "drumpads" -> DrumpadsScreen(onNavigateBack = { currentScreen = "mixer" })
+                            "continuous_pads" -> ContinuousPadsScreen(onNavigateBack = { currentScreen = "mixer" })
+                            "downloads" -> DownloadsScreen(onNavigateBack = { currentScreen = "mixer" })
+                        }
                     }
                 }
             }
