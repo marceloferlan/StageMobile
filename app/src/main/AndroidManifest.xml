@@ -20,9 +20,6 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
 
-    <attribution
-        android:tag="audio_engine"
-        android:label="@string/audio_engine_label" />
 
     <application
         android:name=".StageMobileApp"

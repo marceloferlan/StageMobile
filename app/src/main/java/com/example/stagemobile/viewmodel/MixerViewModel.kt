@@ -196,12 +196,8 @@ class MixerViewModel : ViewModel() {
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
-        // Initialize with Attribution Context for AppOps audit transparency (API 30+)
-        val attributionContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            context.createAttributionContext("audio_engine")
-        } else {
-            context
-        }
+        // Bypass Attribution Context for life-test
+        val attributionContext = context
 
         if (deviceAudioManager == null) {
             deviceAudioManager = com.example.stagemobile.audio.DeviceAudioManager(attributionContext)
