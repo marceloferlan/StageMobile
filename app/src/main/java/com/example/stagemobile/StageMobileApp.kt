@@ -6,6 +6,6 @@ import android.util.Log
 class StageMobileApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        Log.i("StageMobileApp", "=== APP PROCESS STARTED (Application.onCreate) ===")
+        Log.e("StageMobileApp", "=== APP PROCESS STARTED (Application.onCreate) ===")
     }
 }
