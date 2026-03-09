@@ -26,9 +26,9 @@ fun SplashScreen(modifier: Modifier = Modifier) {
     ) {
         // 1. O Logo Âncora: Deve estar exatamente no centro para coincidir com o Splash Nativo
         Image(
-            painter = painterResource(id = R.drawable.logo_stage_mobile),
+            painter = painterResource(id = R.drawable.logo_topbar),
             contentDescription = "App Icon",
-            modifier = Modifier.size(120.dp)
+            modifier = Modifier.width(180.dp).height(98.dp)
         )
 
         // 2. Elementos de Branding: Título e Slogan orbitando o centro

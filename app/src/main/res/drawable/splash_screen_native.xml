@@ -5,6 +5,6 @@
 
     <!-- Branded logo centered -->
     <item
-        android:drawable="@drawable/logo_stage_mobile"
+        android:drawable="@drawable/logo_topbar"
         android:gravity="center" />
 </layer-list>
