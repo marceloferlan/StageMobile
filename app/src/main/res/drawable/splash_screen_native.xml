@@ -4,9 +4,7 @@
     <item android:drawable="@color/splash_bg" />
 
     <!-- Branded logo centered -->
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/logo_stage_mobile" />
-    </item>
+    <item
+        android:drawable="@drawable/logo_stage_mobile"
+        android:gravity="center" />
 </layer-list>
