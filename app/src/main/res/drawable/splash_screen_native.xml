@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background color -->
+    <item android:drawable="@color/splash_bg" />
+
+    <!-- Branded logo centered -->
+    <item>
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/logo_stage_mobile" />
+    </item>
+</layer-list>

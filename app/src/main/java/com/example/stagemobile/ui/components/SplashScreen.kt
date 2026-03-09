@@ -21,10 +21,19 @@ fun SplashScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF131313)), // Darker "Stage" background
+            .background(Color(0xFF131313)),
         contentAlignment = Alignment.Center
     ) {
+        // 1. O Logo Âncora: Deve estar exatamente no centro para coincidir com o Splash Nativo
+        Image(
+            painter = painterResource(id = R.drawable.logo_stage_mobile),
+            contentDescription = "App Icon",
+            modifier = Modifier.size(120.dp)
+        )
+
+        // 2. Elementos de Branding: Título e Slogan orbitando o centro
         Column(
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -38,17 +47,8 @@ fun SplashScreen(modifier: Modifier = Modifier) {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Ícone do App
-            Image(
-                painter = painterResource(id = R.drawable.logo_stage_mobile),
-                contentDescription = "App Icon",
-                modifier = Modifier
-                    .size(120.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
+            // Espaçador calculado: Pula o logo central (120dp) + margens de 32dp em cada lado
+            Spacer(modifier = Modifier.height(184.dp))
 
             // Slogan: Seu Stage onde você estiver!
             Text(
