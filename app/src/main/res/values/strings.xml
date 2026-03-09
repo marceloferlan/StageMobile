@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">StageMobile</string>
+    <string name="audio_engine_label">Motor de Áudio Stage Mobile (Alta Performance)</string>
 </resources>

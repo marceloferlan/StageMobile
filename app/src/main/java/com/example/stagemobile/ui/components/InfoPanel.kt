@@ -70,7 +70,7 @@ fun InfoPanel(
                 verticalArrangement = if (isTablet) Arrangement.spacedBy(8.dp) else Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = if (isTablet) "ACTIVE STAGE SET" else "STAGE SET",
+                    text = if (isTablet) "SET STAGE ATIVO" else "SET STAGE",
                     color = Color.Gray,
                     fontSize = labelSize,
                     fontWeight = FontWeight.Bold,

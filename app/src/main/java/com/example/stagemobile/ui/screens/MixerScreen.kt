@@ -293,7 +293,7 @@ fun MixerScreen(
                             Image(
                                 painter = painterResource(id = R.drawable.logo_topbar),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.width(52.dp).height(28.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(

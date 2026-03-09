@@ -193,7 +193,6 @@ class MixerViewModel : ViewModel() {
     // --- MIDI ---
 
     fun initMidi(context: Context, isTablet: Boolean = false) {
-        Log.e(TAG, "=== initMidi started ===")
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
@@ -201,9 +200,8 @@ class MixerViewModel : ViewModel() {
         var attributionContext = context
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                Log.e(TAG, "Creating attribution context for tag 'audio_engine'")
+                Log.d(TAG, "Creating attribution context for tag 'audio_engine'")
                 attributionContext = context.createAttributionContext("audio_engine")
-                Log.e(TAG, "Attribution context created successfully")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create attribution context: ${e.message}")
@@ -222,18 +220,15 @@ class MixerViewModel : ViewModel() {
 
         // Override with Real audio engine if full context is provided
         if (audioEngine is DummyAudioEngine) {
-            Log.e(TAG, "Initializing FluidSynthEngine...")
             audioEngine = FluidSynthEngine()
             val deviceId = _selectedAudioDeviceId.value
             try {
-                Log.e(TAG, "Calling audioEngine.init (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
+                Log.i(TAG, "Initializing FluidSynth (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
                 audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
-                Log.e(TAG, "FluidSynthEngine initialized successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "CRITICAL: AudioEngine.init failed: ${e.message}", e)
             }
             
-            Log.e(TAG, "Starting Resource Monitor...")
             startResourceMonitor(attributionContext)
         }
 

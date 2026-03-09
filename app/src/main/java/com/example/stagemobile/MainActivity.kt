@@ -17,7 +17,6 @@ import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        android.util.Log.e("MainActivity", "onCreate started")
         super.onCreate(savedInstanceState)
         
         try {
@@ -26,12 +25,11 @@ class MainActivity : ComponentActivity() {
             val windowInsetsController = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
             windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            android.util.Log.e("MainActivity", "Immersive mode configured")
+            android.util.Log.d("MainActivity", "Immersive mode configured")
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error configuring immersive mode: ${e.message}")
         }
 
-        android.util.Log.e("MainActivity", "Starting setContent")
 
         setContent {
             StageMobileTheme(dynamicColor = false) {
