@@ -6,8 +6,10 @@ import android.os.Process
 import android.os.SystemClock
 
 class SystemResourceMonitor(private val context: Context) {
-
-    private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    
+    private val activityManager: ActivityManager by lazy {
+        context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    }
     
     // CPU Tracking state
     private var lastCpuTime = -1L
