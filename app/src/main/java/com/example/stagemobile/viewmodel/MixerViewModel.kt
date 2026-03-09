@@ -196,8 +196,8 @@ class MixerViewModel : ViewModel() {
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
-        // Initialize with Attribution Context for AppOps audit transparency
-        val attributionContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        // Initialize with Attribution Context for AppOps audit transparency (API 30+)
+        val attributionContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             context.createAttributionContext("audio_engine")
         } else {
             context
@@ -234,7 +234,7 @@ class MixerViewModel : ViewModel() {
         if (midiManager != null) return
 
         midiManager = MidiConnectionManager(
-            context = context,
+            context = attributionContext,
             onNoteOn = { deviceName, channel, key, velocity ->
                 val activeDevices = settingsRepo?.activeMidiDevices ?: emptySet()
                 if (!activeDevices.contains(deviceName)) return@MidiConnectionManager
