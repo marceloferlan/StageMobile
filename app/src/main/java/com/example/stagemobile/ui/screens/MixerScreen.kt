@@ -291,7 +291,7 @@ fun MixerScreen(
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
-                                painter = painterResource(id = R.drawable.logo_stage_mobile),
+                                painter = painterResource(id = R.drawable.logo_topbar),
                                 contentDescription = null,
                                 modifier = Modifier.size(28.dp)
                             )
