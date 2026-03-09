@@ -193,6 +193,7 @@ class MixerViewModel : ViewModel() {
     // --- MIDI ---
 
     fun initMidi(context: Context, isTablet: Boolean = false) {
+        Log.e(TAG, "=== initMidi started ===")
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
@@ -212,18 +213,18 @@ class MixerViewModel : ViewModel() {
 
         // Override with Real audio engine if full context is provided
         if (audioEngine is DummyAudioEngine) {
-            Log.i(TAG, "Initializing FluidSynthEngine...")
+            Log.e(TAG, "Initializing FluidSynthEngine...")
             audioEngine = FluidSynthEngine()
             val deviceId = _selectedAudioDeviceId.value
             try {
-                Log.d(TAG, "Calling audioEngine.init (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
+                Log.e(TAG, "Calling audioEngine.init (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
                 audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
-                Log.i(TAG, "FluidSynthEngine initialized successfully")
+                Log.e(TAG, "FluidSynthEngine initialized successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "CRITICAL: AudioEngine.init failed: ${e.message}", e)
             }
             
-            Log.d(TAG, "Starting Resource Monitor...")
+            Log.e(TAG, "Starting Resource Monitor...")
             startResourceMonitor(attributionContext)
         }
 

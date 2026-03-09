@@ -10,6 +10,7 @@ class FluidSynthEngine : AudioEngine {
             private set
 
         init {
+            Log.e(TAG, "--- FluidSynthEngine static initializer START ---")
             try {
                 // Android does NOT auto-load transitive .so dependencies
                 // Must load in dependency order: base libs → FluidSynth → our bridge
@@ -36,16 +37,16 @@ class FluidSynthEngine : AudioEngine {
                 for (lib in optionalLibs) {
                     try {
                         System.loadLibrary(lib)
-                        Log.d(TAG, "✓ Loaded: lib$lib.so")
+                        Log.e(TAG, "✓ Loaded: lib$lib.so")
                     } catch (e: UnsatisfiedLinkError) {
-                        Log.w(TAG, "✗ Optional lib failed: lib$lib.so → ${e.message}")
+                        Log.e(TAG, "✗ Optional lib failed: lib$lib.so → ${e.message}")
                     }
                 }
 
                 // This one MUST load — it's our JNI bridge
                 System.loadLibrary("synthmodule")
                 isAvailable = true
-                Log.i(TAG, "★ synthmodule loaded — FluidSynth ready!")
+                Log.e(TAG, "★ synthmodule loaded — FluidSynth ready!")
 
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "✗✗ CRITICAL: synthmodule failed to load: ${e.message}", e)
