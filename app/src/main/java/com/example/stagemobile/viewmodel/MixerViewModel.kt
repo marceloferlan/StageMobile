@@ -196,8 +196,15 @@ class MixerViewModel : ViewModel() {
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
+        // Initialize with Attribution Context for AppOps audit transparency
+        val attributionContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            context.createAttributionContext("audio_engine")
+        } else {
+            context
+        }
+
         if (deviceAudioManager == null) {
-            deviceAudioManager = com.example.stagemobile.audio.DeviceAudioManager(context)
+            deviceAudioManager = com.example.stagemobile.audio.DeviceAudioManager(attributionContext)
             _selectedAudioDeviceId.value = settingsRepo?.selectedAudioDeviceId ?: -1
             
             scope.launch {
@@ -221,7 +228,7 @@ class MixerViewModel : ViewModel() {
             }
             
             Log.d(TAG, "Starting Resource Monitor...")
-            startResourceMonitor(context)
+            startResourceMonitor(attributionContext)
         }
 
         if (midiManager != null) return
