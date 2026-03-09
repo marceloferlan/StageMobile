@@ -69,8 +69,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
     LOGI("Synth created OK");
 
     // Try multiple audio drivers in order of preference
-    // Temporarily prioritizing opensles to debug attribution error
-    const char* drivers[] = {"opensles", "oboe", "pulseaudio", nullptr};
+    const char* drivers[] = {"oboe", "opensles", "pulseaudio", nullptr};
     for (int i = 0; drivers[i] != nullptr; i++) {
         LOGI("Trying audio driver: %s", drivers[i]);
         fluid_settings_setstr(settings, "audio.driver", drivers[i]);
