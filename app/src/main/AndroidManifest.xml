@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <attribution
+        android:tag="audio_engine"
+        android:label="@string/audio_engine_label" />
+
     <!-- MIDI support -->
     <uses-feature
         android:name="android.software.midi"
@@ -18,12 +22,6 @@
 
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-    <attribution
-        android:tag="audio_engine"
-        android:label="@string/audio_engine_label" />
-
-
 
     <application
         android:name=".StageMobileApp"
