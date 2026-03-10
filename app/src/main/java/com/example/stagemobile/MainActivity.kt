@@ -24,8 +24,11 @@ class MainActivity : ComponentActivity() {
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
             val windowInsetsController = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
             windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            
+            // Hide both Status Bar and Navigation Bar
             windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            android.util.Log.d("MainActivity", "Immersive mode configured")
+            
+            android.util.Log.d("MainActivity", "Immersive mode configured (System Bars hidden)")
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error configuring immersive mode: ${e.message}")
         }
