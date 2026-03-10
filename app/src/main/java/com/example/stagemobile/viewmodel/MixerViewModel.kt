@@ -650,7 +650,7 @@ class MixerViewModel : ViewModel() {
                 
                 // Final Master signal energy
                 val totalMasterEnergy = peakEnergyAccumulator * masterGain
-                val masterCurrentDb = gainToDb(totalMasterEnergy / 1.5f) // Correcting for summation headroom
+                val masterCurrentDb = gainToDb(totalMasterEnergy) // No more artificial attenuation
                 val masterDisplayLevel = dbToLevel(masterCurrentDb)
                 
                 if (kotlin.math.abs(_masterLevel.value - masterDisplayLevel) > 0.005f) {
