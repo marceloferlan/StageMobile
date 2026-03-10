@@ -641,10 +641,15 @@ class MixerViewModel : ViewModel() {
                 }
 
                 // Calculate Master VU level (Peak accumulation of all non-muted channels)
-                var peakAccumulator = 0f
+                // Calculate Master VU level (Peak accumulation of energy from all non-muted channels)
+                var peakEnergyAccumulator = 0f
                 _channels.value.forEach { ch ->
                     if (!ch.isMuted) {
-                        peakAccumulator += ch.level
+                        val chId = ch.id
+                        val nativeLinear = channelInternalLevels[chId] ?: 0f
+                        val channelDb = faderToDb(ch.volume)
+                        val channelGain = dbToGain(channelDb)
+                        peakEnergyAccumulator += nativeLinear * channelGain
                     }
                 }
                 
@@ -652,10 +657,9 @@ class MixerViewModel : ViewModel() {
                 val masterDb = faderToDb(_masterVolume.value)
                 val masterGain = dbToGain(masterDb)
                 
-                // For Master peak, we don't just sum linear levels (which would be huge),
-                // we sum the energy and convert back to the same dB scale.
-                val totalEnergyGain = peakAccumulator * masterGain
-                val masterCurrentDb = gainToDb(totalEnergyGain / 1.5f) // Correcting for summation headroom
+                // Final Master signal energy
+                val totalMasterEnergy = peakEnergyAccumulator * masterGain
+                val masterCurrentDb = gainToDb(totalMasterEnergy / 1.5f) // Correcting for summation headroom
                 val masterDisplayLevel = dbToLevel(masterCurrentDb)
                 
                 if (kotlin.math.abs(_masterLevel.value - masterDisplayLevel) > 0.005f) {
