@@ -30,18 +30,21 @@ class SystemResourceMonitor(private val context: Context) {
         val now = SystemClock.elapsedRealtime()
         val currentNativeHeapMb = android.os.Debug.getNativeHeapAllocatedSize() / (1024L * 1024L)
 
-        // Update the "Anchor PSS" every 30 seconds to avoid CPU overhead
-        if (now - lastPssUpdateTime > 30000L || lastPssMb == 0) {
+        // Update the "Anchor PSS" every 10 seconds (more frequent for debugging)
+        if (now - lastPssUpdateTime > 10000L || lastPssMb == 0) {
             val memInfo = android.os.Debug.MemoryInfo()
             android.os.Debug.getMemoryInfo(memInfo)
             lastPssMb = memInfo.totalPss / 1024
             lastNativeHeapMb = currentNativeHeapMb
             lastPssUpdateTime = now
+            android.util.Log.d("ResourceMonitor", "PSS Update: $lastPssMb MB, Native: $lastNativeHeapMb MB")
         }
 
-        // Calculate: Current PSS approx = Last PSS + (Change in Native Heap)
+        // Calculate: Change in Native Heap since last PSS measurement
         val deltaNative = (currentNativeHeapMb - lastNativeHeapMb).toInt()
-        return (lastPssMb + deltaNative).coerceAtLeast(1)
+        
+        // Safety: If delta is negative (unload), rely more on the PSS anchor until next update
+        return (lastPssMb + deltaNative).coerceAtMost(lastPssMb + 500).coerceAtLeast(1)
     }
 
     /**

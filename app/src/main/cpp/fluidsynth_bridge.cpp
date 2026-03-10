@@ -105,15 +105,24 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(
     }
 
     const char* sf2Path = env->GetStringUTFChars(path, nullptr);
-    LOGI("Attempting to load SF2: %s", sf2Path);
+    LOGI("---> JNI: Attempting to load SF2: %s", sf2Path);
+
+    // Verify file accessibility before FluidSynth takes over
+    FILE* testFile = fopen(sf2Path, "rb");
+    if (testFile) {
+        LOGI("---> JNI: File is reachable by native layer.");
+        fclose(testFile);
+    } else {
+        LOGE("---> JNI: ERROR! File NOT reachable (errno=%d). Possibly sandbox restrictions or path error.", errno);
+    }
 
     // reset=0: do NOT reassign channels
     int sfId = fluid_synth_sfload(synth, sf2Path, 0);
 
     if (sfId < 0) {
-        LOGE("Failed to load SoundFont! Code: %d", sfId);
+        LOGE("---> JNI: FluidSynth FAILED to load SF2. Error Code: %d", sfId);
     } else {
-        LOGI("SoundFont loaded successfully! ID: %d", sfId);
+        LOGI("---> JNI: SoundFont loaded successfully! ID: %d", sfId);
     }
 
     env->ReleaseStringUTFChars(path, sf2Path);
@@ -237,6 +246,8 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
     if (!synth || !settings) return;
 
     jsize len = env->GetArrayLength(output);
+    if (len > 16) len = 16; // Safety cap to match MIDI channels and local buffer
+    
     static float local_levels[16];
     static fluid_voice_t* voicelist[128];
     
