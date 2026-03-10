@@ -600,26 +600,17 @@ class MixerViewModel : ViewModel() {
                 _channels.value = _channels.value.map { channel ->
                     val chId = channel.id
                     val nativeLevel = if (chId in 0..15) levels[chId] else 0f
-                    val lastNoteTime = channelLastNoteTime[chId] ?: 0L
-                    val now = System.currentTimeMillis()
-                    val ageMs = now - lastNoteTime
                     
-                    // Apply deep decay over 5s
-                    val ageFactor = if (ageMs < 5000L) {
-                        1.0f - (ageMs.toFloat() / 5000f)
-                    } else 0f
-                    
-                    val dynamicLevel = nativeLevel * ageFactor
+                    // PEAK METER MODE:
+                    // Instant Attack (1.0) and fast release (0.1) for clip detection.
                     val currentInternal = channelInternalLevels[chId] ?: 0f
+                    val attackRate = 1.0f 
+                    val releaseRate = 0.1f
                     
-                    // Ballistics
-                    val attackRate = 0.7f
-                    val releaseRate = 0.15f
-                    
-                    val newInternal = if (dynamicLevel > currentInternal) {
-                        currentInternal + attackRate * (dynamicLevel - currentInternal)
+                    val newInternal = if (nativeLevel > currentInternal) {
+                        nativeLevel // Instant jump to peak
                     } else {
-                        currentInternal + releaseRate * (dynamicLevel - currentInternal)
+                        currentInternal + releaseRate * (nativeLevel - currentInternal)
                     }
                     
                     channelInternalLevels[chId] = newInternal
@@ -628,7 +619,7 @@ class MixerViewModel : ViewModel() {
                     val channelDb = faderToDb(channel.volume)
                     val channelGain = dbToGain(channelDb)
                     
-                    // Final signal energy in dB
+                    // Final signal energy in dB (dBFS representative)
                     val finalGain = newInternal * channelGain
                     val currentDb = gainToDb(finalGain)
                     val displayLevel = dbToLevel(currentDb)
