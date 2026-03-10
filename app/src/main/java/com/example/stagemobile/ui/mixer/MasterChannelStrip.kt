@@ -104,10 +104,10 @@ fun MasterChannelStrip(
                     val barHeight = size.height * level.coerceIn(0f, 1f)
                     
                     val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0.0f to Color(0xFFFF3B30),
-                        0.13f to Color(0xFFFF3B30),
-                        0.33f to Color(0xFFFFCC00),
-                        0.60f to Color(0xFF4CAF50),
+                        0.0f to Color(0xFFFF3B30),   // Red (Peak/Clip)
+                        0.09f to Color(0xFFFF3B30),  // 0dB mark (1.0 - 0.91 = 0.09)
+                        0.28f to Color(0xFFFFCC00),  // -12dB mark (1.0 - 0.72 = 0.28)
+                        0.60f to Color(0xFF4CAF50),  // Green
                         1.0f to Color(0xFF4CAF50)
                     )
 

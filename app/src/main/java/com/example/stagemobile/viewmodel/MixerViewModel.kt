@@ -613,12 +613,12 @@ class MixerViewModel : ViewModel() {
                     }
                 }
                 
-                // Scale accumulator down naturally, and limit to 1.0f
-                val masterPreFader = kotlin.math.min(1.0f, peakAccumulator * 0.7f)
+                // Scale accumulator naturally, and allow for some headroom/clipping visual
+                val masterPreFader = peakAccumulator 
                 val masterPostFader = masterPreFader * _masterVolume.value
                 
                 if (kotlin.math.abs(_masterLevel.value - masterPostFader) > 0.005f) {
-                    _masterLevel.value = masterPostFader.coerceIn(0f, 1f)
+                    _masterLevel.value = masterPostFader.coerceIn(0f, 1.2f)
                 }
             }
         }
