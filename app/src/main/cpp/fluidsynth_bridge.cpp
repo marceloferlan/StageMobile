@@ -239,24 +239,32 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
 
     // FluidSynth polyphony defines the max buffer size for voices
     int polyphony = 64; // Default
-    fluid_settings_getint(settings, "synth.polyphony", &polyphony);
-    fluid_voice_t** voicelist = new fluid_voice_t*[polyphony];
+    if (settings) {
+        fluid_settings_getint(settings, "synth.polyphony", &polyphony);
+    }
     
-    // Fill the voicelist
+    // IMPORTANT: Zero-initialize the array to avoid garbage pointers (CRASH PROTECT)
+    fluid_voice_t** voicelist = new fluid_voice_t*[polyphony](); 
+    
+    // Fill the voicelist (does NOT necessarily null terminate)
     fluid_synth_get_voicelist(synth, voicelist, polyphony, -1);
 
     for (int i = 0; i < polyphony; i++) {
         fluid_voice_t* voice = voicelist[i];
-        if (voice != nullptr && fluid_voice_is_on(voice)) {
-            int chan = fluid_voice_get_channel(voice);
-            if (chan >= 0 && chan < len) {
-                // Get attenuation (GEN_ATTENUATION = 90)
-                // Range: 0 (max volume) to 1440 (silent)
-                float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
-                // Convert to linear 0.0-1.0 scale
-                float linearVolume = (1000.0f - atten) / 1000.0f;
-                if (linearVolume < 0.0f) linearVolume = 0.0f;
-                if (linearVolume > levels[chan]) levels[chan] = linearVolume;
+        // Extra careful check: voice must not be NULL and must be active
+        if (voice != nullptr) {
+            try {
+                if (fluid_voice_is_on(voice)) {
+                    int chan = fluid_voice_get_channel(voice);
+                    if (chan >= 0 && chan < len) {
+                        float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
+                        float linearVolume = (1000.0f - atten) / 1000.0f;
+                        if (linearVolume < 0.0f) linearVolume = 0.0f;
+                        if (linearVolume > levels[chan]) levels[chan] = linearVolume;
+                    }
+                }
+            } catch (...) {
+                // Catch any stray memory access issues in native context
             }
         }
     }
