@@ -428,37 +428,43 @@ class MixerViewModel : ViewModel() {
     }
 
     fun removeSoundFont(channelId: Int) {
-        // Find sfId before resetting state
-        val ch = _channels.value.find { it.id == channelId }
-        val sfIdToUnload = ch?.sfId ?: -1
+        scope.launch(Dispatchers.IO) {
+            isVuPollingSuspended = true
+            try {
+                // Find sfId before resetting state
+                val ch = _channels.value.find { it.id == channelId }
+                val sfIdToUnload = ch?.sfId ?: -1
 
-        // All notes off on this channel to stop any lingering sound
-        for (key in 0..127) {
-            audioEngine.noteOff(channelId, key)
-        }
-        activeNotesCount[channelId] = 0
-        channelInternalLevels[channelId] = 0f
+                // All notes off on this channel to stop any lingering sound
+                for (key in 0..127) {
+                    audioEngine.noteOff(channelId, key)
+                }
+                activeNotesCount[channelId] = 0
+                channelInternalLevels[channelId] = 0f
 
-        // Instruct engine to free RAM
-        if (sfIdToUnload >= 0) {
-            audioEngine.unloadSoundFont(sfIdToUnload)
-        }
+                // Instruct engine to free RAM
+                if (sfIdToUnload >= 0) {
+                    audioEngine.unloadSoundFont(sfIdToUnload)
+                }
 
-        // Reset channel state
-        _channels.value = _channels.value.map {
-            if (it.id == channelId) it.copy(
-                soundFont = null,
-                sfId = -1,
-                isArmed = false,
-                program = 0,
-                bank = 0
-            ) else it
+                // Reset channel state
+                _channels.value = _channels.value.map {
+                    if (it.id == channelId) it.copy(
+                        soundFont = null,
+                        sfId = -1,
+                        isArmed = false,
+                        program = 0,
+                        bank = 0
+                    ) else it
+                }
+                
+                // Trigger GC
+                System.gc()
+                Log.i(TAG, "SF2 removed for channel $channelId. RAM cleanup triggered.")
+            } finally {
+                isVuPollingSuspended = false
+            }
         }
-        
-        // Trigger GC to help native allocator reclaim pages and update monitor faster
-        System.gc()
-        
-        Log.i(TAG, "SF2 removed and GC triggered for channel $channelId")
     }
 
     fun getEffectiveVolume(channel: InstrumentChannel): Float {
