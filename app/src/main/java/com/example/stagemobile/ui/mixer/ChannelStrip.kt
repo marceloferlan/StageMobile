@@ -237,7 +237,7 @@ fun ChannelStrip(
                 }
 
                 // 2. The Mask Layer (Dynamic 30 or 60 segments)
-                val maskRes = if (isLargeVU) R.drawable.vu_mask_channel_60 else R.drawable.vu_mask_channel_30
+                val maskRes = if (isLargeVU) R.drawable.meter_mask_channel_60 else R.drawable.meter_mask_channel_30
                 Image(
                     painter = painterResource(id = maskRes),
                     contentDescription = null,
