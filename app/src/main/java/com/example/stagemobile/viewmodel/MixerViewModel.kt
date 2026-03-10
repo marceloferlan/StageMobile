@@ -196,19 +196,8 @@ class MixerViewModel : ViewModel() {
         initSettings(context, isTablet)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
 
-        // Initialize with Attribution Context for AppOps audit transparency (API 30+)
-        var attributionContext = context
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                Log.d(TAG, "Creating attribution context for tag 'audio_engine'")
-                attributionContext = context.createAttributionContext("audio_engine")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create attribution context: ${e.message}")
-        }
-
         if (deviceAudioManager == null) {
-            deviceAudioManager = com.example.stagemobile.audio.DeviceAudioManager(attributionContext)
+            deviceAudioManager = com.example.stagemobile.audio.DeviceAudioManager(context)
             _selectedAudioDeviceId.value = settingsRepo?.selectedAudioDeviceId ?: -1
             
             scope.launch {
@@ -229,13 +218,13 @@ class MixerViewModel : ViewModel() {
                 Log.e(TAG, "CRITICAL: AudioEngine.init failed: ${e.message}", e)
             }
             
-            startResourceMonitor(attributionContext)
+            startResourceMonitor(context)
         }
 
         if (midiManager != null) return
 
         midiManager = MidiConnectionManager(
-            context = attributionContext,
+            context = context,
             onNoteOn = { deviceName, channel, key, velocity ->
                 val activeDevices = settingsRepo?.activeMidiDevices ?: emptySet()
                 if (!activeDevices.contains(deviceName)) return@MidiConnectionManager

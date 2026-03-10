@@ -27,13 +27,13 @@ fun MasterChannelStrip(
 ) {
     BoxWithConstraints(
         modifier = modifier
-            .padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
+            .padding(start = 8.dp, top = 6.dp, bottom = 6.dp)
             .fillMaxHeight()
     ) {
         val heightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current.density
         val isLargeScreen = heightPx >= 400f * density
-        val currentWidth = if (isLargeScreen) 158.5.dp else 122.dp
+        val currentWidth = if (isLargeScreen) 158.5.dp else 116.dp
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
