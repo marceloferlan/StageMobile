@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <android/log.h>
 #include <string>
+#include <mutex>
 
 // Include local FluidSynth headers
 #include "include/fluidsynth.h"
@@ -12,7 +13,8 @@
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-// Global FluidSynth instances
+// Global FluidSynth instances protected by mutex
+static std::recursive_mutex engine_mutex;
 static fluid_settings_t* settings = nullptr;
 static fluid_synth_t* synth = nullptr;
 static fluid_audio_driver_t* adriver = nullptr;
@@ -27,6 +29,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
         jint bufferSize,
         jint deviceId) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     LOGI("=== nativeInit called (sampleRate=%d, bufferSize=%d, deviceId=%d) ===", sampleRate, bufferSize, deviceId);
 
     if (synth != nullptr) {
@@ -99,6 +102,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(
         jobject thiz,
         jstring path) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) {
         LOGE("Cannot load SF2: synth not initialized");
         return -1;
@@ -124,6 +128,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeUnloadSf2(
         jobject thiz,
         jint sfId) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
 
     int result = fluid_synth_sfunload(synth, sfId, 1); // 1 = reset presets
@@ -144,6 +149,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOn(
         jint key,
         jint velocity) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (synth) {
         fluid_synth_noteon(synth, channel, key, velocity);
     }
@@ -156,6 +162,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOff(
         jint channel,
         jint key) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (synth) {
         fluid_synth_noteoff(synth, channel, key);
     }
@@ -168,6 +175,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(
         jint channel,
         jfloat volumeDb) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return;
 
     // Convert dB to MIDI CC value (0-127)
@@ -192,6 +200,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramChange(
         jint bank,
         jint program) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return;
 
     fluid_synth_bank_select(synth, channel, bank);
@@ -203,6 +212,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(
         JNIEnv* env,
         jobject thiz) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (adriver) { delete_fluid_audio_driver(adriver); adriver = nullptr; }
     if (synth) { delete_fluid_synth(synth); synth = nullptr; }
     if (settings) { delete_fluid_settings(settings); settings = nullptr; }
@@ -219,6 +229,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(
         jint bank,
         jint program) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
 
     int result = fluid_synth_program_select(synth, channel, sfId, bank, program);
@@ -231,6 +242,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
         jobject thiz,
         jfloatArray output) {
 
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth || !settings) return;
 
     jsize len = env->GetArrayLength(output);
