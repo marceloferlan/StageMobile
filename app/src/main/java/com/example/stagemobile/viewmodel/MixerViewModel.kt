@@ -583,18 +583,15 @@ class MixerViewModel : ViewModel() {
                     val now = System.currentTimeMillis()
                     val ageMs = now - lastNoteTime
                     
-                    // Apply a gradual decay over time even if nativeLevel is constant
-                    // This creates the "musical movement" for held notes.
-                    // Factor: 1.0 at start, decaying to 0.4 over 2 seconds
-                    val ageFactor = if (ageMs < 2000) {
-                        1.0f - (ageMs / 2000f) * 0.6f
-                    } else 0.4f
+                    // Apply deep decay over 5s
+                    val ageFactor = if (ageMs < 5000L) {
+                        1.0f - (ageMs.toFloat() / 5000f)
+                    } else 0f
                     
                     val dynamicLevel = nativeLevel * ageFactor
-                    
                     val currentInternal = channelInternalLevels[chId] ?: 0f
                     
-                    // Ballistics: Fast attack, standard release
+                    // Ballistics
                     val attackRate = 0.7f
                     val releaseRate = 0.15f
                     
