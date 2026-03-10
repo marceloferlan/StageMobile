@@ -140,6 +140,11 @@ class MixerViewModel : ViewModel() {
                     ?: "soundfont_ch$channelId.sf2"
                 val outputFile = File(context.filesDir, "sf2_ch${channelId}_$sf2FileName")
 
+                // OPTIMISTIC UPDATE: Update UI name immediately before heavy loading
+                _channels.value = _channels.value.map {
+                    if (it.id == channelId) it.copy(soundFont = "Carregando $sf2FileName...") else it
+                }
+
                 inputStream.use { input ->
                     outputFile.outputStream().use { output ->
                         input.copyTo(output)
@@ -148,12 +153,10 @@ class MixerViewModel : ViewModel() {
 
                 val sfId = audioEngine.loadSoundFont(outputFile.absolutePath)
                 if (sfId >= 0) {
-                    // When loading a new SF2, always start with preset 0 (first available)
-                    // The hardcoded programs (88, 32 etc) likely don't exist in the user's SF2
                     val loadBank = 0
                     val loadProgram = 0
 
-                    // Update channel with SF2 name, sfId, and reset program
+                    // FINAL UPDATE: Set the real sfId and final name
                     _channels.value = _channels.value.map {
                         if (it.id == channelId) it.copy(
                             soundFont = sf2FileName,
