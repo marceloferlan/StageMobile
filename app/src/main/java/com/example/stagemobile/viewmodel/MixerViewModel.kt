@@ -556,6 +556,27 @@ class MixerViewModel : ViewModel() {
         return 10f.pow(db / 20f)
     }
 
+    /**
+     * Converts a linear gain multiplier back to dB.
+     */
+    private fun gainToDb(gain: Float): Float {
+        if (gain <= 0.0001f) return -60f
+        return 20f * kotlin.math.log10(gain)
+    }
+
+    /**
+     * Maps a dB value to a visual VU level (0.0 to 1.2).
+     * 0.9 = 0dB
+     * 0.7 = -12dB
+     * 0.5 = -24dB
+     * 0.1 = -48dB
+     * 0.0 = -54dB or less
+     */
+    private fun dbToLevel(db: Float): Float {
+        val level = (db + 54f) / 60f
+        return level.coerceIn(0f, 1.2f)
+    }
+
     private fun getDisplayName(context: Context, uri: Uri): String? {
         return try {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -603,13 +624,17 @@ class MixerViewModel : ViewModel() {
                     
                     channelInternalLevels[chId] = newInternal
                     
-                    // Post-fader visual application using real linear gain
+                    // Post-fader visual application using logarithmic mapping
                     val channelDb = faderToDb(channel.volume)
                     val channelGain = dbToGain(channelDb)
-                    val displayLevel = newInternal * channelGain
+                    
+                    // Final signal energy in dB
+                    val finalGain = newInternal * channelGain
+                    val currentDb = gainToDb(finalGain)
+                    val displayLevel = dbToLevel(currentDb)
                     
                     if (kotlin.math.abs(displayLevel - channel.level) > 0.005f) {
-                        channel.copy(level = displayLevel.coerceIn(0f, 1.2f))
+                        channel.copy(level = displayLevel)
                     } else {
                         channel
                     }
@@ -623,16 +648,18 @@ class MixerViewModel : ViewModel() {
                     }
                 }
                 
-                // Calculate Master VU level using actual linear Gain
+                // Calculate Master VU level using actual mapped Level
                 val masterDb = faderToDb(_masterVolume.value)
                 val masterGain = dbToGain(masterDb)
                 
-                // Scale accumulator naturally, and allow for some headroom/clipping visual
-                val masterPreFader = peakAccumulator 
-                val masterPostFader = masterPreFader * masterGain
+                // For Master peak, we don't just sum linear levels (which would be huge),
+                // we sum the energy and convert back to the same dB scale.
+                val totalEnergyGain = peakAccumulator * masterGain
+                val masterCurrentDb = gainToDb(totalEnergyGain / 1.5f) // Correcting for summation headroom
+                val masterDisplayLevel = dbToLevel(masterCurrentDb)
                 
-                if (kotlin.math.abs(_masterLevel.value - masterPostFader) > 0.005f) {
-                    _masterLevel.value = masterPostFader.coerceIn(0f, 1.2f)
+                if (kotlin.math.abs(_masterLevel.value - masterDisplayLevel) > 0.005f) {
+                    _masterLevel.value = masterDisplayLevel
                 }
             }
         }
