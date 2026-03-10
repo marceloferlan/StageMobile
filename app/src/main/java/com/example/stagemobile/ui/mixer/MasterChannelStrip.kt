@@ -98,18 +98,16 @@ fun MasterChannelStrip(
                     .fillMaxHeight()
                     .padding(top = 6.dp)
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
-                    .padding(vertical = 4.dp)
             ) {
                 // 1. The Dynamic Gradient Layer (The "Light")
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val barHeight = size.height * level.coerceIn(0f, 1f)
                     
-                    // Vertical Gradient: Green (bottom) -> Yellow (66%) -> Red (87%)
                     val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0.0f to Color(0xFFFF3B30), // Top (Red)
+                        0.0f to Color(0xFFFF3B30),
                         0.13f to Color(0xFFFF3B30),
-                        0.33f to Color(0xFFFFCC00), // Mid (Yellow)
-                        0.60f to Color(0xFF4CAF50), // Bottom (Green)
+                        0.33f to Color(0xFFFFCC00),
+                        0.60f to Color(0xFF4CAF50),
                         1.0f to Color(0xFF4CAF50)
                     )
 
@@ -120,9 +118,10 @@ fun MasterChannelStrip(
                     )
                 }
 
-                // 2. The Mask Layer (The "Grid")
+                // 2. The Mask Layer (Dynamic 30 or 60 segments)
+                val maskRes = if (isLargeScreen) R.drawable.vu_mask_master_60 else R.drawable.vu_mask_master_30
                 Image(
-                    painter = painterResource(id = R.drawable.vu_mask_master),
+                    painter = painterResource(id = maskRes),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds

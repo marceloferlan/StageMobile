@@ -205,24 +205,26 @@ fun ChannelStrip(
             Spacer(modifier = Modifier.width(4.dp))
 
             // VU Meter Masked (High Performance)
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .width(10.dp)
                     .fillMaxHeight()
                     .padding(top = 6.dp)
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
-                    .padding(vertical = 4.dp)
             ) {
+                val vuHeightPx = constraints.maxHeight.toFloat()
+                val density = LocalDensity.current.density
+                val isLargeVU = vuHeightPx >= 400f * density
+
                 // 1. The Dynamic Gradient Layer (The "Light")
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val barHeight = size.height * channel.level.coerceIn(0f, 1f)
                     
-                    // Vertical Gradient: Green (bottom) -> Yellow (66%) -> Red (87%)
                     val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                        0.0f to Color(0xFFFF3B30), // Top (Red)
+                        0.0f to Color(0xFFFF3B30), 
                         0.13f to Color(0xFFFF3B30),
-                        0.33f to Color(0xFFFFCC00), // Mid (Yellow)
-                        0.60f to Color(0xFF4CAF50), // Bottom (Green)
+                        0.33f to Color(0xFFFFCC00), 
+                        0.60f to Color(0xFF4CAF50), 
                         1.0f to Color(0xFF4CAF50)
                     )
 
@@ -233,9 +235,10 @@ fun ChannelStrip(
                     )
                 }
 
-                // 2. The Mask Layer (The "Grid")
+                // 2. The Mask Layer (Dynamic 30 or 60 segments)
+                val maskRes = if (isLargeVU) R.drawable.vu_mask_channel_60 else R.drawable.vu_mask_channel_30
                 Image(
-                    painter = painterResource(id = R.drawable.vu_mask_channel),
+                    painter = painterResource(id = maskRes),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds

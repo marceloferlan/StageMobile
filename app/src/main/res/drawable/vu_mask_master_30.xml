@@ -1,0 +1,11 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp"
+    android:height="120dp"
+    android:viewportWidth="12"
+    android:viewportHeight="120">
+    <!-- Mask for Master Channel (30 segments) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M0,0h12v120h-12z M1,1h10v2h-10z M1,5h10v2h-10z M1,9h10v2h-10z M1,13h10v2h-10z M1,17h10v2h-10z M1,21h10v2h-10z M1,25h10v2h-10z M1,29h10v2h-10z M1,33h10v2h-10z M1,37h10v2h-10z M1,41h10v2h-10z M1,45h10v2h-10z M1,49h10v2h-10z M1,53h10v2h-10z M1,57h10v2h-10z M1,61h10v2h-10z M1,65h10v2h-10z M1,69h10v2h-10z M1,73h10v2h-10z M1,77h10v2h-10z M1,81h10v2h-10z M1,85h10v2h-10z M1,89h10v2h-10z M1,93h10v2h-10z M1,97h10v2h-10z M1,101h10v2h-10z M1,105h10v2h-10z M1,109h10v2h-10z M1,113h10v2h-10z M1,117h10v2h-10z"
+        android:fillType="evenOdd" />
+</vector>
