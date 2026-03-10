@@ -3,9 +3,39 @@
     android:height="120dp"
     android:viewportWidth="10"
     android:viewportHeight="120">
-    <!-- Mask for Instrument Channels (30 segments) -->
+    <!-- Mask for Instrument Channels (30 rounded segments) -->
     <path
         android:fillColor="#1A1A1A"
-        android:pathData="M0,0h10v120h-10z M1,1h8v2h-8z M1,5h8v2h-8z M1,9h8v2h-8z M1,13h8v2h-8z M1,17h8v2h-8z M1,21h8v2h-8z M1,25h8v2h-8z M1,29h8v2h-8z M1,33h8v2h-8z M1,37h8v2h-8z M1,41h8v2h-8z M1,45h8v2h-8z M1,49h8v2h-8z M1,53h8v2h-8z M1,57h8v2h-8z M1,61h8v2h-8z M1,65h8v2h-8z M1,69h8v2h-8z M1,73h8v2h-8z M1,77h8v2h-8z M1,81h8v2h-8z M1,85h8v2h-8z M1,89h8v2h-8z M1,93h8v2h-8z M1,97h8v2h-8z M1,101h8v2h-8z M1,105h8v2h-8z M1,109h8v2h-8z M1,113h8v2h-8z M1,117h8v2h-8z"
+        android:pathData="M0,0h10v120h-10z 
+        M2,1 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,5 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,9 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,13 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,17 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,21 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,25 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,29 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,33 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,37 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,41 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,45 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,49 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,53 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,57 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,61 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,65 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,69 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,73 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,77 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,81 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,85 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,89 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,93 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,97 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,101 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,105 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,109 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,113 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z 
+        M2,117 h6 a1,1 0 0 1 0,2 h-6 a1,1 0 0 1 0,-2 z"
         android:fillType="evenOdd" />
 </vector>
