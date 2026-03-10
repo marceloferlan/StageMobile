@@ -45,19 +45,17 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
         LOGE("Failed to create FluidSynth settings");
         return JNI_FALSE;
     }
-    LOGI("Settings created OK");
 
-    // Configure settings for Android audio (FastAudio / Low Latency Path)
+    // Configure settings for Android audio
     fluid_settings_setnum(settings, "synth.sample-rate", (double)sampleRate);
     fluid_settings_setint(settings, "synth.polyphony", 64);
     fluid_settings_setint(settings, "synth.midi-channels", 16);
     fluid_settings_setnum(settings, "synth.gain", 1.0);
     
-    // Dynamic buffer size from App Settings (< 10ms target for 64)
     fluid_settings_setint(settings, "audio.periods", 2);
     fluid_settings_setint(settings, "audio.period-size", bufferSize);
 
-    // Force Google Oboe Native driver properties
+    // Oboe Native driver properties
     fluid_settings_setstr(settings, "audio.oboe.performance-mode", "LowLatency");
     fluid_settings_setstr(settings, "audio.oboe.sharing-mode", "Exclusive");
     if (deviceId >= 0) {
@@ -73,10 +71,9 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
         settings = nullptr;
         return JNI_FALSE;
     }
-    LOGI("Synth created OK");
 
-    // Try multiple audio drivers in order of preference
-    const char* drivers[] = {"oboe", "opensles", "pulseaudio", nullptr};
+    // Try audio drivers
+    const char* drivers[] = {"oboe", "opensles", nullptr};
     for (int i = 0; drivers[i] != nullptr; i++) {
         LOGI("Trying audio driver: %s", drivers[i]);
         fluid_settings_setstr(settings, "audio.driver", drivers[i]);
@@ -85,11 +82,10 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
             LOGI("★ Audio driver '%s' created successfully!", drivers[i]);
             break;
         }
-        LOGW("Audio driver '%s' failed, trying next...", drivers[i]);
     }
 
     if (!adriver) {
-        LOGW("No audio driver available — synth created but no sound output");
+        LOGW("No audio driver available — no sound output");
     }
 
     LOGI("=== FluidSynth fully initialized ===");
@@ -109,13 +105,15 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(
     }
 
     const char* sf2Path = env->GetStringUTFChars(path, nullptr);
-    // reset=0: do NOT reassign channels. We use programSelect to bind per-channel.
+    LOGI("Attempting to load SF2: %s", sf2Path);
+
+    // reset=0: do NOT reassign channels
     int sfId = fluid_synth_sfload(synth, sf2Path, 0);
 
     if (sfId < 0) {
-        LOGE("Failed to load SoundFont: %s", sf2Path);
+        LOGE("Failed to load SoundFont! Code: %d", sfId);
     } else {
-        LOGI("SoundFont loaded: %s (id=%d)", sf2Path, sfId);
+        LOGI("SoundFont loaded successfully! ID: %d", sfId);
     }
 
     env->ReleaseStringUTFChars(path, sf2Path);
@@ -131,12 +129,12 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeUnloadSf2(
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
 
-    int result = fluid_synth_sfunload(synth, sfId, 1); // 1 = reset presets
+    int result = fluid_synth_sfunload(synth, sfId, 1);
     if (result == FLUID_OK) {
-        LOGI("SoundFont unloaded successfully (id=%d)", sfId);
+        LOGI("SoundFont unloaded (id=%d)", sfId);
         return JNI_TRUE;
     } else {
-        LOGE("Failed to unload SoundFont (id=%d)", sfId);
+        LOGE("Failed to unload (id=%d)", sfId);
         return JNI_FALSE;
     }
 }
@@ -178,18 +176,13 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return;
 
-    // Convert dB to MIDI CC value (0-127)
     float normalized;
-    if (volumeDb <= -60.0f) {
-        normalized = 0.0f;
-    } else if (volumeDb >= 6.0f) {
-        normalized = 1.0f;
-    } else {
-        normalized = (volumeDb + 60.0f) / 66.0f;
-    }
+    if (volumeDb <= -60.0f) normalized = 0.0f;
+    else if (volumeDb >= 6.0f) normalized = 1.0f;
+    else normalized = (volumeDb + 60.0f) / 66.0f;
 
     int ccValue = (int)(normalized * 127.0f);
-    fluid_synth_cc(synth, channel, 7, ccValue); // CC 7 = Volume
+    fluid_synth_cc(synth, channel, 7, ccValue);
 }
 
 JNIEXPORT void JNICALL
@@ -216,7 +209,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(
     if (adriver) { delete_fluid_audio_driver(adriver); adriver = nullptr; }
     if (synth) { delete_fluid_synth(synth); synth = nullptr; }
     if (settings) { delete_fluid_settings(settings); settings = nullptr; }
-
     LOGI("FluidSynth destroyed");
 }
 
@@ -231,7 +223,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(
 
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
-
     int result = fluid_synth_program_select(synth, channel, sfId, bank, program);
     return (result == FLUID_OK) ? JNI_TRUE : JNI_FALSE;
 }
@@ -246,51 +237,39 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
     if (!synth || !settings) return;
 
     jsize len = env->GetArrayLength(output);
-    float* levels = new float[len];
-    for(int i=0; i<len; i++) levels[i] = 0.0f;
-
-    // FluidSynth polyphony defines the max buffer size for voices
-    int polyphony = 64; // Default
-    if (settings) {
-        fluid_settings_getint(settings, "synth.polyphony", &polyphony);
-    }
+    static float local_levels[16];
+    static fluid_voice_t* voicelist[128];
     
-    // IMPORTANT: Zero-initialize the array to avoid garbage pointers (CRASH PROTECT)
-    fluid_voice_t** voicelist = new fluid_voice_t*[polyphony](); 
-    
-    // Fill the voicelist (does NOT necessarily null terminate)
-    fluid_synth_get_voicelist(synth, voicelist, polyphony, -1);
+    for(int i=0; i<16; i++) local_levels[i] = 0.0f;
+    for(int i=0; i<128; i++) voicelist[i] = nullptr; 
 
-    for (int i = 0; i < polyphony; i++) {
+    int poly = 64;
+    fluid_settings_getint(settings, "synth.polyphony", &poly);
+    if (poly > 128) poly = 128;
+
+    fluid_synth_get_voicelist(synth, voicelist, poly, -1);
+
+    for (int i = 0; i < poly; i++) {
         fluid_voice_t* voice = voicelist[i];
-        // Extra careful check: voice must not be NULL and must be active
         if (voice != nullptr) {
-            try {
-                if (fluid_voice_is_on(voice)) {
-                    int chan = fluid_voice_get_channel(voice);
-                    if (chan >= 0 && chan < len) {
-                        float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
-                        float linearVolume = (1000.0f - atten) / 1000.0f;
-                        if (linearVolume < 0.0f) linearVolume = 0.0f;
-                        if (linearVolume > levels[chan]) levels[chan] = linearVolume;
-                    }
+            if (fluid_voice_is_on(voice)) {
+                int chan = fluid_voice_get_channel(voice);
+                if (chan >= 0 && chan < 16 && chan < len) {
+                    float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
+                    float linearVolume = (1000.0f - atten) / 1000.0f;
+                    if (linearVolume < 0.0f) linearVolume = 0.0f;
+                    if (linearVolume > local_levels[chan]) local_levels[chan] = linearVolume;
                 }
-            } catch (...) {
-                // Catch any stray memory access issues in native context
             }
         }
     }
 
-    // Boost levels for better VU visibility
-    for(int i=0; i<len; i++) {
-        levels[i] *= 1.5f; 
-        if (levels[i] > 1.2f) levels[i] = 1.2f; 
+    for(int i=0; i<len && i<16; i++) {
+        local_levels[i] *= 1.5f; 
+        if (local_levels[i] > 1.2f) local_levels[i] = 1.2f; 
     }
 
-    env->SetFloatArrayRegion(output, 0, len, levels);
-    
-    delete[] levels;
-    delete[] voicelist;
+    env->SetFloatArrayRegion(output, 0, len, local_levels);
 }
 
 } // extern "C"
