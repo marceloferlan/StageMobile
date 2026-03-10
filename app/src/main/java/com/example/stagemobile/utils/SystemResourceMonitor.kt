@@ -15,20 +15,37 @@ class SystemResourceMonitor(private val context: Context) {
     private var lastCpuTime = -1L
     private var lastUptime = -1L
 
+    // Memory Tracking state (Hybrid PSS + Native Delta)
+    private var lastPssMb = 0
+    private var lastNativeHeapMb = 0L
+    private var lastPssUpdateTime = 0L
+
     /**
-     * Gets the current Total PSS memory (Proportional Set Size) in MegaBytes (MB).
-     * This represents the actual cost of the app to the system RAM.
+     * Gets the Hybrid memory usage in MB. 
+     * Combines PSS (Total accuracy) with Native Heap Deltas (Speed).
+     * This ensures the RAM monitor reacts instantly to SF2 load/unload,
+     * but still reflects the total footprint of the app.
      */
     fun getMemoryUsageMb(): Int {
-        val memInfo = android.os.Debug.MemoryInfo()
-        android.os.Debug.getMemoryInfo(memInfo)
-        return memInfo.totalPss / 1024
+        val now = SystemClock.elapsedRealtime()
+        val currentNativeHeapMb = android.os.Debug.getNativeHeapAllocatedSize() / (1024L * 1024L)
+
+        // Update the "Anchor PSS" every 30 seconds to avoid CPU overhead
+        if (now - lastPssUpdateTime > 30000L || lastPssMb == 0) {
+            val memInfo = android.os.Debug.MemoryInfo()
+            android.os.Debug.getMemoryInfo(memInfo)
+            lastPssMb = memInfo.totalPss / 1024
+            lastNativeHeapMb = currentNativeHeapMb
+            lastPssUpdateTime = now
+        }
+
+        // Calculate: Current PSS approx = Last PSS + (Change in Native Heap)
+        val deltaNative = (currentNativeHeapMb - lastNativeHeapMb).toInt()
+        return (lastPssMb + deltaNative).coerceAtLeast(1)
     }
 
     /**
      * Calculates the approximate CPU usage percentage since the last call to this function.
-     * This uses the elapsed CPU time of the process divided by the elapsed device realtime.
-     * Needs to be called periodically (e.g., every 1s) to return an accurate delta.
      */
     fun getCpuUsagePercent(): Float {
         val currentCpuTime = Process.getElapsedCpuTime() // Total CPU time the process used (ms)
@@ -46,7 +63,7 @@ class SystemResourceMonitor(private val context: Context) {
         lastCpuTime = currentCpuTime
         lastUptime = currentUptime
 
-        if (uptimeDelta <= 0) return 0f
+        if (uptimeDelta <= 0L) return 0f
 
         // Convert delta to percentage. (CPU time used / real time passed) * 100
         val percent = (cpuTimeDelta.toFloat() / uptimeDelta.toFloat()) * 100f
