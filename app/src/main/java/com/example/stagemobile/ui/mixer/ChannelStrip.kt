@@ -211,6 +211,7 @@ fun ChannelStrip(
                     .fillMaxHeight()
                     .padding(top = 6.dp)
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp)) // Added clip for rounded ends
             ) {
                 val vuHeightPx = constraints.maxHeight.toFloat()
                 val density = LocalDensity.current.density

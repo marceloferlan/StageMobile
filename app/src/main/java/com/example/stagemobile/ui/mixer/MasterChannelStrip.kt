@@ -91,13 +91,13 @@ fun MasterChannelStrip(
 
             Spacer(modifier = Modifier.width(if (isLargeScreen) 12.dp else 4.dp))
 
-            // VU Meter Masked (High Performance)
             Box(
                 modifier = Modifier
                     .width(12.dp)
                     .fillMaxHeight()
                     .padding(top = 6.dp)
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp)) // Added clip for rounded ends
             ) {
                 // 1. The Dynamic Gradient Layer (The "Light")
                 Canvas(modifier = Modifier.fillMaxSize()) {
