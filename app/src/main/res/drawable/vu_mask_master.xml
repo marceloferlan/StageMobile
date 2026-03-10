@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp"
+    android:height="250dp"
+    android:viewportWidth="12"
+    android:viewportHeight="250">
+    <!-- 
+      Máscara de VU para o Canal Master
+      Cor: #1A1A1A (Fundo do mixer)
+      Cria 60 segmentos transparentes.
+    -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M0,0h12v250h-12z M1,1h10v3h-10z M1,5h10v3h-10z M1,9h10v3h-10z M1,13h10v3h-10z M1,17h10v3h-10z M1,21h10v3h-10z M1,25h10v3h-10z M1,29h10v3h-10z M1,33h10v3h-10z M1,37h10v3h-10z M1,41h10v3h-10z M1,45h10v3h-10z M1,49h10v3h-10z M1,53h10v3h-10z M1,57h10v3h-10z M1,61h10v3h-10z M1,65h10v3h-10z M1,69h10v3h-10z M1,73h10v3h-10z M1,77h10v3h-10z M1,81h10v3h-10z M1,85h10v3h-10z M1,89h10v3h-10z M1,93h10v3h-10z M1,97h10v3h-10z M1,101h10v3h-10z M1,105h10v3h-10z M1,109h10v3h-10z M1,113h10v3h-10z M1,117h10v3h-10z M1,121h10v3h-10z M1,125h10v3h-10z M1,129h10v3h-10z M1,133h10v3h-10z M1,137h10v3h-10z M1,141h10v3h-10z M1,145h10v3h-10z M1,149h10v3h-10z M1,153h10v3h-10z M1,157h10v3h-10z M1,161h10v3h-10z M1,165h10v3h-10z M1,169h10v3h-10z M1,173h10v3h-10z M1,177h10v3h-10z M1,181h10v3h-10z M1,185h10v3h-10z M1,189h10v3h-10z M1,193h10v3h-10z M1,197h10v3h-10z M1,201h10v3h-10z M1,205h10v3h-10z M1,209h10v3h-10z M1,213h10v3h-10z M1,217h10v3h-10z M1,221h10v3h-10z M1,225h10v3h-10z M1,229h10v3h-10z M1,233h10v3h-10z M1,237h10v3h-10z"
+        android:fillType="evenOdd" />
+</vector>

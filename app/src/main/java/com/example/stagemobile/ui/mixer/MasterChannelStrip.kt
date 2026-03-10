@@ -9,7 +9,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
@@ -33,7 +37,7 @@ fun MasterChannelStrip(
         val heightPx = constraints.maxHeight.toFloat()
         val density = LocalDensity.current.density
         val isLargeScreen = heightPx >= 400f * density
-        val currentWidth = if (isLargeScreen) 158.5.dp else 116.dp
+        val currentWidth = if (isLargeScreen) 158.5.dp else 119.dp
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -87,8 +91,8 @@ fun MasterChannelStrip(
 
             Spacer(modifier = Modifier.width(if (isLargeScreen) 12.dp else 4.dp))
 
-            // VU Meter Segmented
-            BoxWithConstraints(
+            // VU Meter Masked (High Performance)
+            Box(
                 modifier = Modifier
                     .width(12.dp)
                     .fillMaxHeight()
@@ -96,39 +100,33 @@ fun MasterChannelStrip(
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
                     .padding(vertical = 4.dp)
             ) {
-                val vuHeightPx = constraints.maxHeight.toFloat()
-                val vuDensity = LocalDensity.current.density
-                
-                // 60 LEDs for large screens (tablets), 30 for small screens
-                // Using the exact same threshold as ChannelStrip.kt
-                val ledCount = if (vuHeightPx >= 400f * vuDensity) 60 else 30
-                val activeLeds = (level * ledCount).toInt().coerceIn(0, ledCount)
+                // 1. The Dynamic Gradient Layer (The "Light")
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val barHeight = size.height * level.coerceIn(0f, 1f)
+                    
+                    // Vertical Gradient: Green (bottom) -> Yellow (66%) -> Red (87%)
+                    val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0.0f to Color(0xFFFF3B30), // Top (Red)
+                        0.13f to Color(0xFFFF3B30),
+                        0.33f to Color(0xFFFFCC00), // Mid (Yellow)
+                        0.60f to Color(0xFF4CAF50), // Bottom (Green)
+                        1.0f to Color(0xFF4CAF50)
+                    )
 
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    for (i in 0 until ledCount) {
-                        val ledIndexFromBottom = ledCount - 1 - i
-                        val isLit = ledIndexFromBottom < activeLeds
-
-                        val ledColor = when {
-                            !isLit -> Color(0xFF2C2C2C)
-                            // Proportional color zones: Red (top 13%), Yellow (next 20%), Green (rest)
-                            i < (ledCount * 0.13f).toInt() -> Color(0xFFFF3B30) // Red zone
-                            i < (ledCount * 0.33f).toInt() -> Color(0xFFFFCC00) // Yellow zone
-                            else -> Color(0xFF4CAF50) // Green zone
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                                .background(ledColor, RoundedCornerShape(1.dp))
-                        )
-                    }
+                    drawRect(
+                        brush = brush,
+                        topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - barHeight),
+                        size = androidx.compose.ui.geometry.Size(size.width, barHeight)
+                    )
                 }
+
+                // 2. The Mask Layer (The "Grid")
+                Image(
+                    painter = painterResource(id = R.drawable.vu_mask_master),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds
+                )
             }
         }
         }

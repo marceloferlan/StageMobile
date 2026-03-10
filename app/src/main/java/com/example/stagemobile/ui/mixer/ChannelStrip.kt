@@ -204,8 +204,8 @@ fun ChannelStrip(
 
             Spacer(modifier = Modifier.width(4.dp))
 
-            // VU Meter
-            BoxWithConstraints(
+            // VU Meter Masked (High Performance)
+            Box(
                 modifier = Modifier
                     .width(10.dp)
                     .fillMaxHeight()
@@ -213,46 +213,33 @@ fun ChannelStrip(
                     .background(Color(0xFF1A1A1A), RoundedCornerShape(4.dp))
                     .padding(vertical = 4.dp)
             ) {
-                val heightPx = constraints.maxHeight.toFloat()
-                val density = LocalDensity.current.density
-                
-                // 60 LEDs for large screens (tablets), 30 for small screens
-                // Using pixels directly to avoid Dp comparison compiler issues
-                val ledCount = if (heightPx >= 400f * density) 60 else 30
-                
-                // Convert channel.level (0f..1f) into number of lit LEDs
-                val activeLeds = (channel.level * ledCount).toInt().coerceIn(0, ledCount)
+                // 1. The Dynamic Gradient Layer (The "Light")
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val barHeight = size.height * channel.level.coerceIn(0f, 1f)
+                    
+                    // Vertical Gradient: Green (bottom) -> Yellow (66%) -> Red (87%)
+                    val brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0.0f to Color(0xFFFF3B30), // Top (Red)
+                        0.13f to Color(0xFFFF3B30),
+                        0.33f to Color(0xFFFFCC00), // Mid (Yellow)
+                        0.60f to Color(0xFF4CAF50), // Bottom (Green)
+                        1.0f to Color(0xFF4CAF50)
+                    )
 
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    // Loop from top (i = 0) to bottom
-                    for (i in 0 until ledCount) {
-                        val ledIndexFromBottom = ledCount - 1 - i
-                        val isLit = ledIndexFromBottom < activeLeds
-
-                        // Proportional color zones: 
-                        // Top 13% Red, next 20% Yellow, rest Green
-                        val redLimit = (ledCount * 0.13f).toInt()
-                        val yellowLimit = (ledCount * 0.33f).toInt()
-
-                        val ledColor = when {
-                            !isLit -> Color(0xFF2C2C2C)
-                            i < redLimit -> Color(0xFFFF3B30) // Red zone
-                            i < yellowLimit -> Color(0xFFFFCC00) // Yellow zone
-                            else -> Color(0xFF4CAF50) // Green zone
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                                .background(ledColor, RoundedCornerShape(1.dp))
-                        )
-                    }
+                    drawRect(
+                        brush = brush,
+                        topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - barHeight),
+                        size = androidx.compose.ui.geometry.Size(size.width, barHeight)
+                    )
                 }
+
+                // 2. The Mask Layer (The "Grid")
+                Image(
+                    painter = painterResource(id = R.drawable.vu_mask_channel),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.FillBounds
+                )
             }
         }
 

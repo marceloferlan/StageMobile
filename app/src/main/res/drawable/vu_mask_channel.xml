@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="10dp"
+    android:height="250dp"
+    android:viewportWidth="10"
+    android:viewportHeight="250">
+    <!-- 
+      Máscara de VU para Canais de Instrumento
+      Cor: #1A1A1A (Fundo do mixer)
+      Cria 60 segmentos transparentes.
+    -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M0,0h10v250h-10z M1,1h8v3h-8z M1,5h8v3h-8z M1,9h8v3h-8z M1,13h8v3h-8z M1,17h8v3h-8z M1,21h8v3h-8z M1,25h8v3h-8z M1,29h8v3h-8z M1,33h8v3h-8z M1,37h8v3h-8z M1,41h8v3h-8z M1,45h8v3h-8z M1,49h8v3h-8z M1,53h8v3h-8z M1,57h8v3h-8z M1,61h8v3h-8z M1,65h8v3h-8z M1,69h8v3h-8z M1,73h8v3h-8z M1,77h8v3h-8z M1,81h8v3h-8z M1,85h8v3h-8z M1,89h8v3h-8z M1,93h8v3h-8z M1,97h8v3h-8z M1,101h8v3h-8z M1,105h8v3h-8z M1,109h8v3h-8z M1,113h8v3h-8z M1,117h8v3h-8z M1,121h8v3h-8z M1,125h8v3h-8z M1,129h8v3h-8z M1,133h8v3h-8z M1,137h8v3h-8z M1,141h8v3h-8z M1,145h8v3h-8z M1,149h8v3h-8z M1,153h8v3h-8z M1,157h8v3h-8z M1,161h8v3h-8z M1,165h8v3h-8z M1,169h8v3h-8z M1,173h8v3h-8z M1,177h8v3h-8z M1,181h8v3h-8z M1,185h8v3h-8z M1,189h8v3h-8z M1,193h8v3h-8z M1,197h8v3h-8z M1,201h8v3h-8z M1,205h8v3h-8z M1,209h8v3h-8z M1,213h8v3h-8z M1,217h8v3h-8z M1,221h8v3h-8z M1,225h8v3h-8z M1,229h8v3h-8z M1,233h8v3h-8z M1,237h8v3h-8z"
+        android:fillType="evenOdd" />
+</vector>
