@@ -20,6 +20,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         try {
+            // Allow content to extend into the cutout area (notch) for edge-to-edge landscape
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                window.attributes.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+
             // Hide system bars (Immersive Mode)
             androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
             val windowInsetsController = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
