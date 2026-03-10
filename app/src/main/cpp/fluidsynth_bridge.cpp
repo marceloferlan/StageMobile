@@ -238,20 +238,21 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(
 
 JNIEXPORT void JNICALL
 Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevels(
-        JNIEnv* env,
-        jobject thiz,
-        jfloatArray output) {
+        JNIEnv* env, jobject thiz, jfloatArray output) {
 
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth || !settings) return;
 
     jsize len = env->GetArrayLength(output);
-    if (len > 16) len = 16; // Safety cap to match MIDI channels and local buffer
+    if (len > 16) len = 16;
     
     static float local_levels[16];
+    static float decay_state[16]; // Keep track of peak for smooth fall
     static fluid_voice_t* voicelist[128];
     
-    for(int i=0; i<16; i++) local_levels[i] = 0.0f;
+    // Reset frame-local levels
+    float frame_levels[16];
+    for(int i=0; i<16; i++) frame_levels[i] = 0.0f;
     for(int i=0; i<128; i++) voicelist[i] = nullptr; 
 
     int poly = 64;
@@ -262,22 +263,37 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
 
     for (int i = 0; i < poly; i++) {
         fluid_voice_t* voice = voicelist[i];
-        if (voice != nullptr) {
-            if (fluid_voice_is_on(voice)) {
-                int chan = fluid_voice_get_channel(voice);
-                if (chan >= 0 && chan < 16 && chan < len) {
-                    float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
-                    float linearVolume = (1000.0f - atten) / 1000.0f;
-                    if (linearVolume < 0.0f) linearVolume = 0.0f;
-                    if (linearVolume > local_levels[chan]) local_levels[chan] = linearVolume;
-                }
+        if (voice != nullptr && fluid_voice_is_on(voice)) {
+            int chan = fluid_voice_get_channel(voice);
+            if (chan >= 0 && chan < 16) {
+                // GEN_ATTENUATION is in centibels (1/10th dB). 
+                // 0 = Full volume, 1000 = -100dB (silence)
+                float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
+                
+                // Convert centibels to a linear 0.0 - 1.0 scale
+                // Formula: 10^(-atten / 200) -> using a slightly more aggressive scale for VU response
+                float linearVolume = 1.0f - (atten / 1000.0f); 
+                if (linearVolume < 0.0f) linearVolume = 0.0f;
+                
+                if (linearVolume > frame_levels[chan]) frame_levels[chan] = linearVolume;
             }
         }
     }
 
     for(int i=0; i<len && i<16; i++) {
-        local_levels[i] *= 1.5f; 
-        if (local_levels[i] > 1.2f) local_levels[i] = 1.2f; 
+        float peak = frame_levels[i];
+        
+        // Simulating musical decay: fast follow-up, smooth fall away
+        if (peak >= decay_state[i]) {
+            decay_state[i] = peak; // Instant attack
+        } else {
+            decay_state[i] *= 0.85f; // Exponential decay for visual smoothness (approx 15% per poll)
+        }
+        
+        // Apply final gain scaling and safety cap
+        float finalLevel = decay_state[i] * 1.4f;
+        if (finalLevel > 1.2f) finalLevel = 1.2f;
+        local_levels[i] = finalLevel;
     }
 
     env->SetFloatArrayRegion(output, 0, len, local_levels);
