@@ -449,7 +449,11 @@ class MixerViewModel : ViewModel() {
                 bank = 0
             ) else it
         }
-        Log.i(TAG, "SF2 removed from channel $channelId")
+        
+        // Trigger GC to help native allocator reclaim pages and update monitor faster
+        System.gc()
+        
+        Log.i(TAG, "SF2 removed and GC triggered for channel $channelId")
     }
 
     fun getEffectiveVolume(channel: InstrumentChannel): Float {
