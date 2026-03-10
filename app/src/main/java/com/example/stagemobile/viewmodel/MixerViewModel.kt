@@ -545,29 +545,31 @@ class MixerViewModel : ViewModel() {
         scope.launch {
             while (true) {
                 delay(40) // ~25 FPS
+                val levels = FloatArray(16)
+                audioEngine.getChannelLevels(levels)
+
                 _channels.value = _channels.value.map { channel ->
                     val chId = channel.id
-                    val count = activeNotesCount[chId] ?: 0
+                    val nativeLevel = if (chId in 0..15) levels[chId] else 0f
                     val currentInternal = channelInternalLevels[chId] ?: 0f
                     
-                    val targetInternal = if (count > 0) 1.0f else 0.0f
+                    // Ballistics: Fast attack, slightly faster release than before to be more musical
+                    val attackRate = 0.8f
+                    val releaseRate = 0.2f
                     
-                    val attackRate = 0.6f
-                    val releaseRate = 0.15f
-                    
-                    val newInternal = if (targetInternal > currentInternal) {
-                        currentInternal + attackRate * (targetInternal - currentInternal)
+                    val newInternal = if (nativeLevel > currentInternal) {
+                        currentInternal + attackRate * (nativeLevel - currentInternal)
                     } else {
-                        currentInternal + releaseRate * (targetInternal - currentInternal)
+                        currentInternal + releaseRate * (nativeLevel - currentInternal)
                     }
                     
                     channelInternalLevels[chId] = newInternal
                     
-                    // Post-fader visual application (RMS approximation applied via fader modifier)
+                    // Post-fader visual application
                     val displayLevel = newInternal * channel.volume
                     
                     if (kotlin.math.abs(displayLevel - channel.level) > 0.005f) {
-                        channel.copy(level = displayLevel.coerceIn(0f, 1f))
+                        channel.copy(level = displayLevel.coerceIn(0f, 1.2f)) // Allow > 1.0 for clipping feedback
                     } else {
                         channel
                     }

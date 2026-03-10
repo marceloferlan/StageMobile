@@ -68,6 +68,7 @@ class FluidSynthEngine : AudioEngine {
     private external fun nativeSetVolume(channel: Int, volume: Float)
     private external fun nativeProgramChange(channel: Int, bank: Int, program: Int)
     private external fun nativeProgramSelect(channel: Int, sfId: Int, bank: Int, program: Int): Boolean
+    private external fun nativeGetChannelLevels(output: FloatArray)
     private external fun nativeDestroy()
 
     override fun init(sampleRate: Int, bufferSize: Int, deviceId: Int) {
@@ -148,6 +149,13 @@ class FluidSynthEngine : AudioEngine {
             } catch (e: Exception) {
                 Log.e(TAG, "programSelect error: ${e.message}")
             }
+        }
+    }
+
+    override fun getChannelLevels(output: FloatArray) {
+        if (isInitialized) {
+            try { nativeGetChannelLevels(output) }
+            catch (e: Exception) { /* Silent fail to avoid log spam in render loop */ }
         }
     }
 

@@ -1,7 +1,11 @@
 #include <jni.h>
 #include <android/log.h>
-#include <fluidsynth.h>
 #include <string>
+
+// Include local FluidSynth headers
+#include "include/fluidsynth.h"
+#include "include/fluidsynth/voice.h"
+#include "include/fluidsynth/gen.h"
 
 #define LOG_TAG "FluidSynthBridge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -167,7 +171,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(
     if (!synth) return;
 
     // Convert dB to MIDI CC value (0-127)
-    // Range: -60dB → CC 0, 0dB → CC 116, +6dB → CC 127
     float normalized;
     if (volumeDb <= -60.0f) {
         normalized = 0.0f;
@@ -178,7 +181,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(
     }
 
     int ccValue = (int)(normalized * 127.0f);
-    LOGI("Volume: %.1f dB → CC %d (ch=%d)", volumeDb, ccValue, channel);
     fluid_synth_cc(synth, channel, 7, ccValue); // CC 7 = Volume
 }
 
@@ -194,7 +196,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramChange(
 
     fluid_synth_bank_select(synth, channel, bank);
     fluid_synth_program_change(synth, channel, program);
-    LOGI("Program change: ch=%d, bank=%d, program=%d", channel, bank, program);
 }
 
 JNIEXPORT void JNICALL
@@ -202,18 +203,9 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(
         JNIEnv* env,
         jobject thiz) {
 
-    if (adriver) {
-        delete_fluid_audio_driver(adriver);
-        adriver = nullptr;
-    }
-    if (synth) {
-        delete_fluid_synth(synth);
-        synth = nullptr;
-    }
-    if (settings) {
-        delete_fluid_settings(settings);
-        settings = nullptr;
-    }
+    if (adriver) { delete_fluid_audio_driver(adriver); adriver = nullptr; }
+    if (synth) { delete_fluid_synth(synth); synth = nullptr; }
+    if (settings) { delete_fluid_settings(settings); settings = nullptr; }
 
     LOGI("FluidSynth destroyed");
 }
@@ -227,19 +219,58 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(
         jint bank,
         jint program) {
 
-    if (!synth) {
-        LOGE("Cannot programSelect: synth not initialized");
-        return JNI_FALSE;
-    }
+    if (!synth) return JNI_FALSE;
 
     int result = fluid_synth_program_select(synth, channel, sfId, bank, program);
-    if (result == FLUID_OK) {
-        LOGI("programSelect OK: ch=%d, sfId=%d, bank=%d, prog=%d", channel, sfId, bank, program);
-        return JNI_TRUE;
-    } else {
-        LOGE("programSelect FAILED: ch=%d, sfId=%d, bank=%d, prog=%d", channel, sfId, bank, program);
-        return JNI_FALSE;
+    return (result == FLUID_OK) ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevels(
+        JNIEnv* env,
+        jobject thiz,
+        jfloatArray output) {
+
+    if (!synth || !settings) return;
+
+    jsize len = env->GetArrayLength(output);
+    float* levels = new float[len];
+    for(int i=0; i<len; i++) levels[i] = 0.0f;
+
+    // FluidSynth polyphony defines the max buffer size for voices
+    int polyphony = 64; // Default
+    fluid_settings_getint(settings, "synth.polyphony", &polyphony);
+    fluid_voice_t** voicelist = new fluid_voice_t*[polyphony];
+    
+    // Fill the voicelist
+    fluid_synth_get_voicelist(synth, voicelist, polyphony, -1);
+
+    for (int i = 0; i < polyphony; i++) {
+        fluid_voice_t* voice = voicelist[i];
+        if (voice != nullptr && fluid_voice_is_on(voice)) {
+            int chan = fluid_voice_get_channel(voice);
+            if (chan >= 0 && chan < len) {
+                // Get attenuation (GEN_ATTENUATION = 90)
+                // Range: 0 (max volume) to 1440 (silent)
+                float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
+                // Convert to linear 0.0-1.0 scale
+                float linearVolume = (1000.0f - atten) / 1000.0f;
+                if (linearVolume < 0.0f) linearVolume = 0.0f;
+                if (linearVolume > levels[chan]) levels[chan] = linearVolume;
+            }
+        }
     }
+
+    // Boost levels for better VU visibility
+    for(int i=0; i<len; i++) {
+        levels[i] *= 1.5f; 
+        if (levels[i] > 1.2f) levels[i] = 1.2f; 
+    }
+
+    env->SetFloatArrayRegion(output, 0, len, levels);
+    
+    delete[] levels;
+    delete[] voicelist;
 }
 
 } // extern "C"
