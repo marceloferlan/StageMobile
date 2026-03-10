@@ -90,6 +90,7 @@ class MixerViewModel : ViewModel() {
 
     private val activeNotesCount = ConcurrentHashMap<Int, Int>()
     private val channelInternalLevels = ConcurrentHashMap<Int, Float>()
+    private val channelLastNoteTime = ConcurrentHashMap<Int, Long>()
     private var isVuPollingSuspended = false
 
     private var nextId = 7
@@ -564,16 +565,29 @@ class MixerViewModel : ViewModel() {
                 _channels.value = _channels.value.map { channel ->
                     val chId = channel.id
                     val nativeLevel = if (chId in 0..15) levels[chId] else 0f
+                    val lastNoteTime = channelLastNoteTime[chId] ?: 0L
+                    val now = System.currentTimeMillis()
+                    val ageMs = now - lastNoteTime
+                    
+                    // Apply a gradual decay over time even if nativeLevel is constant
+                    // This creates the "musical movement" for held notes.
+                    // Factor: 1.0 at start, decaying to 0.4 over 2 seconds
+                    val ageFactor = if (ageMs < 2000) {
+                        1.0f - (ageMs / 2000f) * 0.6f
+                    } else 0.4f
+                    
+                    val dynamicLevel = nativeLevel * ageFactor
+                    
                     val currentInternal = channelInternalLevels[chId] ?: 0f
                     
-                    // Ballistics: Fast attack, slightly faster release than before to be more musical
-                    val attackRate = 0.8f
-                    val releaseRate = 0.2f
+                    // Ballistics: Fast attack, standard release
+                    val attackRate = 0.7f
+                    val releaseRate = 0.15f
                     
-                    val newInternal = if (nativeLevel > currentInternal) {
-                        currentInternal + attackRate * (nativeLevel - currentInternal)
+                    val newInternal = if (dynamicLevel > currentInternal) {
+                        currentInternal + attackRate * (dynamicLevel - currentInternal)
                     } else {
-                        currentInternal + releaseRate * (nativeLevel - currentInternal)
+                        currentInternal + releaseRate * (dynamicLevel - currentInternal)
                     }
                     
                     channelInternalLevels[chId] = newInternal
@@ -608,6 +622,7 @@ class MixerViewModel : ViewModel() {
     }
 
     private fun triggerNoteOnVelocity(channelId: Int, velocity: Int) {
+        channelLastNoteTime[channelId] = System.currentTimeMillis()
         val count = activeNotesCount.getOrDefault(channelId, 0)
         activeNotesCount[channelId] = count + 1
         

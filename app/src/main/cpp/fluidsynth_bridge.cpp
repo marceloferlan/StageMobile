@@ -266,13 +266,9 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
         if (voice != nullptr && fluid_voice_is_on(voice)) {
             int chan = fluid_voice_get_channel(voice);
             if (chan >= 0 && chan < 16) {
-                // GEN_ATTENUATION is in centibels (1/10th dB). 
-                // 0 = Full volume, 1000 = -100dB (silence)
+                // Fallback to GEN_ATTENUATION since actual_gain is not available
                 float atten = fluid_voice_gen_get(voice, GEN_ATTENUATION);
-                
-                // Convert centibels to a linear 0.0 - 1.0 scale
-                // Formula: 10^(-atten / 200) -> using a slightly more aggressive scale for VU response
-                float linearVolume = 1.0f - (atten / 1000.0f); 
+                float linearVolume = 1.0f - (atten / 1000.0f);
                 if (linearVolume < 0.0f) linearVolume = 0.0f;
                 
                 if (linearVolume > frame_levels[chan]) frame_levels[chan] = linearVolume;
