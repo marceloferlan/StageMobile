@@ -275,7 +275,6 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
             }
         }
     }
-
     for(int i=0; i<len && i<16; i++) {
         float peak = frame_levels[i];
         
@@ -283,11 +282,12 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
         if (peak >= decay_state[i]) {
             decay_state[i] = peak; // Instant attack
         } else {
-            decay_state[i] *= 0.85f; // Exponential decay for visual smoothness (approx 15% per poll)
+            decay_state[i] *= 0.85f; // Exponential decay (approx 15% per poll)
         }
         
-        // Apply final gain scaling and safety cap
-        float finalLevel = decay_state[i] * 1.4f;
+        // Apply conservative gain scaling and safety cap
+        // Unity gain (1.0) is our reference for 0dB on the fader.
+        float finalLevel = decay_state[i] * 1.05f; 
         if (finalLevel > 1.2f) finalLevel = 1.2f;
         local_levels[i] = finalLevel;
     }
