@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.combine
 import android.provider.OpenableColumns
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.pow
 import kotlin.random.Random
 
 class MixerViewModel : ViewModel() {
@@ -545,6 +546,16 @@ class MixerViewModel : ViewModel() {
         else (value * 66f) - 60f
     }
 
+    /**
+     * Converts a dB value to a linear gain multiplier.
+     * Formula: 10^(dB / 20)
+     * 0dB = 1.0 (Unity Gain)
+     */
+    private fun dbToGain(db: Float): Float {
+        if (db <= -60f) return 0f
+        return 10f.pow(db / 20f)
+    }
+
     private fun getDisplayName(context: Context, uri: Uri): String? {
         return try {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -595,11 +606,13 @@ class MixerViewModel : ViewModel() {
                     
                     channelInternalLevels[chId] = newInternal
                     
-                    // Post-fader visual application
-                    val displayLevel = newInternal * channel.volume
+                    // Post-fader visual application using real linear gain
+                    val channelDb = faderToDb(channel.volume)
+                    val channelGain = dbToGain(channelDb)
+                    val displayLevel = newInternal * channelGain
                     
                     if (kotlin.math.abs(displayLevel - channel.level) > 0.005f) {
-                        channel.copy(level = displayLevel.coerceIn(0f, 1.2f)) // Allow > 1.0 for clipping feedback
+                        channel.copy(level = displayLevel.coerceIn(0f, 1.2f))
                     } else {
                         channel
                     }
@@ -613,9 +626,13 @@ class MixerViewModel : ViewModel() {
                     }
                 }
                 
+                // Calculate Master VU level using actual linear Gain
+                val masterDb = faderToDb(_masterVolume.value)
+                val masterGain = dbToGain(masterDb)
+                
                 // Scale accumulator naturally, and allow for some headroom/clipping visual
                 val masterPreFader = peakAccumulator 
-                val masterPostFader = masterPreFader * _masterVolume.value
+                val masterPostFader = masterPreFader * masterGain
                 
                 if (kotlin.math.abs(_masterLevel.value - masterPostFader) > 0.005f) {
                     _masterLevel.value = masterPostFader.coerceIn(0f, 1.2f)
