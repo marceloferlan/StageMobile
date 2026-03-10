@@ -16,12 +16,13 @@ class SystemResourceMonitor(private val context: Context) {
     private var lastUptime = -1L
 
     /**
-     * Gets the current Native Heap memory allocated in MegaBytes (MB).
-     * This provides real-time feedback for SF2 loading/unloading.
+     * Gets the current Total PSS memory (Proportional Set Size) in MegaBytes (MB).
+     * This represents the actual cost of the app to the system RAM.
      */
     fun getMemoryUsageMb(): Int {
-        val nativeHeapBytes = android.os.Debug.getNativeHeapAllocatedSize()
-        return (nativeHeapBytes / (1024 * 1024)).toInt()
+        val memInfo = android.os.Debug.MemoryInfo()
+        android.os.Debug.getMemoryInfo(memInfo)
+        return memInfo.totalPss / 1024
     }
 
     /**
