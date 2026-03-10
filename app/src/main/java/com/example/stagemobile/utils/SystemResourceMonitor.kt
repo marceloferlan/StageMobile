@@ -43,8 +43,8 @@ class SystemResourceMonitor(private val context: Context) {
         // Calculate: Change in Native Heap since last PSS measurement
         val deltaNative = (currentNativeHeapMb - lastNativeHeapMb).toInt()
         
-        // Safety: If delta is negative (unload), rely more on the PSS anchor until next update
-        return (lastPssMb + deltaNative).coerceAtMost(lastPssMb + 500).coerceAtLeast(1)
+        // Return refined PSS estimate
+        return (lastPssMb + deltaNative).coerceAtLeast(1)
     }
 
     /**

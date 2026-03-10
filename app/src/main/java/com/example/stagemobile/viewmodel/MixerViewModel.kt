@@ -90,6 +90,7 @@ class MixerViewModel : ViewModel() {
 
     private val activeNotesCount = ConcurrentHashMap<Int, Int>()
     private val channelInternalLevels = ConcurrentHashMap<Int, Float>()
+    private var isVuPollingSuspended = false
 
     private var nextId = 7
 
@@ -124,7 +125,9 @@ class MixerViewModel : ViewModel() {
 
     fun loadSoundFontForChannel(context: Context, channelId: Int, uri: Uri) {
         scope.launch(Dispatchers.IO) {
+            isVuPollingSuspended = true
             try {
+                Log.d(TAG, "Starting SF2 load sequence for channel $channelId. URI: $uri")
                 val inputStream = context.contentResolver.openInputStream(uri)
                     ?: throw Exception("Cannot open URI: $uri")
 
@@ -171,6 +174,8 @@ class MixerViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading SF2 for channel $channelId: ${e.message}", e)
+            } finally {
+                isVuPollingSuspended = false
             }
         }
     }
@@ -545,6 +550,8 @@ class MixerViewModel : ViewModel() {
         scope.launch {
             while (true) {
                 delay(40) // ~25 FPS
+                if (isVuPollingSuspended) continue
+                
                 val levels = FloatArray(16)
                 audioEngine.getChannelLevels(levels)
 
