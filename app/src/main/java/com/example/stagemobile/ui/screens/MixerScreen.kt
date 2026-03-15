@@ -1,9 +1,16 @@
 package com.example.stagemobile.ui.screens
 
+import com.example.stagemobile.utils.UiUtils
+import com.example.stagemobile.utils.getMidiNoteName
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.border
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -17,7 +24,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Piano
@@ -27,7 +37,25 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
+import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,11 +76,18 @@ import androidx.compose.ui.res.painterResource
 import com.example.stagemobile.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stagemobile.viewmodel.MixerViewModel
-import com.example.stagemobile.ui.mixer.ChannelStrip
+import com.example.stagemobile.ui.mixer.InstrumentChannelStrip
 import com.example.stagemobile.ui.mixer.MasterChannelStrip
 import com.example.stagemobile.ui.mixer.VirtualKeyboard
-import com.example.stagemobile.ui.mixer.AdvancedParamsDialog
-import com.example.stagemobile.ui.components.InfoPanel
+import com.example.stagemobile.ui.mixer.InstrumentChannelSettingsPanel
+import com.example.stagemobile.ui.components.MixerScreenInfoPanel
+import com.example.stagemobile.ui.components.SF2PresetSelectorDialog
+import com.example.stagemobile.ui.components.InstrumentChannelOptionsMenu
+import com.example.stagemobile.ui.components.MidiLearnState
+import com.example.stagemobile.ui.components.midiLearnHalo
+import com.example.stagemobile.ui.components.midiLearnClickable
+import com.example.stagemobile.ui.components.rememberMidiLearnPulse
+import com.example.stagemobile.midi.MidiLearnTarget
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -66,8 +101,8 @@ fun MixerScreen(
     onNavigateToDownloads: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val isTablet = configuration.smallestScreenWidthDp >= 600
+    val isTablet = UiUtils.rememberIsTablet()
+    val scope = rememberCoroutineScope()
     val channels by viewModel.channels.collectAsState()
     val midiConnected by viewModel.midiDeviceConnected.collectAsState()
     val midiDeviceName by viewModel.midiDeviceName.collectAsState()
@@ -77,10 +112,14 @@ fun MixerScreen(
     val cpuUsagePercent by viewModel.cpuUsagePercent.collectAsState()
     val bufferSize by viewModel.bufferSize.collectAsState()
     val sampleRate by viewModel.sampleRate.collectAsState()
+    val audioInterfaceName by viewModel.selectedAudioDeviceName.collectAsState()
+    val availableMidiDevices by viewModel.availableMidiDevices.collectAsState()
+    val channelLevels by viewModel.channelLevels.collectAsState()
 
     val isMasterVisible by viewModel.isMasterVisible.collectAsState()
     val masterVolume by viewModel.masterVolume.collectAsState()
     val masterLevel by viewModel.masterLevel.collectAsState()
+    val systemEvent by viewModel.lastSystemEvent.collectAsState("")
 
     var pendingChannelId by remember { mutableIntStateOf(-1) }
     var showKeyboard by remember { mutableStateOf(false) }
@@ -88,12 +127,26 @@ fun MixerScreen(
     var showRangeDialogForChannel by remember { mutableIntStateOf(-1) }
     var rangeDialogSettingMin by remember { mutableStateOf(true) }
     var showAdvancedParamsForChannel by remember { mutableStateOf<Int?>(null) }
+    var channelIdToRemove by remember { mutableIntStateOf(-1) }
     var showInfoPanel by remember { mutableStateOf(false) }
+    var showExitConfirmation by remember { mutableStateOf(false) }
+    var showOptionsForChannel by remember { mutableStateOf<Int?>(null) }
     
     // Obter canais e informações extras do ViewModel
     val activeMidiDevices by viewModel.activeMidiDevices.collectAsState()
+    val pendingPresetSelection by viewModel.pendingPresetSelection.collectAsState()
+    val isMidiLearnActive by viewModel.isMidiLearnActive.collectAsState()
+    val midiLearnTarget by viewModel.midiLearnTarget.collectAsState()
+    val midiLearnFeedback by viewModel.midiLearnFeedback.collectAsState()
+    val midiLearnMappings by viewModel.midiLearnMappings.collectAsState()
+    val pendingUnmap by viewModel.pendingUnmap.collectAsState()
     var keyboardOffsetX by remember { mutableFloatStateOf(0f) }
     var keyboardOffsetY by remember { mutableFloatStateOf(200f) }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    val globalOctave by viewModel.globalOctaveShift.collectAsState()
+    val globalTranspose by viewModel.globalTransposeShift.collectAsState()
 
     val sf2Picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -104,39 +157,58 @@ fun MixerScreen(
         pendingChannelId = -1
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.initMidi(context, isTablet)
+    // === Preset Selector Dialog ===
+    if (pendingPresetSelection != null) {
+        val selection = pendingPresetSelection!!
+        val currentChannel = channels.find { it.id == selection.channelId }
+        SF2PresetSelectorDialog(
+            sf2Name = selection.sf2Name,
+            presets = selection.presets,
+            currentBank = currentChannel?.bank ?: 0,
+            currentProgram = currentChannel?.program ?: 0,
+            onPresetSelected = { bank, program, name ->
+                viewModel.selectPresetForChannel(selection.channelId, bank, program, name)
+            },
+            onDismiss = { viewModel.dismissPresetSelector() }
+        )
     }
 
-    // === Remove SF2 Confirmation Dialog ===
+    // === Remove FULL CHANNEL Confirmation Dialog ===
+    // === SF2 Unload Confirmation Dialog ===
     if (channelToRemoveSf2 >= 0) {
-        val ch = channels.firstOrNull { it.id == channelToRemoveSf2 }
-        if (ch != null) {
+        val targetCh = channels.firstOrNull { it.id == channelToRemoveSf2 }
+        if (targetCh != null) {
+            val sf2Name = targetCh.soundFont?.substringAfterLast('/') ?: "Instrumento"
             Dialog(onDismissRequest = { channelToRemoveSf2 = -1 }) {
-                Surface(
+                androidx.compose.material3.Surface(
                     modifier = Modifier.fillMaxWidth(0.8f),
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0xFF2C2C2C),
                     tonalElevation = 6.dp
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Outlined.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFFC107),
+                            modifier = Modifier.padding(top = 16.dp).size(32.dp)
+                        )
                         Text(
-                            text = "Remover instrumento SF2?",
+                            text = "Descarregar instrumento?",
                             modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
                             textAlign = TextAlign.Center,
-                            maxLines = 1,
                             color = Color.White
                         )
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFF424242))
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
                         Text(
-                            text = "Deseja remover \"${ch.soundFont ?: ""}\" do canal ${channelToRemoveSf2 + 1}?",
+                            text = "Isso removerá \"$sf2Name\" da memória. Confirmar?",
                             modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                             textAlign = TextAlign.Center,
                             color = Color(0xFFAAAAAA)
                         )
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFF424242))
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(4.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly
@@ -148,7 +220,68 @@ fun MixerScreen(
                                 viewModel.removeSoundFont(channelToRemoveSf2)
                                 channelToRemoveSf2 = -1
                             }) {
-                                Text("Remover", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                                Text("DESCARREGAR", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            channelToRemoveSf2 = -1
+        }
+    }
+
+    if (channelIdToRemove >= 0) {
+        val ch = channels.firstOrNull { it.id == channelIdToRemove }
+        if (ch != null) {
+            val hasInstrument = ch.soundFont != null
+            if (!hasInstrument) {
+                viewModel.removeChannel(channelIdToRemove)
+                channelIdToRemove = -1
+            } else {
+                Dialog(onDismissRequest = { channelIdToRemove = -1 }) {
+                    androidx.compose.material3.Surface(
+                        modifier = Modifier.fillMaxWidth(0.8f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF2C2C2C),
+                        tonalElevation = 6.dp
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Outlined.Warning,
+                                contentDescription = null,
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.padding(top = 16.dp).size(32.dp)
+                            )
+                            Text(
+                                text = "Remover Canal Completo?",
+                                modifier = Modifier.padding(16.dp),
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
+                                textAlign = TextAlign.Center,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                            Text(
+                                text = "Isso removerá o canal \"${ch.name}\" e descarregará o instrumento \"${ch.soundFont}\" da memória. Confirmar?",
+                                modifier = Modifier.padding(16.dp),
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFFAAAAAA)
+                            )
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(4.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                TextButton(onClick = { channelIdToRemove = -1 }) {
+                                    Text("Cancelar", color = Color.White)
+                                }
+                                TextButton(onClick = {
+                                    viewModel.removeChannel(channelIdToRemove)
+                                    channelIdToRemove = -1
+                                }) {
+                                    Text("REMOVER", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -162,7 +295,7 @@ fun MixerScreen(
         val ch = channels.firstOrNull { it.id == showRangeDialogForChannel }
         if (ch != null) {
             Dialog(onDismissRequest = { showRangeDialogForChannel = -1 }) {
-                Surface(
+                androidx.compose.material3.Surface(
                     modifier = Modifier.fillMaxWidth(0.6f),
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0xFF2C2C2C),
@@ -177,7 +310,7 @@ fun MixerScreen(
                             maxLines = 1,
                             color = Color.White
                         )
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFF424242))
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
                         LazyColumn(modifier = Modifier.weight(1f, fill = false).fillMaxWidth()) {
                             items(128) { midiNote ->
                                 val isInvalid = if (rangeDialogSettingMin) {
@@ -200,13 +333,13 @@ fun MixerScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        text = com.example.stagemobile.ui.mixer.getMidiNoteName(midiNote) + " ($midiNote)", 
+                                        text = getMidiNoteName(midiNote) + " ($midiNote)", 
                                         color = if (isInvalid) Color(0xFF555555) else Color(0xFF81C784)
                                     )
                                 }
                             }
                         }
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFF424242))
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
                         TextButton(
                             onClick = { showRangeDialogForChannel = -1 },
                             modifier = Modifier.padding(8.dp)
@@ -219,278 +352,423 @@ fun MixerScreen(
         }
     }
 
-    // === MIDI Channel Selector Dialog (Moved to Advanced Options Modal) ===
-
-
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            // === Top Bar ===
+    // === Exit System Confirmation Dialog ===
+    if (showExitConfirmation) {
+        Dialog(onDismissRequest = { showExitConfirmation = false }) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF111111),
-                tonalElevation = 4.dp
+                modifier = Modifier.fillMaxWidth(0.8f),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF2C2C2C),
+                tonalElevation = 6.dp
             ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Encerrar Stage Mobile?",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                    Text(
+                        text = "Isso desligará todos os motores de áudio, MIDI e processos em execução. Confirmar saída?",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                        textAlign = TextAlign.Center,
+                        color = Color(0xFFAAAAAA)
+                    )
+                    Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        TextButton(onClick = { showExitConfirmation = false }) {
+                            Text("Cancelar", color = Color.White)
+                        }
+                        TextButton(onClick = {
+                            viewModel.exitSystem()
+                            (context as? android.app.Activity)?.finishAndRemoveTask()
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                            java.lang.System.exit(0)
+                        }) {
+                            Text("SAIR", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = Color(0xFF1A1A1A),
+                drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+                modifier = Modifier
+                    .width(if (isTablet) 320.dp else 280.dp)
+                    .fillMaxHeight()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Spacer(Modifier.height(if (isTablet) 24.dp else 18.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = if (isTablet) 32.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left Menu Icons (Weight 1, Aligned Start)
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Settings Toggle (Engrenagem)
-                            Button(
-                                onClick = onNavigateToSettings,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.Settings, contentDescription = "Configurações", modifier = Modifier.size(20.dp))
-                            }
-
-                            Button(
-                                onClick = onNavigateToSets,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.AutoMirrored.Outlined.FormatListBulleted, contentDescription = "Sets", modifier = Modifier.size(20.dp))
-                            }
-                            
-                            Button(
-                                onClick = onNavigateToDrumpads,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.Apps, contentDescription = "Drumpads", modifier = Modifier.size(20.dp))
-                            }
-                            
-                            Button(
-                                onClick = onNavigateToContinuousPads,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.Loop, contentDescription = "Pads Contínuos", modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
-
-                    // Center Menu (Weight 1, Aligned Center)
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                painter = painterResource(id = R.drawable.logo_topbar),
-                                contentDescription = null,
-                                modifier = Modifier.width(52.dp).height(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Stage Mobile ®",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                maxLines = 1,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    // Right Menu Icons (Weight 1, Aligned End)
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Downloads Screen
-                            Button(
-                                onClick = onNavigateToDownloads,
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.CloudDownload, contentDescription = "Downloads", modifier = Modifier.size(20.dp))
-                            }
-                            
-                            // MIDI Learn (Placeholder)
-                            Button(
-                                onClick = { /* TODO: Implementar MIDI Learn futuramente */ },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Default.Star, contentDescription = "MIDI Learn", modifier = Modifier.size(20.dp))
-                            }
-
-                            // Add Channel (+ CH)
-                            Button(
-                                onClick = {
-                                    val nextNum = channels.size + 1
-                                    val formattedNum = nextNum.toString().padStart(2, '0')
-                                    viewModel.addChannel("Instrumento $formattedNum")
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text("+ CH", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
-
-                            // Keyboard Toggle
-                            Button(
-                                onClick = { showKeyboard = !showKeyboard },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (showKeyboard) Color(0xFF81C784) else Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.Piano, contentDescription = "Teclado", modifier = Modifier.size(20.dp))
-                            }
-
-                            // Master Toggle Icon
-                            Button(
-                                onClick = { viewModel.toggleMasterVisibility() },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isMasterVisible) Color(0xFF81C784) else Color(0xFF424242),
-                                    contentColor = Color.White
-                                ),
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(Icons.Outlined.GraphicEq, contentDescription = "Master", modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_topbar),
+                        contentDescription = null,
+                        modifier = Modifier.size(if (isTablet) 44.dp else 36.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "Stage Mobile ®",
+                        color = Color.White,
+                        fontSize = if (isTablet) 24.sp else 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
-            }
-
-            // === Info Panel (Tablet & Phone) ===
-            InfoPanel(
-                ramUsage = ramUsageMb,
-                cpuUsage = cpuUsagePercent.toInt(),
-                activeSet = "LIVE PERFORMANCE ALPHA",
-                midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
-                lastEvent = "ENGINE READY - BUFFER: $bufferSize",
-                sampleRate = sampleRate,
-                isTablet = isTablet
-            )
-
-            // === Mixer Area ===
-            BoxWithConstraints(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color(0xFF1F1F1F))
-            ) {
-                // To fit exactly 7 (phone) or 8 (tablet) channels
-                val channelWidth = if (isTablet) maxWidth / 8 else maxWidth / 7
-                val heightPx = constraints.maxHeight.toFloat()
-                val density = LocalDensity.current.density
-                val isLargeScreen = heightPx >= 400f * density
                 
-                // Master width is 122dp on phone, 183dp on tablet. 
-                // We add a bit of buffer for the master's left padding (8dp)
-                val masterPadding = if (isLargeScreen) 166.5.dp else 130.dp
-
-                // Dynamic Channels Horizontal Scroll Area
-                val scrollState = rememberScrollState()
+                HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 8.dp))
                 
-                Row(
+                NavigationDrawerItem(
+                    label = { Text("Configurações", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToSettings() 
+                    },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
                     modifier = Modifier
-                        .fillMaxSize()
-                        .horizontalScroll(scrollState)
-                        .padding(end = if (isMasterVisible) masterPadding else 0.dp),
-                    horizontalArrangement = Arrangement.Start
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Sets de Performance", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToSets() 
+                    },
+                    icon = { Icon(Icons.AutoMirrored.Outlined.FormatListBulleted, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Drumpads", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToDrumpads() 
+                    },
+                    icon = { Icon(Icons.Outlined.Apps, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Pads Contínuos", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToContinuousPads() 
+                    },
+                    icon = { Icon(Icons.Outlined.Loop, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Downloads", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToDownloads() 
+                    },
+                    icon = { Icon(Icons.Outlined.CloudDownload, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+
+                HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
+
+                NavigationDrawerItem(
+                    label = { Text(if (showKeyboard) "Ocultar Teclado" else "Mostrar Teclado", fontSize = 16.sp) },
+                    selected = showKeyboard,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        showKeyboard = !showKeyboard 
+                    },
+                    icon = { Icon(Icons.Outlined.Piano, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = Color(0xFF81C784).copy(alpha = 0.2f),
+                        selectedIconColor = Color(0xFF81C784),
+                        selectedTextColor = Color(0xFF81C784),
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
+                        .height(if (isTablet) 56.dp else 32.dp)
+                )
+            }
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // === Top Bar ===
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFF1A1A1A), // Sombreamento/Profundidade (Base)
+                    tonalElevation = 4.dp
                 ) {
-                    channels.forEach { channel ->
-                        ChannelStrip(
-                            channel = channel,
-                            modifier = Modifier.width(channelWidth),
-                            onVolumeChange = { viewModel.updateVolume(channel.id, it) },
-                            onMinNoteClick = { 
-                                showRangeDialogForChannel = channel.id
-                                rangeDialogSettingMin = true
-                            },
-                            onMaxNoteClick = { 
-                                showRangeDialogForChannel = channel.id
-                                rangeDialogSettingMin = false
-                            },
-                            onArmToggle = { viewModel.toggleArm(channel.id) },
-                            onNameClick = {
-                                pendingChannelId = channel.id
-                                sf2Picker.launch(arrayOf("*/*"))
-                            },
-                            onNameLongClick = {
-                                channelToRemoveSf2 = channel.id
-                            },
-                            onMidiChannelClick = {
-                                // Moved to Advanced Options
-                            },
-                            onAdvancedOptionsClick = {
-                                showAdvancedParamsForChannel = channel.id
+                    // Face da TopBar (Retângulo cinza dos InstrumentChannelStrip)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 0.dp), // Gap de 1dp para aparecer a base escura
+                        color = Color(0xFF242424)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                    IconButton(
+                                        onClick = { scope.launch { drawerState.open() } },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                                    }
+                                }
+
+                                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.logo_topbar),
+                                            contentDescription = null,
+                                            modifier = Modifier.width(52.dp).height(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Stage Mobile",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 20.sp,
+                                            maxLines = 1,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+
+                                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Button(
+                                            onClick = { 
+                                                val nextNum = channels.size + 1
+                                                val formattedNum = nextNum.toString().padStart(2, '0')
+                                                viewModel.addChannel("Instrumento $formattedNum")
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color(0xFF81C784)),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Text("+ CH", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                        }
+                                        Button(
+                                            onClick = { viewModel.toggleMidiLearn() },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isMidiLearnActive) Color(0xFF00E5FF) else Color(0xFF424242),
+                                                contentColor = if (isMidiLearnActive) Color.Black else Color.White
+                                            ),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.AutoFixHigh, contentDescription = "MIDI Learn", modifier = Modifier.size(20.dp))
+                                        }
+                                        Button(
+                                            onClick = { viewModel.panic() },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.Warning, contentDescription = "Panic", modifier = Modifier.size(20.dp))
+                                        }
+                                        Button(
+                                            onClick = { viewModel.toggleMasterVisibility() },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = if (isMasterVisible) Color(0xFF81C784) else Color(0xFF424242), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.GraphicEq, contentDescription = "Master", modifier = Modifier.size(20.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = { showExitConfirmation = true },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Sair", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
+                                        }
+                                    }
+                                }
                             }
-                        )
+                            HorizontalDivider(color = Color(0xFF555555).copy(alpha = 0.5f), thickness = 1.dp)
+                        }
                     }
                 }
 
-                // === Master Channel Overlay (instant, no animation) ===
-                if (isMasterVisible) {
+                MixerScreenInfoPanel(
+                    ramUsage = ramUsageMb,
+                    cpuUsage = cpuUsagePercent.toInt(),
+                    activeSet = "LIVE PERFORMANCE ALPHA",
+                    midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
+                    lastEvent = "BUFFER: $bufferSize",
+                    systemEvent = systemEvent,
+                    sampleRate = sampleRate,
+                    isTablet = isTablet,
+                    midiLearnFeedback = midiLearnFeedback
+                )
+
+                GlobalNoteShiftBar(
+                    viewModel = viewModel,
+                    globalOctave = globalOctave,
+                    globalTranspose = globalTranspose,
+                    isMidiLearnActive = isMidiLearnActive,
+                    midiLearnTarget = midiLearnTarget,
+                    midiLearnMappings = midiLearnMappings,
+                    isTablet = isTablet
+                )
+
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(Color(0xFF1F1F1F))
+                ) {
+                    val channelWidth = if (isTablet) maxWidth / 8 else maxWidth / 7
+                    val heightPx = constraints.maxHeight.toFloat()
+                    val density = LocalDensity.current.density
+                    val isLargeScreen = heightPx >= 400f * density
+                    val masterPadding = if (isLargeScreen) 166.5.dp else 130.dp
+                    val scrollState = rememberScrollState()
+                    
                     Row(
                         modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .fillMaxHeight(),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxSize()
+                            .horizontalScroll(scrollState)
+                            .padding(end = if (isMasterVisible) masterPadding else 0.dp),
+                        horizontalArrangement = Arrangement.Start
                     ) {
-                        MasterChannelStrip(
-                            volume = masterVolume,
-                            level = masterLevel,
-                            onVolumeChange = { viewModel.updateMasterVolume(it) }
-                        )
+                        channels.forEachIndexed { index, channel ->
+                            InstrumentChannelStrip(
+                                channel = channel,
+                                level = if (index in channelLevels.indices) channelLevels[index] else 0f,
+                                modifier = Modifier.width(channelWidth),
+                                onVolumeChange = { viewModel.updateVolume(channel.id, it) },
+                                onOctaveDown = { viewModel.updateOctaveShift(channel.id, -1) },
+                                onOctaveUp = { viewModel.updateOctaveShift(channel.id, 1) },
+                                onArmToggle = { viewModel.toggleArm(channel.id) },
+                                onNameClick = { /* No action on simple tap */ },
+                                onNameLongClick = {
+                                    if (channel.soundFont != null) {
+                                        channelToRemoveSf2 = channel.id
+                                    } else {
+                                        pendingChannelId = channel.id
+                                        sf2Picker.launch(arrayOf("*/*"))
+                                    }
+                                },
+                                onMidiChannelClick = {},
+                                onAdvancedOptionsClick = { showAdvancedParamsForChannel = channel.id },
+                                activeMidiDevices = activeMidiDevices,
+                                availableMidiDevices = availableMidiDevices,
+                                isMidiLearnActive = isMidiLearnActive,
+                                isLearnTargetFader = midiLearnTarget?.target == MidiLearnTarget.FADER && midiLearnTarget?.channelId == channel.id,
+                                isLearnTargetArm = midiLearnTarget?.target == MidiLearnTarget.ARM && midiLearnTarget?.channelId == channel.id,
+                                isLearnTargetOctaveUp = midiLearnTarget?.target == MidiLearnTarget.OCTAVE_UP && midiLearnTarget?.channelId == channel.id,
+                                isLearnTargetOctaveDown = midiLearnTarget?.target == MidiLearnTarget.OCTAVE_DOWN && midiLearnTarget?.channelId == channel.id,
+                                hasFaderMapping = midiLearnMappings.any { it.target == MidiLearnTarget.FADER && it.channelId == channel.id },
+                                hasArmMapping = midiLearnMappings.any { it.target == MidiLearnTarget.ARM && it.channelId == channel.id },
+                                hasOctaveUpMapping = midiLearnMappings.any { it.target == MidiLearnTarget.OCTAVE_UP && it.channelId == channel.id },
+                                hasOctaveDownMapping = midiLearnMappings.any { it.target == MidiLearnTarget.OCTAVE_DOWN && it.channelId == channel.id },
+                                onLearnFaderClick = { viewModel.selectLearnTarget(MidiLearnTarget.FADER, channel.id) },
+                                onLearnArmClick = { viewModel.selectLearnTarget(MidiLearnTarget.ARM, channel.id) },
+                                onLearnOctaveUpClick = { viewModel.selectLearnTarget(MidiLearnTarget.OCTAVE_UP, channel.id) },
+                                onLearnOctaveDownClick = { viewModel.selectLearnTarget(MidiLearnTarget.OCTAVE_DOWN, channel.id) },
+                                onLearnFaderLongClick = { viewModel.requestUnmap(MidiLearnTarget.FADER, channel.id) },
+                                onLearnArmLongClick = { viewModel.requestUnmap(MidiLearnTarget.ARM, channel.id) },
+                                onLearnOctaveUpLongClick = { viewModel.requestUnmap(MidiLearnTarget.OCTAVE_UP, channel.id) },
+                                onLearnOctaveDownLongClick = { viewModel.requestUnmap(MidiLearnTarget.OCTAVE_DOWN, channel.id) },
+                                onColorChange = { color -> viewModel.updateChannelColor(channel.id, color) },
+                                onRemoveClick = { showOptionsForChannel = channel.id }
+                            )
+                        }
+                    }
+
+                    if (isMasterVisible) {
+                        Row(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MasterChannelStrip(
+                                volume = masterVolume,
+                                level = masterLevel,
+                                isMasterLimiterEnabled = viewModel.isMasterLimiterEnabled.collectAsState().value,
+                                onMasterLimiterToggle = { viewModel.updateMasterLimiter(it) },
+                                onVolumeChange = { viewModel.updateMasterVolume(it) },
+                                isMidiLearnActive = isMidiLearnActive,
+                                isLearnTargetFader = midiLearnTarget?.target == MidiLearnTarget.FADER && midiLearnTarget?.channelId == MixerViewModel.MASTER_CHANNEL_ID,
+                                hasFaderMapping = midiLearnMappings.any { it.target == MidiLearnTarget.FADER && it.channelId == MixerViewModel.MASTER_CHANNEL_ID },
+                                onLearnFaderClick = { viewModel.selectLearnTarget(MidiLearnTarget.FADER, MixerViewModel.MASTER_CHANNEL_ID) },
+                                onLearnFaderLongClick = { viewModel.requestUnmap(MidiLearnTarget.FADER, MixerViewModel.MASTER_CHANNEL_ID) }
+                            )
+                        }
                     }
                 }
             }
-
-                // === Advanced Params Dialog ===
-                if (showAdvancedParamsForChannel != null) {
-                    val targetCh = channels.firstOrNull { it.id == showAdvancedParamsForChannel }
-                    if (targetCh != null) {
-                        AdvancedParamsDialog(
-                            channel = targetCh,
-                            activeMidiDevices = activeMidiDevices,
-                            onDismiss = { showAdvancedParamsForChannel = null },
-                            onMidiDeviceSelected = { devName ->
-                                viewModel.updateChannelMidiDevice(targetCh.id, devName)
-                            },
-                            onMidiChannelSelected = { midiCh ->
-                                viewModel.updateChannelMidiChannel(targetCh.id, midiCh)
-                            }
-                        )
-                    } else {
-                        showAdvancedParamsForChannel = null
-                    }
-                }
-
         }
 
         // === Floating Draggable Virtual Keyboard ===
@@ -503,7 +781,6 @@ fun MixerScreen(
                     .padding(2.dp)
             ) {
                 Column(modifier = Modifier.width(IntrinsicSize.Min)) {
-                    // Drag handle / title bar
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -520,18 +797,10 @@ fun MixerScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.align(Alignment.CenterStart)) {
                             Icon(Icons.Outlined.Piano, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Teclado Virtual",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(text = "Teclado Virtual", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                         Surface(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .size(24.dp)
-                                .clickable { showKeyboard = false },
+                            modifier = Modifier.align(Alignment.CenterEnd).size(24.dp).clickable { showKeyboard = false },
                             color = Color(0xFF555555),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -540,32 +809,294 @@ fun MixerScreen(
                             }
                         }
                     }
-
-                    // Keyboard itself
-                    VirtualKeyboard(
-                        onNoteOn = { viewModel.noteOn(it) },
-                        onNoteOff = { viewModel.noteOff(it) }
-                    )
+                    VirtualKeyboard(onNoteOn = { viewModel.noteOn(it) }, onNoteOff = { viewModel.noteOff(it) })
                 }
             }
         }
 
-        // Advanced Parameters Dialog
-        showAdvancedParamsForChannel?.let { channelId ->
-            val channel = channels.find { it.id == channelId }
-            if (channel != null) {
-                AdvancedParamsDialog(
-                    channel = channel,
+        // === Advanced Params Dialog ===
+        if (showAdvancedParamsForChannel != null) {
+            val targetCh = channels.firstOrNull { it.id == showAdvancedParamsForChannel }
+            if (targetCh != null) {
+                InstrumentChannelSettingsPanel(
+                    channel = targetCh,
                     activeMidiDevices = activeMidiDevices,
+                    availableMidiDevices = availableMidiDevices,
                     onDismiss = { showAdvancedParamsForChannel = null },
-                    onMidiDeviceSelected = { deviceName -> 
-                        viewModel.updateChannelMidiDevice(channelId, deviceName)
+                    onMidiDeviceSelected = { devName -> viewModel.updateChannelMidiDevice(targetCh.id, devName) },
+                    onMidiChannelSelected = { midiCh -> viewModel.updateChannelMidiChannel(targetCh.id, midiCh) },
+                    onVelocityCurveSelected = { curve -> viewModel.updateChannelVelocityCurve(targetCh.id, curve) },
+                    onMinNoteClick = { showRangeDialogForChannel = targetCh.id; rangeDialogSettingMin = true },
+                    onMaxNoteClick = { showRangeDialogForChannel = targetCh.id; rangeDialogSettingMin = false },
+                    onMidiFilterToggled = { filterType, isEnabled -> viewModel.updateChannelMidiFilter(targetCh.id, filterType, isEnabled) }
+                )
+            } else {
+                showAdvancedParamsForChannel = null
+            }
+        }
+
+        // === Channel Options Dialog ===
+        if (showOptionsForChannel != null) {
+            val targetCh = channels.firstOrNull { it.id == showOptionsForChannel }
+            if (targetCh != null) {
+                InstrumentChannelOptionsMenu(
+                    channel = targetCh,
+                    onDismiss = { showOptionsForChannel = null },
+                    onColorChange = { color ->
+                        viewModel.updateChannelColor(targetCh.id, color)
                     },
-                    onMidiChannelSelected = { midiCh ->
-                        viewModel.updateChannelMidiChannel(channelId, midiCh)
+                    onRemoveClick = { 
+                        channelIdToRemove = targetCh.id
+                    },
+                    onAdvancedOptionsClick = {
+                        showOptionsForChannel = null
+                        showAdvancedParamsForChannel = targetCh.id
                     }
                 )
+            } else {
+                showOptionsForChannel = null
             }
+        }
+
+        // === MIDI Unmap Dialog ===
+        if (pendingUnmap != null) {
+            val unmap = pendingUnmap!!
+            val targetLabel = when (unmap.target) {
+                MidiLearnTarget.FADER -> "Fader"
+                MidiLearnTarget.ARM -> "ARM"
+                MidiLearnTarget.OCTAVE_UP -> "Oct+"
+                MidiLearnTarget.OCTAVE_DOWN -> "Oct-"
+                MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
+                MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
+            }
+            val chLabel = when (unmap.channelId) {
+                MixerViewModel.MASTER_CHANNEL_ID -> "MASTER"
+                MixerViewModel.GLOBAL_CHANNEL_ID -> "GLOBAL"
+                else -> "CH ${(unmap.channelId + 1).toString().padStart(2, '0')}"
+            }
+
+            Dialog(onDismissRequest = { viewModel.dismissUnmap() }) {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF2C2C2C),
+                    tonalElevation = 6.dp
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "Remover vinculação MIDI", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp), textAlign = TextAlign.Center, color = Color.White)
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                        Text(text = "$targetLabel CH $chLabel", modifier = Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp), color = Color(0xFF888888))
+
+                        if (unmap.mappings.size == 1) {
+                            val m = unmap.mappings.first()
+                            Text(text = "Remover CC ${m.ccNumber} (Canal MIDI ${m.midiChannel + 1})?", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp), textAlign = TextAlign.Center, color = Color(0xFFAAAAAA))
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                            Row(modifier = Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                TextButton(onClick = { viewModel.dismissUnmap() }) { Text("Cancelar", color = Color.White) }
+                                TextButton(onClick = { viewModel.confirmUnmap(m) }) { Text("Remover", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold) }
+                            }
+                        } else {
+                            Text(text = "Selecione o CC para desvincular:", modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp), color = Color(0xFF888888))
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                            unmap.mappings.forEach { m ->
+                                TextButton(onClick = { viewModel.confirmUnmap(m) }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("CC ${m.ccNumber} (Canal MIDI ${m.midiChannel + 1})", color = Color(0xFFEF5350))
+                                }
+                                Spacer(modifier = Modifier.height(0.5.dp).fillMaxWidth().background(Color(0xFF383838)))
+                            }
+                            TextButton(onClick = { viewModel.unmapAll(unmap.target, unmap.channelId) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Todos", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
+                            TextButton(onClick = { viewModel.dismissUnmap() }, modifier = Modifier.fillMaxWidth()) { Text("Cancelar", color = Color.White) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalNoteShiftBar(
+    viewModel: MixerViewModel,
+    globalOctave: Int,
+    globalTranspose: Int,
+    isMidiLearnActive: Boolean,
+    midiLearnTarget: com.example.stagemobile.midi.MidiLearnTargetInfo?,
+    midiLearnMappings: List<com.example.stagemobile.midi.MidiLearnMapping>,
+    isTablet: Boolean
+) {
+    val pulseAlpha = rememberMidiLearnPulse(isMidiLearnActive)
+    val barHeight = if (isTablet) 38.dp else 28.dp
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(barHeight),
+        color = Color(0xFF1A1A1A)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                // --- GLOBAL OCTAVE SECTION ---
+                NoteShiftControl(
+                    label = "OITAVAS",
+                    value = globalOctave,
+                    unit = "oct",
+                    onDelta = { viewModel.updateGlobalOctaveShift(it) },
+                    isMidiLearnActive = isMidiLearnActive,
+                    pulseAlpha = pulseAlpha,
+                    targetUp = MidiLearnTarget.OCTAVE_UP,
+                    targetDown = MidiLearnTarget.OCTAVE_DOWN,
+                    midiLearnTarget = midiLearnTarget,
+                    midiLearnMappings = midiLearnMappings,
+                    viewModel = viewModel,
+                    isTablet = isTablet,
+                    labelOnLeft = true
+                )
+
+                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                
+                // Vertical Divider
+                Box(modifier = Modifier.width(1.dp).height(if (isTablet) 18.dp else 10.dp).background(Color(0xFF444444)))
+                
+                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+
+                // --- GLOBAL TRANSPOSE SECTION ---
+                NoteShiftControl(
+                    label = "TRANSPOSE",
+                    value = globalTranspose,
+                    unit = "st",
+                    onDelta = { viewModel.updateGlobalTransposeShift(it) },
+                    isMidiLearnActive = isMidiLearnActive,
+                    pulseAlpha = pulseAlpha,
+                    targetUp = MidiLearnTarget.TRANSPOSE_UP,
+                    targetDown = MidiLearnTarget.TRANSPOSE_DOWN,
+                    midiLearnTarget = midiLearnTarget,
+                    midiLearnMappings = midiLearnMappings,
+                    viewModel = viewModel,
+                    isTablet = isTablet,
+                    labelOnLeft = false
+                )
+            }
+            
+            // Final Divider before the mixer channel strips
+            HorizontalDivider(color = Color(0xFF333333), thickness = 1.dp)
+        }
+    }
+}
+
+@Composable
+fun NoteShiftControl(
+    label: String,
+    value: Int,
+    unit: String,
+    onDelta: (Int) -> Unit,
+    isMidiLearnActive: Boolean,
+    pulseAlpha: State<Float>?,
+    targetUp: MidiLearnTarget,
+    targetDown: MidiLearnTarget,
+    midiLearnTarget: com.example.stagemobile.midi.MidiLearnTargetInfo?,
+    midiLearnMappings: List<com.example.stagemobile.midi.MidiLearnMapping>,
+    viewModel: MixerViewModel,
+    isTablet: Boolean,
+    labelOnLeft: Boolean = true
+) {
+    val upState = MidiLearnState(
+        isMidiLearnActive, 
+        midiLearnTarget?.target == targetUp && midiLearnTarget?.channelId == MixerViewModel.GLOBAL_CHANNEL_ID,
+        midiLearnMappings.any { it.target == targetUp && it.channelId == MixerViewModel.GLOBAL_CHANNEL_ID }
+    )
+    val downState = MidiLearnState(
+        isMidiLearnActive, 
+        midiLearnTarget?.target == targetDown && midiLearnTarget?.channelId == MixerViewModel.GLOBAL_CHANNEL_ID,
+        midiLearnMappings.any { it.target == targetDown && it.channelId == MixerViewModel.GLOBAL_CHANNEL_ID }
+    )
+
+    val labelSize = if (isTablet) 8.sp else 6.sp
+    val valueSize = if (isTablet) 11.sp else 9.sp
+    val btnSize = if (isTablet) 28.dp else 22.dp
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (labelOnLeft) {
+            Text(
+                text = label,
+                color = Color.Gray,
+                fontSize = labelSize,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(end = if (isTablet) 10.dp else 4.dp)
+            )
+        }
+
+        // Down Button
+        Surface(
+            modifier = Modifier
+                .size(btnSize)
+                .clip(RoundedCornerShape(4.dp))
+                .midiLearnHalo(downState, RoundedCornerShape(4.dp), pulseAlpha = pulseAlpha)
+                .midiLearnClickable(
+                    downState,
+                    onLearnClick = { viewModel.selectLearnTarget(targetDown, MixerViewModel.GLOBAL_CHANNEL_ID) },
+                    onLearnLongClick = { viewModel.requestUnmap(targetDown, MixerViewModel.GLOBAL_CHANNEL_ID) },
+                    onClick = { onDelta(-1) }
+                ),
+            color = Color(0xFF222222)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("−", color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (isTablet) 14.sp else 11.sp)
+            }
+        }
+
+        // Display
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 4.dp)
+                .width(if (isTablet) 55.dp else 42.dp)
+                .height(btnSize)
+                .background(Color(0xFF111111), RoundedCornerShape(4.dp))
+                .border(1.dp, Color(0xFF333333), RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            val displayValue = if (value >= 0) "+$value" else value.toString()
+            Text(
+                text = "$displayValue $unit",
+                color = if (value != 0) Color(0xFF81C784) else Color.LightGray,
+                fontSize = valueSize,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+
+        // Up Button
+        Surface(
+            modifier = Modifier
+                .size(btnSize)
+                .clip(RoundedCornerShape(4.dp))
+                .midiLearnHalo(upState, RoundedCornerShape(4.dp), pulseAlpha = pulseAlpha)
+                .midiLearnClickable(
+                    upState,
+                    onLearnClick = { viewModel.selectLearnTarget(targetUp, MixerViewModel.GLOBAL_CHANNEL_ID) },
+                    onLearnLongClick = { viewModel.requestUnmap(targetUp, MixerViewModel.GLOBAL_CHANNEL_ID) },
+                    onClick = { onDelta(1) }
+                ),
+            color = Color(0xFF222222)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (isTablet) 14.sp else 11.sp)
+            }
+        }
+
+        if (!labelOnLeft) {
+            Text(
+                text = label,
+                color = Color.Gray,
+                fontSize = labelSize,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = if (isTablet) 10.dp else 4.dp)
+            )
         }
     }
 }

@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.stagemobile.R
+import com.example.stagemobile.ui.components.MidiLearnDefaults
+import com.example.stagemobile.ui.components.rememberMidiLearnPulse
 
 /**
  * Fader vertical com escala dB calibrada e adaptativa.
@@ -36,8 +38,16 @@ fun VerticalFader(
     value: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
-    thumbResourceId: Int = R.drawable.fader_thumb
+    thumbResourceId: Int = R.drawable.fader_thumb,
+    isMidiLearnActive: Boolean = false,
+    isLearnTarget: Boolean = false,
+    hasMidiMapping: Boolean = false,
+    accentColor: Color? = null,
+    labelXOffset: androidx.compose.ui.unit.Dp = (-40).dp
 ) {
+    // MIDI Learn halo — uses centralized defaults
+    val haloColor = if (hasMidiMapping) MidiLearnDefaults.mappedColor else MidiLearnDefaults.learnColor
+    val pulseAlpha = rememberMidiLearnPulse(isMidiLearnActive)
     // All possible dB marks: position = (dB + 60) / 66
     val fullScale = listOf(
         "+6" to 1.000f,
@@ -70,15 +80,15 @@ fun VerticalFader(
         val heightPx = constraints.maxHeight.toFloat()
         val heightDp = with(LocalDensity.current) { heightPx.toDp() }
 
-        // Choose scale and sizes based on available height
-        val isLargeScreen = heightDp >= 400.dp
-        val scaleMarks = if (isLargeScreen) fullScale else compactScale
+        // Choose scale and sizes based on device type (Tablet vs Mobile)
+        val isTablet = com.example.stagemobile.utils.UiUtils.rememberIsTablet()
+        val scaleMarks = if (isTablet) fullScale else compactScale
         
-        val labelFontSize = if (isLargeScreen) 11.sp else 8.sp
-        val infinityFontSize = if (isLargeScreen) 13.sp else 10.sp
+        val labelFontSize = if (isTablet) 11.sp else 8.sp
+        val infinityFontSize = if (isTablet) 13.sp else 10.sp
         
-        val thumbHeight = if (isLargeScreen) 50.dp else 40.dp // 25% increase
-        val thumbWidth = if (isLargeScreen) 108.dp else 86.dp // 25% increase
+        val thumbHeight = if (isTablet) 64.dp else 50.dp
+        val thumbWidth = if (isTablet) 36.dp else 28.dp // Matches PNG aspect ratio (183:324)
 
         // Inset area so labels at top/bottom are visible
         val labelInset = with(LocalDensity.current) { 14.dp.toPx() }
@@ -112,14 +122,21 @@ fun VerticalFader(
                 }
                 val textOffsetPx = with(LocalDensity.current) { textOffsetDp.toPx() }
                 
+                val defaultLabelColor = Color(0xFF888888)
+                val labelColor = when {
+                    label == "0" -> Color(0xFF4CAF50)
+                    accentColor != null -> accentColor.copy(alpha = 0.7f)
+                    else -> defaultLabelColor
+                }
+
                 Text(
                     text = label,
                     fontSize = if (isInfinity) infinityFontSize else labelFontSize,
                     textAlign = TextAlign.End,
-                    color = if (label == "0") Color(0xFF4CAF50) else Color(0xFF888888),
+                    color = labelColor,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .offset(x = (-40).dp)
+                        .offset(x = labelXOffset)
                         .width(36.dp)
                         .offset {
                             val yPx = labelInset + ((1f - position) * usableHeight)
@@ -175,7 +192,7 @@ fun VerticalFader(
                         .height(1.dp)
                         .background(
                             if (label == "0") Color(0xFF4CAF50)
-                            else Color(0xFF666666)
+                            else accentColor?.copy(alpha = 0.8f) ?: Color(0xFF666666)
                         )
                 )
 
@@ -191,12 +208,12 @@ fun VerticalFader(
                         .height(1.dp)
                         .background(
                             if (label == "0") Color(0xFF4CAF50)
-                            else Color(0xFF666666)
+                            else accentColor?.copy(alpha = 0.8f) ?: Color(0xFF666666)
                         )
                 )
             }
 
-            // Thumb with Blur Shadow effect
+            // Thumb with Blur Shadow effect + MIDI Learn Halo
             val thumbHeightPx = with(LocalDensity.current) { thumbHeight.toPx() }
 
             Box(
@@ -205,12 +222,14 @@ fun VerticalFader(
                     .offset {
                         val halfThumb = thumbHeightPx / 2f
                         val yCenter = labelInset + (1f - value) * usableHeight
-                        val yOffset = (yCenter - halfThumb).coerceIn(0f, heightPx - thumbHeightPx)
+                        val yOffset = (yCenter - halfThumb).coerceIn(0f, maxOf(0f, heightPx - thumbHeightPx))
                         IntOffset(0, yOffset.toInt())
                     }
                     .requiredWidth(thumbWidth)
                     .height(thumbHeight)
             ) {
+
+
                 // 1. Shadow Layer: Black-tinted blurred copy of the thumb
                 Image(
                     painter = painterResource(id = thumbResourceId),
@@ -218,7 +237,7 @@ fun VerticalFader(
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black.copy(alpha = 0.6f)),
                     modifier = Modifier
                         .fillMaxSize()
-                        .offset(y = 4.dp) // Slightly more offset for better depth
+                        .offset(y = 4.dp)
                         .blur(radius = 10.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
                 )
 
@@ -230,6 +249,16 @@ fun VerticalFader(
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp))
                 )
+
+                // MIDI Learn Halo — rendered ON TOP of images
+                if (isMidiLearnActive) {
+                    val alpha = if (isLearnTarget) (pulseAlpha?.value ?: MidiLearnDefaults.pulseMax) else MidiLearnDefaults.idleAlpha
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .border(2.dp, haloColor.copy(alpha = alpha), RoundedCornerShape(6.dp))
+                    )
+                }
             }
         }
     }

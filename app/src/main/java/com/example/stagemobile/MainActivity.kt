@@ -32,10 +32,7 @@ class MainActivity : ComponentActivity() {
             
             // Hide both Status Bar and Navigation Bar
             windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            
-            android.util.Log.d("MainActivity", "Immersive mode configured (System Bars hidden)")
         } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Error configuring immersive mode: ${e.message}")
         }
 
 
@@ -45,20 +42,27 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF131313) // Exact same as splash_bg
                 ) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    // Eager initialization: ViewModel starts loading immediately during Splash
+                    val viewModel: MixerViewModel = viewModel()
+                    val isReady by viewModel.isReady.collectAsState()
                     var showSplashScreen by remember { mutableStateOf(true) }
                     var currentScreen by remember { mutableStateOf("mixer") }
 
                     LaunchedEffect(Unit) {
-                        delay(2500) // Show our branded splash for 2.5s
-                        showSplashScreen = false
+                        viewModel.initMidi(context)
+                    }
+
+                    LaunchedEffect(isReady) {
+                        if (isReady) {
+                            delay(2000) // Assure branding visibility (total ~2-3s)
+                            showSplashScreen = false
+                        }
                     }
 
                     if (showSplashScreen) {
                         SplashScreen()
                     } else {
-                        // Lazy initialization: ViewModel is only created AFTER splash ends
-                        val viewModel: MixerViewModel = viewModel()
-                        
                         when (currentScreen) {
                             "mixer" -> {
                                 MixerScreen(
@@ -71,7 +75,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "settings" -> {
-                                SettingsScreen(
+                                SystemGlobalSettings(
                                     viewModel = viewModel,
                                     onNavigateBack = { currentScreen = "mixer" }
                                 )

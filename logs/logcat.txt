@@ -1,0 +1,11 @@
+Tom,Hexadecimal,Nome Sugerido
+Azul,#5C7080,Blue Slate
+Verde,#6B8E6B,Sage Green
+Vermelho,#A66D6D,Dusty Rose
+Amarelo,#A6966D,Old Gold
+Roxo,#7D6DA6,Muted Iris
+Ciano,#6DA6A6,Ocean Grey
+Laranja,#A6826D,Terracotta
+Oliva,#848E6B,Olive Drab
+Violeta,#936DA6,Deep Mauve
+Cinza Azulado,#6D7DA6,Steel Blue

@@ -22,6 +22,7 @@ class MidiConnectionManager(
     private val onNoteOn: (deviceName: String, channel: Int, key: Int, velocity: Int) -> Unit,
     private val onNoteOff: (deviceName: String, channel: Int, key: Int) -> Unit,
     private val onControlChange: (deviceName: String, channel: Int, controller: Int, value: Int) -> Unit,
+    private val onPitchBend: (deviceName: String, channel: Int, value: Int) -> Unit,
     private val onProgramChange: (deviceName: String, channel: Int, program: Int) -> Unit
 ) {
 
@@ -33,10 +34,13 @@ class MidiConnectionManager(
         private const val STATUS_NOTE_ON = 0x90
         private const val STATUS_CONTROL_CHANGE = 0xB0
         private const val STATUS_PROGRAM_CHANGE = 0xC0
+        private const val STATUS_PITCH_BEND = 0xE0
     }
 
+    private val midiThread = android.os.HandlerThread("MidiProcessingThread", android.os.Process.THREAD_PRIORITY_AUDIO).apply { start() }
+    private val midiHandler = Handler(midiThread.looper)
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val midiManager = context.getSystemService(Context.MIDI_SERVICE) as? MidiManager
-    private val handler = Handler(Looper.getMainLooper())
     
     // Store multiple open devices
     private val openDevices = mutableMapOf<Int, MidiDevice>()
@@ -72,7 +76,7 @@ class MidiConnectionManager(
             return
         }
 
-        midiManager.registerDeviceCallback(deviceCallback, handler)
+        midiManager.registerDeviceCallback(deviceCallback, mainHandler)
 
         // Connect to ALL already-connected devices
         val devices = midiManager.devices
@@ -111,12 +115,12 @@ class MidiConnectionManager(
                 openPorts[info.id] = port
                 
                 Log.i(TAG, "Connected to MIDI device: $name (ID: ${info.id})")
-                handler.post { updateAvailableDevices() }
+                mainHandler.post { updateAvailableDevices() }
             } else {
                 Log.w(TAG, "Could not open output port for device ${info.id}")
                 device.close()
             }
-        }, handler)
+        }, mainHandler)
     }
 
     private fun disconnectDevice(deviceId: Int) {
@@ -168,9 +172,9 @@ class MidiConnectionManager(
                         val key = data[i + 1].toInt() and 0x7F
                         val velocity = data[i + 2].toInt() and 0x7F
                         if (velocity > 0) {
-                            handler.post { onNoteOn(deviceName, channel, key, velocity) }
+                            midiHandler.post { onNoteOn(deviceName, channel, key, velocity) }
                         } else {
-                            handler.post { onNoteOff(deviceName, channel, key) }
+                            midiHandler.post { onNoteOff(deviceName, channel, key) }
                         }
                         i += 3
                     } else break
@@ -178,7 +182,7 @@ class MidiConnectionManager(
                 STATUS_NOTE_OFF -> {
                     if (i + 2 < end) {
                         val key = data[i + 1].toInt() and 0x7F
-                        handler.post { onNoteOff(deviceName, channel, key) }
+                        midiHandler.post { onNoteOff(deviceName, channel, key) }
                         i += 3
                     } else break
                 }
@@ -186,15 +190,24 @@ class MidiConnectionManager(
                     if (i + 2 < end) {
                         val controller = data[i + 1].toInt() and 0x7F
                         val value = data[i + 2].toInt() and 0x7F
-                        handler.post { onControlChange(deviceName, channel, controller, value) }
+                        midiHandler.post { onControlChange(deviceName, channel, controller, value) }
                         i += 3
                     } else break
                 }
                 STATUS_PROGRAM_CHANGE -> {
                     if (i + 1 < end) {
                         val program = data[i + 1].toInt() and 0x7F
-                        handler.post { onProgramChange(deviceName, channel, program) }
+                        midiHandler.post { onProgramChange(deviceName, channel, program) }
                         i += 2
+                    } else break
+                }
+                STATUS_PITCH_BEND -> {
+                    if (i + 2 < end) {
+                        val lsb = data[i + 1].toInt() and 0x7F
+                        val msb = data[i + 2].toInt() and 0x7F
+                        val value = (msb shl 7) or lsb
+                        midiHandler.post { onPitchBend(deviceName, channel, value) }
+                        i += 3
                     } else break
                 }
                 else -> {
@@ -206,8 +219,10 @@ class MidiConnectionManager(
 
     private fun getDeviceName(info: MidiDeviceInfo): String {
         val properties = info.properties
-        return properties.getString(MidiDeviceInfo.PROPERTY_NAME)
-            ?: properties.getString(MidiDeviceInfo.PROPERTY_MANUFACTURER)
-            ?: "Unknown MIDI Device"
+        val product = properties.getString(MidiDeviceInfo.PROPERTY_PRODUCT)
+        val name = properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+        val manufacturer = properties.getString(MidiDeviceInfo.PROPERTY_MANUFACTURER)
+        
+        return product ?: name ?: manufacturer ?: "Unknown MIDI Device"
     }
 }

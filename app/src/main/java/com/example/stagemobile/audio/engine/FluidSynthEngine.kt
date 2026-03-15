@@ -1,6 +1,7 @@
 package com.example.stagemobile.audio.engine
 
 import android.util.Log
+import com.example.stagemobile.domain.model.Sf2Preset
 
 class FluidSynthEngine : AudioEngine {
 
@@ -68,7 +69,15 @@ class FluidSynthEngine : AudioEngine {
     private external fun nativeSetVolume(channel: Int, volume: Float)
     private external fun nativeProgramChange(channel: Int, bank: Int, program: Int)
     private external fun nativeProgramSelect(channel: Int, sfId: Int, bank: Int, program: Int): Boolean
+    private external fun nativeWarmUpChannel(channel: Int)
+    private external fun nativeControlChange(channel: Int, controller: Int, value: Int)
     private external fun nativeGetChannelLevels(output: FloatArray)
+    private external fun nativeGetPresets(sfId: Int): Array<String>
+    private external fun nativeSetInterpolation(method: Int)
+    private external fun nativeSetPolyphony(maxVoices: Int)
+    private external fun nativeSetMasterLimiter(enabled: Boolean)
+    private external fun nativePitchBend(channel: Int, value: Int)
+    private external fun nativePanic()
     private external fun nativeDestroy()
 
     override fun init(sampleRate: Int, bufferSize: Int, deviceId: Int) {
@@ -140,6 +149,37 @@ class FluidSynthEngine : AudioEngine {
         }
     }
 
+    override fun controlChange(channel: Int, controller: Int, value: Int) {
+        if (isInitialized) {
+            try { nativeControlChange(channel, controller, value) }
+            catch (e: Exception) { Log.e(TAG, "controlChange error: ${e.message}") }
+        }
+    }
+
+    override fun pitchBend(channel: Int, value: Int) {
+        if (isInitialized) {
+            try { nativePitchBend(channel, value) }
+            catch (e: Exception) { Log.e(TAG, "pitchBend error: ${e.message}") }
+        }
+    }
+
+    override fun panic() {
+        if (isInitialized) {
+            try { nativePanic() }
+            catch (e: Exception) { Log.e(TAG, "panic error: ${e.message}") }
+        }
+    }
+
+    fun warmUpChannel(channel: Int) {
+        if (isInitialized) {
+            try { 
+                nativeWarmUpChannel(channel)
+                Log.d(TAG, "Warm-up triggered for channel $channel")
+            }
+            catch (e: Exception) { Log.e(TAG, "warmUpChannel error: ${e.message}") }
+        }
+    }
+
     override fun programSelect(channel: Int, sfId: Int, bank: Int, program: Int) {
         Log.d(TAG, "programSelect(ch=$channel, sfId=$sfId, bank=$bank, prog=$program)")
         if (isInitialized) {
@@ -152,10 +192,60 @@ class FluidSynthEngine : AudioEngine {
         }
     }
 
+    override fun getPresets(sfId: Int): List<Sf2Preset> {
+        if (!isInitialized) {
+            Log.w(TAG, "Cannot get presets: engine not initialized")
+            return emptyList()
+        }
+        return try {
+            val rawPresets = nativeGetPresets(sfId)
+            rawPresets.mapNotNull { raw ->
+                val parts = raw.split("|", limit = 3)
+                if (parts.size == 3) {
+                    Sf2Preset(
+                        bank = parts[0].toIntOrNull() ?: 0,
+                        program = parts[1].toIntOrNull() ?: 0,
+                        name = parts[2]
+                    )
+                } else null
+            }.also { Log.i(TAG, "Parsed ${it.size} presets for sfId=$sfId") }
+        } catch (e: Exception) {
+            Log.e(TAG, "getPresets error: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     override fun getChannelLevels(output: FloatArray) {
         if (isInitialized) {
             try { nativeGetChannelLevels(output) }
             catch (e: Exception) { /* Silent fail to avoid log spam in render loop */ }
+        }
+    }
+
+    override fun setInterpolation(method: Int) {
+        if (isInitialized) {
+            try {
+                nativeSetInterpolation(method)
+                Log.i(TAG, "Interpolation set to method $method")
+            } catch (e: Exception) { Log.e(TAG, "setInterpolation error: ${e.message}") }
+        }
+    }
+
+    override fun setPolyphony(maxVoices: Int) {
+        if (isInitialized) {
+            try {
+                nativeSetPolyphony(maxVoices)
+                Log.i(TAG, "Polyphony set to $maxVoices voices")
+            } catch (e: Exception) { Log.e(TAG, "setPolyphony error: ${e.message}") }
+        }
+    }
+
+    override fun setMasterLimiter(enabled: Boolean) {
+        if (isInitialized) {
+            try {
+                nativeSetMasterLimiter(enabled)
+                Log.i(TAG, "Master Limiter enabled: $enabled")
+            } catch (e: Exception) { Log.e(TAG, "setMasterLimiter error: ${e.message}") }
         }
     }
 

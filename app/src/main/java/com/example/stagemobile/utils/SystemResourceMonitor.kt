@@ -31,7 +31,7 @@ class SystemResourceMonitor(private val context: Context) {
         val currentNativeHeapMb = android.os.Debug.getNativeHeapAllocatedSize() / (1024L * 1024L)
 
         // Update the "Anchor PSS" every 10 seconds (more frequent for debugging)
-        if (now - lastPssUpdateTime > 10000L || lastPssMb == 0) {
+        if (now - lastPssUpdateTime > 30000L || lastPssMb == 0) {
             val memInfo = android.os.Debug.MemoryInfo()
             android.os.Debug.getMemoryInfo(memInfo)
             lastPssMb = memInfo.totalPss / 1024
