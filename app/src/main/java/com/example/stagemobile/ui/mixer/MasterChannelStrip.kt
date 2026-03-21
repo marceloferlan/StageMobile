@@ -36,6 +36,7 @@ fun MasterChannelStrip(
     isMasterLimiterEnabled: Boolean = false,
     onMasterLimiterToggle: (Boolean) -> Unit = {},
     onVolumeChange: (Float) -> Unit,
+    onFxClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     isMidiLearnActive: Boolean = false,
     isLearnTargetFader: Boolean = false,
@@ -86,25 +87,52 @@ fun MasterChannelStrip(
         
         Spacer(modifier = Modifier.height(12.dp))
 
-        // PUNCH BUTTON (Master Limiter)
-        val punchColor = if (isMasterLimiterEnabled) Color(0xFF4CAF50) else Color(0xFF333333)
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(34.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .clickable { onMasterLimiterToggle(!isMasterLimiterEnabled) },
-            color = punchColor,
-            tonalElevation = 2.dp
+        // BUTTONS ROW (PUNCH & FX)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = "PUNCH",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = if (isMasterLimiterEnabled) Color.White else Color.Gray,
-                    textAlign = TextAlign.Center
-                )
+            // PUNCH BUTTON (Master Limiter)
+            val punchColor = if (isMasterLimiterEnabled) Color(0xFF4CAF50) else Color(0xFF333333)
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onMasterLimiterToggle(!isMasterLimiterEnabled) },
+                color = punchColor,
+                tonalElevation = 2.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "PUNCH",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (isMasterLimiterEnabled) Color.White else Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            // FX RACK BUTTON
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onFxClick() },
+                color = Color(0xFF333333),
+                tonalElevation = 2.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "FX RACK",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
 

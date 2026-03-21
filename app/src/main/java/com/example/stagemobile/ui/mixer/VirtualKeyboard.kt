@@ -75,7 +75,7 @@ fun VirtualKeyboard(
 
     // Total width based on actual keys: 14 white keys × 44dp
     val totalWhiteKeys = octaves * 7
-    val totalKeyboardWidth = (whiteKeyWidth * totalWhiteKeys)
+    val totalKeyboardWidth = (whiteKeyWidth * totalWhiteKeys) + 8.dp
 
     val density = LocalDensity.current
     val whiteKeyWidthPx = with(density) { whiteKeyWidth.toPx() }

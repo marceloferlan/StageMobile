@@ -3,7 +3,10 @@ package com.example.stagemobile.ui.screens
 import com.example.stagemobile.utils.UiUtils
 import com.example.stagemobile.utils.getMidiNoteName
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -84,6 +87,7 @@ import com.example.stagemobile.ui.components.MixerScreenInfoPanel
 import com.example.stagemobile.ui.components.SF2PresetSelectorDialog
 import com.example.stagemobile.ui.components.InstrumentChannelOptionsMenu
 import com.example.stagemobile.ui.components.MidiLearnState
+import com.example.stagemobile.ui.components.DSPEffectsRackDialog
 import com.example.stagemobile.ui.components.midiLearnHalo
 import com.example.stagemobile.ui.components.midiLearnClickable
 import com.example.stagemobile.ui.components.rememberMidiLearnPulse
@@ -114,11 +118,12 @@ fun MixerScreen(
     val sampleRate by viewModel.sampleRate.collectAsState()
     val audioInterfaceName by viewModel.selectedAudioDeviceName.collectAsState()
     val availableMidiDevices by viewModel.availableMidiDevices.collectAsState()
-    val channelLevels by viewModel.channelLevels.collectAsState()
+    // Removed the global array collection here to stop massive Recompositions
 
     val isMasterVisible by viewModel.isMasterVisible.collectAsState()
     val masterVolume by viewModel.masterVolume.collectAsState()
     val masterLevel by viewModel.masterLevel.collectAsState()
+    val masterDspEffects by viewModel.masterDspEffects.collectAsState()
     val systemEvent by viewModel.lastSystemEvent.collectAsState("")
 
     var pendingChannelId by remember { mutableIntStateOf(-1) }
@@ -131,6 +136,7 @@ fun MixerScreen(
     var showInfoPanel by remember { mutableStateOf(false) }
     var showExitConfirmation by remember { mutableStateOf(false) }
     var showOptionsForChannel by remember { mutableStateOf<Int?>(null) }
+    var showDSPEffectsRackForChannel by remember { mutableStateOf<Int?>(null) }
     
     // Obter canais e informações extras do ViewModel
     val activeMidiDevices by viewModel.activeMidiDevices.collectAsState()
@@ -673,7 +679,7 @@ fun MixerScreen(
                     midiLearnFeedback = midiLearnFeedback
                 )
 
-                GlobalNoteShiftBar(
+                MixerScreenToolBar(
                     viewModel = viewModel,
                     globalOctave = globalOctave,
                     globalTranspose = globalTranspose,
@@ -706,7 +712,7 @@ fun MixerScreen(
                         channels.forEachIndexed { index, channel ->
                             InstrumentChannelStrip(
                                 channel = channel,
-                                level = if (index in channelLevels.indices) channelLevels[index] else 0f,
+                                levelFlow = if (channel.id in viewModel.channelLevels.indices) viewModel.channelLevels[channel.id] else MutableStateFlow(0f),
                                 modifier = Modifier.width(channelWidth),
                                 onVolumeChange = { viewModel.updateVolume(channel.id, it) },
                                 onOctaveDown = { viewModel.updateOctaveShift(channel.id, -1) },
@@ -759,6 +765,7 @@ fun MixerScreen(
                                 isMasterLimiterEnabled = viewModel.isMasterLimiterEnabled.collectAsState().value,
                                 onMasterLimiterToggle = { viewModel.updateMasterLimiter(it) },
                                 onVolumeChange = { viewModel.updateMasterVolume(it) },
+                                onFxClick = { showDSPEffectsRackForChannel = MixerViewModel.MASTER_CHANNEL_ID }, // Master ID -1
                                 isMidiLearnActive = isMidiLearnActive,
                                 isLearnTargetFader = midiLearnTarget?.target == MidiLearnTarget.FADER && midiLearnTarget?.channelId == MixerViewModel.MASTER_CHANNEL_ID,
                                 hasFaderMapping = midiLearnMappings.any { it.target == MidiLearnTarget.FADER && it.channelId == MixerViewModel.MASTER_CHANNEL_ID },
@@ -851,10 +858,61 @@ fun MixerScreen(
                     onAdvancedOptionsClick = {
                         showOptionsForChannel = null
                         showAdvancedParamsForChannel = targetCh.id
+                    },
+                    onDSPEffectsClick = {
+                        showOptionsForChannel = null
+                        showDSPEffectsRackForChannel = targetCh.id
                     }
                 )
             } else {
                 showOptionsForChannel = null
+            }
+        }
+
+        // === DSP Effects Rack Dialog ===
+        if (showDSPEffectsRackForChannel != null) {
+            val channelId = showDSPEffectsRackForChannel!!
+            val isMaster = channelId == MixerViewModel.MASTER_CHANNEL_ID
+            val targetCh = if (isMaster) null else channels.firstOrNull { it.id == channelId }
+            
+            if (isMaster || targetCh != null) {
+                DSPEffectsRackDialog(
+                    title = if (isMaster) "Master" else targetCh!!.name,
+                    effects = if (isMaster) masterDspEffects else targetCh!!.dspEffects,
+                    onDismiss = { showDSPEffectsRackForChannel = null },
+                    onUpdateParam = { effectId, paramId, value ->
+                        viewModel.updateEffectParam(channelId, effectId, paramId, value)
+                    },
+                    onToggleEffect = { effectId, enabled ->
+                        viewModel.toggleEffect(channelId, effectId, enabled)
+                    },
+                    onAddEffect = { type ->
+                        viewModel.addEffectToChannel(channelId, type)
+                    },
+                    onRemoveEffect = { effectId ->
+                        viewModel.removeEffectFromChannel(channelId, effectId)
+                    },
+                    onTapDelay = { effectId ->
+                        viewModel.tapDelayTime(channelId, effectId)
+                    },
+                    onResetEffect = { effectId ->
+                        viewModel.resetEffectParams(channelId, effectId)
+                    },
+                    isMidiLearnActive = isMidiLearnActive,
+                    onToggleMidiLearn = { viewModel.toggleMidiLearn() },
+                    onSelectMidiLearnTarget = { effectId, paramId -> 
+                        viewModel.selectDspLearnTarget(channelId, effectId, paramId) 
+                    },
+                    midiLearnMappings = midiLearnMappings,
+                    midiLearnTarget = midiLearnTarget,
+                    midiLearnFeedback = midiLearnFeedback,
+                    channelId = channelId,
+                    onTestNoteOn = { ch, n, v -> viewModel.playTestNoteOn(ch, n, v) },
+                    onTestNoteOff = { ch, n -> viewModel.playTestNoteOff(ch, n) },
+                    engine = viewModel.audioEngine
+                )
+            } else {
+                showDSPEffectsRackForChannel = null
             }
         }
 
@@ -868,6 +926,7 @@ fun MixerScreen(
                 MidiLearnTarget.OCTAVE_DOWN -> "Oct-"
                 MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
                 MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
+                MidiLearnTarget.DSP_PARAM -> "DSP"
             }
             val chLabel = when (unmap.channelId) {
                 MixerViewModel.MASTER_CHANNEL_ID -> "MASTER"
@@ -918,7 +977,7 @@ fun MixerScreen(
 }
 
 @Composable
-fun GlobalNoteShiftBar(
+fun MixerScreenToolBar(
     viewModel: MixerViewModel,
     globalOctave: Int,
     globalTranspose: Int,
@@ -942,7 +1001,7 @@ fun GlobalNoteShiftBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                // --- GLOBAL OCTAVE SECTION ---
+                // --- GLOBAL OCTAVE ---
                 NoteShiftControl(
                     label = "OITAVAS",
                     value = globalOctave,
@@ -966,7 +1025,38 @@ fun GlobalNoteShiftBar(
                 
                 Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
 
-                // --- GLOBAL TRANSPOSE SECTION ---
+                // --- GLOBAL TAP DELAY ---
+                val btnSize = if (isTablet) 28.dp else 22.dp
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "TAP",
+                        color = Color.Gray,
+                        fontSize = if (isTablet) 8.sp else 6.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(end = if (isTablet) 10.dp else 4.dp)
+                    )
+                    Surface(
+                        modifier = Modifier
+                            .size(btnSize)
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable { viewModel.tapGlobalDelayTime() },
+                        color = Color(0xFF222222),
+                        border = BorderStroke(1.dp, Color(0xFF444444))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("●", color = Color(0xFFBA68C8), fontSize = if (isTablet) 18.sp else 14.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                
+                // Vertical Divider
+                Box(modifier = Modifier.width(1.dp).height(if (isTablet) 18.dp else 10.dp).background(Color(0xFF444444)))
+                
+                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+
+                // --- GLOBAL TRANSPOSE ---
                 NoteShiftControl(
                     label = "TRANSPOSE",
                     value = globalTranspose,
@@ -984,7 +1074,6 @@ fun GlobalNoteShiftBar(
                 )
             }
             
-            // Final Divider before the mixer channel strips
             HorizontalDivider(color = Color(0xFF333333), thickness = 1.dp)
         }
     }

@@ -30,6 +30,10 @@ import com.example.stagemobile.domain.model.Sf2Preset
 import com.example.stagemobile.midi.MidiLearnMapping
 import com.example.stagemobile.midi.MidiLearnTarget
 import com.example.stagemobile.midi.MidiLearnTargetInfo
+import com.example.stagemobile.domain.model.DSPEffectInstance
+import com.example.stagemobile.domain.model.DSPEffectType
+import com.example.stagemobile.domain.model.DSPParamType
+import java.util.UUID
 
 class MixerViewModel : ViewModel() {
 
@@ -39,7 +43,9 @@ class MixerViewModel : ViewModel() {
         const val GLOBAL_CHANNEL_ID = -2
     }
 
-    private var audioEngine: AudioEngine = DummyAudioEngine()
+    private var _audioEngine: AudioEngine = DummyAudioEngine()
+    val audioEngine: AudioEngine get() = _audioEngine
+    val fluidEngine: FluidSynthEngine? get() = _audioEngine as? FluidSynthEngine
     private var midiManager: MidiConnectionManager? = null
     private var deviceAudioManager: com.example.stagemobile.audio.DeviceAudioManager? = null
     private var settingsRepo: SettingsRepository? = null
@@ -117,6 +123,9 @@ class MixerViewModel : ViewModel() {
     private val _isMasterLimiterEnabled = MutableStateFlow(false)
     val isMasterLimiterEnabled: StateFlow<Boolean> = _isMasterLimiterEnabled.asStateFlow()
 
+    private val _isDspMasterBypass = MutableStateFlow(false)
+    val isDspMasterBypass: StateFlow<Boolean> = _isDspMasterBypass.asStateFlow()
+
     // --- Global Performance States ---
     private val _globalOctaveShift = MutableStateFlow(0)
     val globalOctaveShift: StateFlow<Int> = _globalOctaveShift.asStateFlow()
@@ -131,8 +140,8 @@ class MixerViewModel : ViewModel() {
     private val _masterVolume = MutableStateFlow(0.8f) // Default 80%
     val masterVolume: StateFlow<Float> = _masterVolume
 
-    private val _channelLevels = MutableStateFlow(FloatArray(16))
-    val channelLevels: StateFlow<FloatArray> = _channelLevels.asStateFlow()
+    private val _channelLevels = Array(16) { MutableStateFlow(0f) }
+    val channelLevels = _channelLevels.map { it.asStateFlow() }
 
     // Tracks the raw values from C++ to detect "New Energy" (Impulses)
     private val lastNativeLevels = FloatArray(16)
@@ -164,7 +173,8 @@ class MixerViewModel : ViewModel() {
     val pendingPresetSelection: StateFlow<PendingPresetSelection?> = _pendingPresetSelection.asStateFlow()
 
     // Cache: Maps SF2 filename → sfId already loaded in FluidSynth
-    private val loadedSf2Cache = ConcurrentHashMap<String, Int>()
+    private val loadedSf2Cache = mutableMapOf<String, Int>() // Cache SoundFont Name -> sfId
+    // nextId removed, using slot-based IDs (0-15)
 
     // --- MIDI Learn State ---
     private val _isMidiLearnActive = MutableStateFlow(false)
@@ -179,6 +189,9 @@ class MixerViewModel : ViewModel() {
     private val _midiLearnFeedback = MutableStateFlow<String?>(null)
     val midiLearnFeedback: StateFlow<String?> = _midiLearnFeedback.asStateFlow()
 
+    private val _masterDspEffects = MutableStateFlow<List<DSPEffectInstance>>(createDefaultMasterEffects())
+    val masterDspEffects: StateFlow<List<DSPEffectInstance>> = _masterDspEffects.asStateFlow()
+
     private var feedbackJob: Job? = null
 
     // --- Fast Path Cache for Latency Zero ---
@@ -189,11 +202,41 @@ class MixerViewModel : ViewModel() {
     init {
         // Initial set of channels (7 default)
         val initialChannels = (1..7).map { i ->
-            InstrumentChannel(i - 1, "Nenhum SF2", program = 0)
+            InstrumentChannel(
+                id = i - 1, 
+                name = "Nenhum SF2", 
+                program = 0,
+                dspEffects = createDefaultEffects()
+            )
         }
         _channels.value = initialChannels
         rebuildArmedChannelsCache()
         startPeakMeterUpdate()
+    }
+
+    private fun createDefaultEffects(): List<DSPEffectInstance> {
+        return listOf(
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.HPF, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.HPF)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.LPF, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.LPF)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.COMPRESSOR, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.COMPRESSOR)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.EQ_PARAMETRIC, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.EQ_PARAMETRIC)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.CHORUS, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.CHORUS)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.TREMOLO, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.TREMOLO)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.DELAY, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.DELAY)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.REVERB, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.REVERB)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.LIMITER, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.LIMITER)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.REVERB_SEND, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.REVERB_SEND))
+        )
+    }
+
+    private fun createDefaultMasterEffects(): List<DSPEffectInstance> {
+        return listOf(
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.EQ_PARAMETRIC, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.EQ_PARAMETRIC)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.COMPRESSOR, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.COMPRESSOR)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.DELAY, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.DELAY)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.REVERB, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.REVERB)),
+            DSPEffectInstance(id = UUID.randomUUID().toString(), type = DSPEffectType.LIMITER, isEnabled = false, params = getDefaultParamsFor(DSPEffectType.LIMITER))
+        )
     }
 
     // --- MIDI Learn Functions ---
@@ -218,9 +261,17 @@ class MixerViewModel : ViewModel() {
             MidiLearnTarget.OCTAVE_DOWN -> "Oct-"
             MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
             MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
+            MidiLearnTarget.DSP_PARAM -> "DSP"
         }
         val chLabel = (channelId + 1).toString().padStart(2, '0')
         Log.i(TAG, "MIDI Learn target: $label CH $chLabel — waiting for CC...")
+    }
+
+    fun selectDspLearnTarget(channelId: Int, effectId: String, paramId: Int) {
+        if (!_isMidiLearnActive.value) return
+        _midiLearnTarget.value = MidiLearnTargetInfo(MidiLearnTarget.DSP_PARAM, channelId, effectId, paramId)
+        val chLabel = if (channelId == MASTER_CHANNEL_ID) "MASTER" else (channelId + 1).toString().padStart(2, '0')
+        Log.i(TAG, "MIDI Learn target: DSP_PARAM ($effectId, Param $paramId) CH $chLabel — waiting for CC...")
     }
 
     private fun completeMidiLearn(deviceName: String, ccNumber: Int, midiChannel: Int) {
@@ -230,13 +281,16 @@ class MixerViewModel : ViewModel() {
             channelId = target.channelId,
             ccNumber = ccNumber,
             midiChannel = midiChannel,
-            deviceName = deviceName
+            deviceName = deviceName,
+            effectId = target.effectId,
+            paramId = target.paramId
         )
 
         // Add new mapping (allow multiple CCs per control), but prevent exact duplicate
         val alreadyExists = _midiLearnMappings.value.any {
             it.target == newMapping.target && it.channelId == newMapping.channelId &&
-            it.ccNumber == newMapping.ccNumber && it.midiChannel == newMapping.midiChannel
+            it.ccNumber == newMapping.ccNumber && it.midiChannel == newMapping.midiChannel &&
+            it.effectId == newMapping.effectId && it.paramId == newMapping.paramId
         }
         if (alreadyExists) {
             Log.w(TAG, "MIDI Learn: mapping already exists, skipping")
@@ -256,6 +310,7 @@ class MixerViewModel : ViewModel() {
             MidiLearnTarget.OCTAVE_DOWN -> "Oct-"
             MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
             MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
+            MidiLearnTarget.DSP_PARAM -> "Param ${target.paramId}"
         }
         val chLabel = when (target.channelId) {
             MASTER_CHANNEL_ID -> "MASTER"
@@ -294,7 +349,8 @@ class MixerViewModel : ViewModel() {
     fun confirmUnmap(mapping: MidiLearnMapping) {
         val updated = _midiLearnMappings.value.filter {
             !(it.target == mapping.target && it.channelId == mapping.channelId &&
-              it.ccNumber == mapping.ccNumber && it.midiChannel == mapping.midiChannel)
+              it.ccNumber == mapping.ccNumber && it.midiChannel == mapping.midiChannel &&
+              it.effectId == mapping.effectId && it.paramId == mapping.paramId)
         }
         _midiLearnMappings.value = updated
         settingsRepo?.saveMidiMappings(updated)
@@ -340,13 +396,13 @@ class MixerViewModel : ViewModel() {
         }
 
         // Apply saved engine settings after init
-        audioEngine.setInterpolation(_interpolationMethod.value)
-        audioEngine.setPolyphony(_maxPolyphony.value)
-        audioEngine.setMasterLimiter(_isMasterLimiterEnabled.value)
+        _audioEngine.setInterpolation(_interpolationMethod.value)
+        _audioEngine.setPolyphony(_maxPolyphony.value)
+        _audioEngine.setMasterLimiter(_isMasterLimiterEnabled.value)
 
         // Add 8th channel if on Tablet and we are at default 7 channels
         if (isTablet && _channels.value.size == 7) {
-            val eighthChannel = InstrumentChannel(7, "Instrumento 08", program = 0)
+            val eighthChannel = InstrumentChannel(7, "Nenhum SF2", program = 0)
             _channels.value = _channels.value + eighthChannel
             nextId = 8 // Ensure next manual Add Channel (+ CH) starts at 9 (id 8)
         }
@@ -377,9 +433,9 @@ class MixerViewModel : ViewModel() {
                     // Cache HIT — Skip copy and load
                     Log.i(TAG, "SF2 Cache HIT for '$sf2FileName' → sfId=$cachedSfId")
                     sfId = cachedSfId
-                    _channels.value = _channels.value.map {
+                    updateChannels(_channels.value.map {
                         if (it.id == channelId) it.copy(soundFont = sf2FileName, sfId = sfId) else it
-                    }
+                    })
                 } else {
                     // Cache MISS — Full load sequence
                     val inputStream = context.contentResolver.openInputStream(uri)
@@ -387,9 +443,9 @@ class MixerViewModel : ViewModel() {
 
                     val outputFile = File(context.filesDir, "sf2_ch${channelId}_$sf2FileName")
 
-                    _channels.value = _channels.value.map {
+                    updateChannels(_channels.value.map {
                         if (it.id == channelId) it.copy(soundFont = "Carregando $sf2FileName...") else it
-                    }
+                    })
 
                     inputStream.use { input ->
                         outputFile.outputStream().use { output ->
@@ -397,7 +453,7 @@ class MixerViewModel : ViewModel() {
                         }
                     }
 
-                    sfId = audioEngine.loadSoundFont(outputFile.absolutePath)
+                    sfId = _audioEngine.loadSoundFont(outputFile.absolutePath)
                     if (sfId < 0) {
                         Log.e(TAG, "Failed to load SF2 for channel $channelId")
                     updateChannels(_channels.value.map {
@@ -420,10 +476,11 @@ class MixerViewModel : ViewModel() {
                 val presets = audioEngine.getPresets(sfId)
                 Log.i(TAG, "SF2 '$sf2FileName' has ${presets.size} presets")
 
+                val defaultBank = presets.firstOrNull()?.bank ?: 0
+                val defaultProgram = presets.firstOrNull()?.program ?: 0
+
                 if (presets.size <= 1) {
                     // Single preset or empty → auto-select
-                    val bank = presets.firstOrNull()?.bank ?: 0
-                    val program = presets.firstOrNull()?.program ?: 0
                     val presetName = presets.firstOrNull()?.name
                     val displayName = if (presetName != null) "$sf2FileName [$presetName]" else sf2FileName
 
@@ -431,19 +488,28 @@ class MixerViewModel : ViewModel() {
                         if (it.id == channelId) it.copy(
                             soundFont = displayName,
                             sfId = sfId,
-                            bank = bank,
-                            program = program
+                            bank = defaultBank,
+                            program = defaultProgram
                         ) else it
                     })
-                    audioEngine.programSelect(channelId, sfId, bank, program)
+                    _audioEngine.programSelect(channelId, sfId, defaultBank, defaultProgram)
                     _sf2Loaded.value = true
                     _sf2Name.value = sf2FileName
-                    Log.i(TAG, "SF2 auto-selected: ch=$channelId, sfId=$sfId, bank=$bank, prog=$program")
+                    Log.i(TAG, "SF2 auto-selected: ch=$channelId, sfId=$sfId, bank=$defaultBank, prog=$defaultProgram")
                 } else {
+                    // Multiple presets → Playabilty Fallback (Auto-select first preset instantly)
+                    // Garantir que a engine tenha som antes de confirmar
+                    _audioEngine.programSelect(channelId, sfId, defaultBank, defaultProgram)
+
                     // Multiple presets → Open selector dialog
-                    _channels.value = _channels.value.map {
-                        if (it.id == channelId) it.copy(soundFont = sf2FileName, sfId = sfId) else it
-                    }
+                    updateChannels(_channels.value.map {
+                        if (it.id == channelId) it.copy(
+                            soundFont = sf2FileName, 
+                            sfId = sfId,
+                            bank = defaultBank,
+                            program = defaultProgram
+                        ) else it
+                    })
                     _sf2Loaded.value = true
                     _sf2Name.value = sf2FileName
 
@@ -484,7 +550,7 @@ class MixerViewModel : ViewModel() {
             ) else it
         })
 
-        audioEngine.programSelect(channelId, sfId, bank, program)
+        _audioEngine.programSelect(channelId, sfId, bank, program)
         _pendingPresetSelection.value = null
         Log.i(TAG, "Preset selected: ch=$channelId, sfId=$sfId, bank=$bank, prog=$program, name=$presetName")
     }
@@ -511,7 +577,7 @@ class MixerViewModel : ViewModel() {
         if (sfId < 0) return
 
         scope.launch(Dispatchers.IO) {
-            val presets = audioEngine.getPresets(sfId)
+            val presets = _audioEngine.getPresets(sfId)
             if (presets.size > 1) {
                 val sf2Name = channel.soundFont?.substringBefore(" [") ?: "SoundFont"
                 _pendingPresetSelection.value = PendingPresetSelection(
@@ -600,14 +666,17 @@ class MixerViewModel : ViewModel() {
         }
 
         // Override with Real audio engine if full context is provided
-        if (audioEngine is DummyAudioEngine) {
-            audioEngine = FluidSynthEngine()
+        if (_audioEngine is DummyAudioEngine) {
+            _audioEngine = FluidSynthEngine(context)
             val deviceId = _selectedAudioDeviceId.value
             try {
                 Log.i(TAG, "Initializing FluidSynth Engine (SR=${_sampleRate.value}, Buf=${_bufferSize.value}, Dev=$deviceId)")
-                audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
+                _audioEngine.initialize(_sampleRate.value, _bufferSize.value, deviceId)
+                
+                // CRITICAL: Synchronize initial effects created in init { }
+                syncEffectsToEngine()
             } catch (e: Exception) {
-                Log.e(TAG, "CRITICAL: AudioEngine.init failed: ${e.message}", e)
+                Log.e(TAG, "CRITICAL: AudioEngine.initialize failed: ${e.message}", e)
             }
             
             startResourceMonitor(context)
@@ -631,7 +700,7 @@ class MixerViewModel : ViewModel() {
                                 val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
                                                ch.transposeShift + _globalTransposeShift.value
                                 val transposedKey = (key + finalShift).coerceIn(0, 127)
-                                audioEngine.noteOn(ch.id, transposedKey, applyVelocityCurve(velocity, ch.velocityCurve))
+                                _audioEngine.noteOn(ch.id, transposedKey, applyVelocityCurve(velocity, ch.velocityCurve))
                                 triggerNoteOnVelocity(ch.id, velocity)
                             }
                         }
@@ -651,7 +720,7 @@ class MixerViewModel : ViewModel() {
                                 val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
                                                ch.transposeShift + _globalTransposeShift.value
                                 val transposedKey = (key + finalShift).coerceIn(0, 127)
-                                audioEngine.noteOff(ch.id, transposedKey)
+                                _audioEngine.noteOff(ch.id, transposedKey)
                                 triggerNoteOff(ch.id)
                             }
                         }
@@ -730,6 +799,21 @@ class MixerViewModel : ViewModel() {
                                     else updateTransposeShift(mapping.channelId, -1)
                                 }
                             }
+                            MidiLearnTarget.DSP_PARAM -> {
+                                if (mapping.effectId != null && mapping.paramId != null) {
+                                    val ch = if (mapping.channelId == MASTER_CHANNEL_ID) null else _channels.value.find { it.id == mapping.channelId }
+                                    val effectsList = if (mapping.channelId == MASTER_CHANNEL_ID) _masterDspEffects.value else ch?.dspEffects
+                                    val effect = effectsList?.find { it.id == mapping.effectId }
+                                    if (effect != null) {
+                                        val paramType = effect.type.params.getOrNull(mapping.paramId)
+                                        if (paramType != null) {
+                                            val range = getDspParamRange(paramType, effect.type)
+                                            val scaledValue = range.start + (range.endInclusive - range.start) * (value / 127f)
+                                            updateEffectParam(mapping.channelId, mapping.effectId, mapping.paramId, scaledValue)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     return@MidiConnectionManager
@@ -762,7 +846,7 @@ class MixerViewModel : ViewModel() {
                                 }
                                 
                                 if (shouldSend) {
-                                    audioEngine.controlChange(chId, controller, sendValue)
+                                    _audioEngine.controlChange(chId, controller, sendValue)
                                 }
                             }
                         }
@@ -887,7 +971,7 @@ class MixerViewModel : ViewModel() {
                 val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
                                ch.transposeShift + _globalTransposeShift.value
                 val transposedKey = (midiNote + finalShift).coerceIn(0, 127)
-                audioEngine.noteOn(ch.id, transposedKey, 100)
+                _audioEngine.noteOn(ch.id, transposedKey, 100)
                 triggerNoteOnVelocity(ch.id, 100)
             }
         }
@@ -900,17 +984,53 @@ class MixerViewModel : ViewModel() {
             val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
                            ch.transposeShift + _globalTransposeShift.value
             val transposedKey = (midiNote + finalShift).coerceIn(0, 127)
-            audioEngine.noteOff(ch.id, transposedKey)
+            _audioEngine.noteOff(ch.id, transposedKey)
             triggerNoteOff(ch.id)
         }
+    }
+
+    fun playTestNoteOn(channelId: Int, note: Int, velocity: Int) {
+        val ch = _channels.value.find { it.id == channelId } ?: return
+        if (ch.sfId < 0) return // Ignore if no SF2 is loaded
+        val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
+                       ch.transposeShift + _globalTransposeShift.value
+        val transposedKey = (note + finalShift).coerceIn(0, 127)
+        _audioEngine.noteOn(channelId, transposedKey, applyVelocityCurve(velocity, ch.velocityCurve))
+    }
+
+    fun playTestNoteOff(channelId: Int, note: Int) {
+        val ch = _channels.value.find { it.id == channelId } ?: return
+        if (ch.sfId < 0) return
+        val finalShift = (ch.octaveShift + _globalOctaveShift.value) * 12 + 
+                       ch.transposeShift + _globalTransposeShift.value
+        val transposedKey = (note + finalShift).coerceIn(0, 127)
+        _audioEngine.noteOff(channelId, transposedKey)
     }
 
     // --- Channel Management ---
 
     fun addChannel(name: String) {
-        if (_channels.value.size >= 16) return
-        val newChannel = InstrumentChannel(id = nextId++, name = name)
-        updateChannels(_channels.value + newChannel)
+        val currentChannels = _channels.value
+        if (currentChannels.size >= 16) {
+            updateSystemEvent("Limite de 16 canais atingido")
+            return
+        }
+        
+        // Find first available hardware slot (0-15)
+        val usedIds = currentChannels.map { it.id }.toSet()
+        val availableId = (0..15).firstOrNull { it !in usedIds }
+        
+        if (availableId == null) {
+            updateSystemEvent("Não há slots de áudio disponíveis")
+            return
+        }
+
+        val newChannel = InstrumentChannel(
+            id = availableId, 
+            name = name,
+            dspEffects = createDefaultEffects()
+        )
+        updateChannels(currentChannels + newChannel)
     }
 
 
@@ -940,7 +1060,7 @@ class MixerViewModel : ViewModel() {
         val effective = getEffectiveVolume(channelObj)
         // Simulate Master Gain strictly by attenuation on the fader curve
         val finalLinearVolume = effective * _masterVolume.value
-        audioEngine.setChannelVolume(channelId, faderToDb(finalLinearVolume))
+        _audioEngine.setVolume(channelId, faderToDb(finalLinearVolume))
     }
 
     fun toggleMute(channelId: Int) {
@@ -999,6 +1119,256 @@ class MixerViewModel : ViewModel() {
 
     fun updateChannelVelocityCurve(channelId: Int, curve: Int) {
         updateChannel(channelId) { it.copy(velocityCurve = curve) }
+    }
+
+    // --- Modular DSP Effect Management ---
+
+    fun updateEffectParam(channelId: Int, effectId: String, paramId: Int, value: Float) {
+        if (channelId == MASTER_CHANNEL_ID) {
+            val currentEffects = _masterDspEffects.value
+            val effectIdx = currentEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = currentEffects.toMutableList()
+                val updatedParams = updatedEffects[effectIdx].params.toMutableMap()
+                updatedParams[paramId] = value
+                updatedEffects[effectIdx] = updatedEffects[effectIdx].copy(params = updatedParams)
+                _masterDspEffects.value = updatedEffects
+                
+                _audioEngine.setEffectParam(MASTER_CHANNEL_ID, effectIdx, paramId, value)
+            }
+            return
+        }
+
+        updateChannel(channelId) { ch ->
+            val effectIdx = ch.dspEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = ch.dspEffects.toMutableList()
+                val effect = updatedEffects[effectIdx]
+                val updatedParams = effect.params.toMutableMap()
+                updatedParams[paramId] = value
+                updatedEffects[effectIdx] = effect.copy(params = updatedParams)
+                
+                // Sync with Native Engine
+                _audioEngine.setEffectParam(ch.id, effectIdx, paramId, value)
+                
+                ch.copy(dspEffects = updatedEffects)
+            } else ch
+        }
+    }
+
+    fun toggleEffect(channelId: Int, effectId: String, enabled: Boolean) {
+        if (channelId == MASTER_CHANNEL_ID) {
+            val currentEffects = _masterDspEffects.value
+            val effectIdx = currentEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = currentEffects.toMutableList()
+                updatedEffects[effectIdx] = updatedEffects[effectIdx].copy(isEnabled = enabled)
+                _masterDspEffects.value = updatedEffects
+                
+                _audioEngine.setEffectEnabled(MASTER_CHANNEL_ID, effectIdx, enabled)
+            }
+            return
+        }
+
+        updateChannel(channelId) { ch ->
+            val effectIdx = ch.dspEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = ch.dspEffects.toMutableList()
+                updatedEffects[effectIdx] = updatedEffects[effectIdx].copy(isEnabled = enabled)
+                
+                // Sync with Native Engine
+                _audioEngine.setEffectEnabled(ch.id, effectIdx, enabled)
+                
+                ch.copy(dspEffects = updatedEffects)
+            } else ch
+        }
+    }
+
+    private fun getDefaultParamsFor(type: DSPEffectType): Map<Int, Float> {
+        return when (type) {
+            DSPEffectType.EQ_PARAMETRIC -> mapOf(0 to 0f, 1 to 200f, 2 to 0f, 3 to 1000f, 4 to 1.0f, 5 to 0f, 6 to 5000f, 7 to 0f)
+            DSPEffectType.HPF, DSPEffectType.LPF -> mapOf(0 to 1000f, 1 to 0.707f)
+            DSPEffectType.DELAY -> mapOf(0 to 500f, 1 to 0.3f, 2 to 0.4f)
+            DSPEffectType.REVERB -> mapOf(0 to 0.6f, 1 to 0.5f, 2 to 0.3f)
+            DSPEffectType.CHORUS -> mapOf(0 to 0.5f, 1 to 0.2f, 2 to 0.5f) // Calibrated default: Rate 0.5Hz, Depth 20%, Mix 50%
+            DSPEffectType.TREMOLO -> mapOf(0 to 4.5f, 1 to 0.6f, 2 to 0.5f)
+            DSPEffectType.COMPRESSOR -> mapOf(0 to -20f, 1 to 4f, 2 to 10f, 3 to 100f, 4 to 0f, 5 to 0f, 6 to 1.0f)
+            DSPEffectType.LIMITER -> mapOf(0 to -0.1f, 1 to 20f)
+            DSPEffectType.REVERB_SEND -> mapOf(0 to 0f)
+        }
+    }
+
+    private val tapTimes = mutableMapOf<String, MutableList<Long>>()
+    private val globalTapTimes = mutableListOf<Long>()
+
+    fun tapGlobalDelayTime() {
+        // Optimization: Exit early if no delay effects are active anywhere
+        val allDelays = _channels.value.flatMap { it.dspEffects } + _masterDspEffects.value
+        val hasActiveDelay = allDelays.any { it.type == DSPEffectType.DELAY && it.isEnabled }
+        if (!hasActiveDelay) return
+
+        val now = System.currentTimeMillis()
+        globalTapTimes.add(now)
+        if (globalTapTimes.size > 4) globalTapTimes.removeAt(0)
+        
+        if (globalTapTimes.size >= 2) {
+            val intervals = globalTapTimes.zipWithNext { a, b -> b - a }
+            val avgMs = intervals.average().toFloat().coerceIn(10f, 2000f)
+            
+            // Apply to all channels
+            _channels.value.forEach { ch ->
+                ch.dspEffects.filter { it.type == DSPEffectType.DELAY }.forEach { effect ->
+                    val paramIndex = effect.type.params.indexOf(DSPParamType.DELAY_TIME)
+                    if (paramIndex != -1) {
+                        updateEffectParam(ch.id, effect.id, paramIndex, avgMs)
+                    }
+                }
+            }
+            
+            // Apply to Master
+            _masterDspEffects.value.filter { it.type == DSPEffectType.DELAY }.forEach { effect ->
+                val paramIndex = effect.type.params.indexOf(DSPParamType.DELAY_TIME)
+                if (paramIndex != -1) {
+                    updateEffectParam(MASTER_CHANNEL_ID, effect.id, paramIndex, avgMs)
+                }
+            }
+        }
+    }
+
+    fun tapDelayTime(channelId: Int, effectId: String) {
+        val now = System.currentTimeMillis()
+        val list = tapTimes.getOrPut(effectId) { mutableListOf() }
+        list.add(now)
+        if (list.size > 4) list.removeAt(0)
+        
+        if (list.size >= 2) {
+            val intervals = list.zipWithNext { a, b -> b - a }
+            val avgMs = intervals.average().toFloat()
+            
+            // Find delay time param index dynamically
+            val effect = if (channelId == MASTER_CHANNEL_ID) {
+                _masterDspEffects.value.find { it.id == effectId }
+            } else {
+                _channels.value.find { it.id == channelId }?.dspEffects?.find { it.id == effectId }
+            }
+            
+            val paramIndex = effect?.type?.params?.indexOf(DSPParamType.DELAY_TIME) ?: 0
+            updateEffectParam(channelId, effectId, paramIndex, avgMs.coerceIn(10f, 2000f))
+        }
+    }
+
+    fun resetEffectParams(channelId: Int, effectId: String) {
+        if (channelId == MASTER_CHANNEL_ID) {
+            val currentEffects = _masterDspEffects.value
+            val effectIdx = currentEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val effect = currentEffects[effectIdx]
+                val defaults = getDefaultParamsFor(effect.type)
+                
+                // Native Sync (Update native for each param in the defaults)
+                defaults.forEach { (pid, v) ->
+                    audioEngine.setEffectParam(MASTER_CHANNEL_ID, effectIdx, pid, v)
+                }
+                
+                // State Update (Single Batch)
+                val updatedEffects = currentEffects.toMutableList()
+                updatedEffects[effectIdx] = effect.copy(params = defaults)
+                _masterDspEffects.value = updatedEffects
+            }
+            return
+        }
+
+        updateChannel(channelId) { ch ->
+            val effectIdx = ch.dspEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val effect = ch.dspEffects[effectIdx]
+                val defaults = getDefaultParamsFor(effect.type)
+                
+                // Native Sync
+                defaults.forEach { (pid, v) ->
+                    audioEngine.setEffectParam(ch.id, effectIdx, pid, v)
+                }
+                
+                // State Update (Batch)
+                val updatedEffects = ch.dspEffects.toMutableList()
+                updatedEffects[effectIdx] = effect.copy(params = defaults)
+                ch.copy(dspEffects = updatedEffects)
+            } else ch
+        }
+    }
+
+    fun addEffectToChannel(channelId: Int, type: DSPEffectType) {
+        val defaultParams = getDefaultParamsFor(type)
+        if (channelId == MASTER_CHANNEL_ID) {
+            val newEffect = DSPEffectInstance(
+                id = java.util.UUID.randomUUID().toString(),
+                type = type,
+                params = defaultParams
+            )
+            val updatedEffects = (_masterDspEffects.value + newEffect).sortedBy { it.type.priority }
+            _masterDspEffects.value = updatedEffects
+            
+            audioEngine.addEffect(MASTER_CHANNEL_ID, type.id)
+            
+            // Find the new index of this specific effect after sorting
+            val newIdx = updatedEffects.indexOfFirst { it.id == newEffect.id }
+            
+            // Push default params to native using the correct index
+            defaultParams.forEach { (pid, v) -> 
+                _audioEngine.setEffectParam(MASTER_CHANNEL_ID, newIdx, pid, v)
+            }
+            return
+        }
+
+        updateChannel(channelId) { ch ->
+            val newEffect = DSPEffectInstance(
+                id = java.util.UUID.randomUUID().toString(),
+                type = type,
+                params = defaultParams
+            )
+            val updatedEffects = (ch.dspEffects + newEffect).sortedBy { it.type.priority }
+            
+            // Sync with Native Engine
+            _audioEngine.addEffect(ch.id, type.id)
+            
+            // Find the new index of this specific effect after sorting
+            val newIdx = updatedEffects.indexOfFirst { it.id == newEffect.id }
+            
+            // Push default params to native using the correct index
+            defaultParams.forEach { (pid, v) ->
+                _audioEngine.setEffectParam(ch.id, newIdx, pid, v)
+            }
+            
+            ch.copy(dspEffects = updatedEffects)
+        }
+    }
+
+    fun removeEffectFromChannel(channelId: Int, effectId: String) {
+        if (channelId == MASTER_CHANNEL_ID) {
+            val currentEffects = _masterDspEffects.value
+            val effectIdx = currentEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = currentEffects.toMutableList()
+                updatedEffects.removeAt(effectIdx)
+                _masterDspEffects.value = updatedEffects
+                
+                _audioEngine.removeEffect(MASTER_CHANNEL_ID, effectIdx)
+            }
+            return
+        }
+
+        updateChannel(channelId) { ch ->
+            val effectIdx = ch.dspEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = ch.dspEffects.toMutableList()
+                updatedEffects.removeAt(effectIdx)
+                
+                // Sync with Native Engine
+                _audioEngine.removeEffect(ch.id, effectIdx)
+                
+                ch.copy(dspEffects = updatedEffects)
+            } else ch
+        }
     }
 
     fun updateOctaveShift(channelId: Int, delta: Int) {
@@ -1070,7 +1440,7 @@ class MixerViewModel : ViewModel() {
 
             // All notes off on this channel to stop any lingering sound
             for (key in 0..127) {
-                audioEngine.noteOff(channelId, key)
+                _audioEngine.noteOff(channelId, key)
             }
             activeNotesCount[channelId] = 0
             channelInternalLevels[channelId] = 0f
@@ -1081,7 +1451,7 @@ class MixerViewModel : ViewModel() {
                 val otherUsers = _channels.value.any { it.id != channelId && it.sfId == sfIdToUnload }
                 if (!otherUsers) {
                     Log.i(TAG, "Unloading last instance of sfId $sfIdToUnload from engine and cache")
-                    audioEngine.unloadSoundFont(sfIdToUnload)
+                    _audioEngine.unloadSoundFont(sfIdToUnload)
                     
                     // Clear from cache to allow clean re-load
                     val baseName = soundFontFullName?.substringBefore(" [")
@@ -1118,8 +1488,16 @@ class MixerViewModel : ViewModel() {
             // 1. Cleanup resources (Notes off, SF2 unload if not shared)
             performSoundFontRemoval(channelId)
             
-            // 2. Remove from StateFlow
-            _channels.value = _channels.value.filter { it.id != channelId }
+                    // Clean up DSP effects safely
+            val channel = _channels.value.find { it.id == channelId }
+            channel?.dspEffects?.forEachIndexed { index, effect ->
+                if (effect.isEnabled) {
+                    _audioEngine.setEffectEnabled(channelId, index, false)
+                }
+            }
+            _audioEngine.clearEffects(channelId)
+            
+            updateChannels(_channels.value.filter { it.id != channelId })
             
             // 3. Cleanup associated UI/state maps
             activeNotesCount.remove(channelId)
@@ -1186,6 +1564,14 @@ class MixerViewModel : ViewModel() {
         Log.i(TAG, "Master Limiter set to: $enabled")
     }
 
+    fun toggleDspMasterBypass() {
+        val newState = !_isDspMasterBypass.value
+        _isDspMasterBypass.value = newState
+        audioEngine.setDspMasterBypass(newState)
+        Log.i(TAG, "DSP Master Bypass set to: $newState")
+        updateSystemEvent("DSP Bypass: ${if (newState) "LIGADO" else "DESLIGADO"}")
+    }
+
     fun updateVelocityCurve(curve: Int) {
         _velocityCurve.value = curve
         settingsRepo?.velocityCurve = curve
@@ -1249,12 +1635,12 @@ class MixerViewModel : ViewModel() {
             // 1. Unload all SoundFonts
             _channels.value.forEach { ch ->
                 if (ch.sfId >= 0) {
-                    audioEngine.unloadSoundFont(ch.sfId)
+                    _audioEngine.unloadSoundFont(ch.sfId)
                 }
             }
             
             // 2. Destroy Audio Engine (Oboe/AAudio)
-            audioEngine.destroy()
+            _audioEngine.destroy()
             
             // 3. Stop MIDI Manager
             midiManager?.stop()
@@ -1272,21 +1658,25 @@ class MixerViewModel : ViewModel() {
     }
 
     private fun reinitAudioEngine(context: Context) {
-        if (audioEngine is DummyAudioEngine) return
+        if (_audioEngine is DummyAudioEngine) return
         
         scope.launch(Dispatchers.IO) {
             isPeakPollingSuspended = true
             try {
                 Log.i(TAG, "Reinitializing Audio Engine (Buffer=${_bufferSize.value}, SR=${_sampleRate.value})")
                 
-                audioEngine.destroy()
+                _audioEngine.destroy()
                 val deviceId = _selectedAudioDeviceId.value
-                audioEngine.init(_sampleRate.value, _bufferSize.value, deviceId)
+                _audioEngine.initialize(_sampleRate.value, _bufferSize.value, deviceId)
                 
                 // Re-apply engine globals
-                audioEngine.setInterpolation(_interpolationMethod.value)
-                audioEngine.setPolyphony(_maxPolyphony.value)
-                audioEngine.setMasterLimiter(_isMasterLimiterEnabled.value)
+                _audioEngine.setInterpolation(_interpolationMethod.value)
+                _audioEngine.setPolyphony(_maxPolyphony.value)
+                _audioEngine.setMasterLimiter(_isMasterLimiterEnabled.value)
+                
+                // CRITICAL: Clear cache because the new synth instance has new sfIds
+                loadedSf2Cache.clear()
+                activeNotesCount.clear() // Clear UI ghost notes since engine was destroyed
                 
                 // Reload SF2s silently for all configured channels
                 _channels.value.forEach { ch ->
@@ -1298,15 +1688,18 @@ class MixerViewModel : ViewModel() {
                         Log.d(TAG, "Restoring channel ${ch.id}: looking for $restoredFile")
                         
                         if (restoredFile.exists()) {
-                            val newSfId = audioEngine.loadSoundFont(restoredFile.absolutePath)
+                            val newSfId = _audioEngine.loadSoundFont(restoredFile.absolutePath)
                             if (newSfId >= 0) {
-                                (audioEngine as? FluidSynthEngine)?.warmUpChannel(ch.id)
-                                audioEngine.programSelect(ch.id, newSfId, ch.bank, ch.program)
+                                (_audioEngine as? FluidSynthEngine)?.warmUpChannel(ch.id)
+                                _audioEngine.programSelect(ch.id, newSfId, ch.bank, ch.program)
+                                
+                                // Re-populate cache for future hits
+                                loadedSf2Cache[baseName] = newSfId
                                 
                                 // Update internal state with new sfId
-                                _channels.value = _channels.value.map {
+                                updateChannels(_channels.value.map {
                                     if (it.id == ch.id) it.copy(sfId = newSfId) else it
-                                }
+                                })
                                 Log.i(TAG, "Channel ${ch.id} restored successfully (sfId=$newSfId)")
                             } else {
                                 Log.e(TAG, "Failed to reload soundfont for channel ${ch.id}")
@@ -1314,12 +1707,14 @@ class MixerViewModel : ViewModel() {
                         } else {
                             Log.w(TAG, "Restoration failed: file not found for channel ${ch.id} ($baseName)")
                             // Reset sfId if file is gone to avoid ghost states
-                            _channels.value = _channels.value.map {
+                            updateChannels(_channels.value.map {
                                 if (it.id == ch.id) it.copy(sfId = -1) else it
-                            }
+                            })
                         }
                     }
                 }
+                
+                syncEffectsToEngine()
                 
                 updateSystemEvent("Motor Reiniciado (${_bufferSize.value} samples)")
                 Log.i(TAG, "Audio Engine re-initialization COMPLETE")
@@ -1333,6 +1728,32 @@ class MixerViewModel : ViewModel() {
     }
 
     // --- Utility ---
+
+    private fun syncEffectsToEngine() {
+        Log.i(TAG, "Syncing all DSP effects to engine...")
+        
+        // 1. Master Racks
+        audioEngine.clearEffects(MASTER_CHANNEL_ID)
+        _masterDspEffects.value.forEachIndexed { index, effect ->
+            audioEngine.addEffect(MASTER_CHANNEL_ID, effect.type.id)
+            audioEngine.setEffectEnabled(MASTER_CHANNEL_ID, index, effect.isEnabled)
+            effect.params.forEach { (paramId, value) ->
+                audioEngine.setEffectParam(MASTER_CHANNEL_ID, index, paramId, value)
+            }
+        }
+        
+        // 2. Channel Racks
+        _channels.value.forEach { ch ->
+            audioEngine.clearEffects(ch.id)
+            ch.dspEffects.forEachIndexed { index, effect ->
+                audioEngine.addEffect(ch.id, effect.type.id)
+                audioEngine.setEffectEnabled(ch.id, index, effect.isEnabled)
+                effect.params.forEach { (paramId, value) ->
+                    audioEngine.setEffectParam(ch.id, index, paramId, value)
+                }
+            }
+        }
+    }
 
     /**
      * Converte posição do fader (0.0-1.0) para dB (-60 a +6).
@@ -1393,7 +1814,7 @@ class MixerViewModel : ViewModel() {
                 if (isPeakPollingSuspended) continue
                 
                 val levels = FloatArray(16)
-                audioEngine.getChannelLevels(levels)
+                _audioEngine.getChannelLevels(levels)
 
                 // Early-exit: if silence and already zeroed, avoid recomposition
                 val hasAnyNativeSignal = levels.any { it > 0.0001f }
@@ -1401,14 +1822,11 @@ class MixerViewModel : ViewModel() {
                 if (!hasAnyNativeSignal && !hasAnyInternalSignal) {
                     if (_masterLevel.value > 0f) {
                         _masterLevel.value = 0f
-                        _channelLevels.value = FloatArray(16)
+                        _channelLevels.forEach { it.value = 0f }
                         channelInternalLevels.clear()
                     }
                     continue
                 }
-
-                val currentLevels = _channelLevels.value.copyOf()
-                var anyLevelChanged = false
 
                 _channels.value.forEachIndexed { index, channel ->
                     val chId = channel.id
@@ -1443,16 +1861,12 @@ class MixerViewModel : ViewModel() {
                     
                     if (chId in 0..15) {
                         // Use a smaller threshold or explicit zero check to avoid "freezing"
-                        val diff = kotlin.math.abs(displayLevel - currentLevels[chId])
-                        if (displayLevel == 0f && currentLevels[chId] > 0f || diff > 0.001f) {
-                            currentLevels[chId] = displayLevel
-                            anyLevelChanged = true
+                        val currentLev = _channelLevels[chId].value
+                        val diff = kotlin.math.abs(displayLevel - currentLev)
+                        if (displayLevel == 0f && currentLev > 0f || diff > 0.001f) {
+                            _channelLevels[chId].value = displayLevel
                         }
                     }
-                }
-
-                if (anyLevelChanged) {
-                    _channelLevels.value = currentLevels
                 }
 
                 // Master Peak level accumulation
@@ -1497,6 +1911,23 @@ class MixerViewModel : ViewModel() {
     private fun triggerNoteOff(channelId: Int) {
         val count = activeNotesCount.getOrDefault(channelId, 0)
         activeNotesCount[channelId] = kotlin.math.max(0, count - 1)
+    }
+
+    private fun getDspParamRange(param: DSPParamType, effectType: DSPEffectType): ClosedFloatingPointRange<Float> {
+        return when (param) {
+            DSPParamType.LOW_FREQ, DSPParamType.MID_FREQ, DSPParamType.HIGH_FREQ, DSPParamType.CUTOFF_FREQ -> 20f..20000f
+            DSPParamType.LOW_GAIN, DSPParamType.MID_GAIN, DSPParamType.HIGH_GAIN, DSPParamType.OUTPUT_GAIN, DSPParamType.MAKEUP_GAIN -> -15f..15f
+            DSPParamType.THRESHOLD -> if (effectType == DSPEffectType.LIMITER) -12f..0f else -40f..0f
+            DSPParamType.MID_Q, DSPParamType.RESONANCE -> 0.5f..4.0f
+            DSPParamType.DELAY_TIME -> 10f..1500f
+            DSPParamType.DELAY_FEEDBACK -> 0f..0.85f
+            DSPParamType.MOD_RATE -> if (effectType == DSPEffectType.CHORUS) 0.1f..3.0f else 0.1f..15.0f
+            DSPParamType.ATTACK -> 1f..100f
+            DSPParamType.RELEASE -> if (effectType == DSPEffectType.LIMITER) 1f..500f else 20f..1000f
+            DSPParamType.RATIO -> 1f..10f
+            DSPParamType.KNEE -> 0f..12f
+            else -> 0f..1f
+        }
     }
 
     override fun onCleared() {

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Construction
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +39,8 @@ fun InstrumentChannelOptionsMenu(
     onDismiss: () -> Unit,
     onColorChange: (Long?) -> Unit,
     onRemoveClick: () -> Unit,
-    onAdvancedOptionsClick: () -> Unit = {}
+    onAdvancedOptionsClick: () -> Unit = {},
+    onDSPEffectsClick: () -> Unit = {}
 ) {
     var currentState by remember { mutableStateOf(ChannelDialogState.MAIN) }
 
@@ -149,6 +151,17 @@ fun InstrumentChannelOptionsMenu(
                                 onClick = {
                                     onDismiss()
                                     onAdvancedOptionsClick()
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OptionItem(
+                                icon = Icons.Default.Settings,
+                                label = "Rack de Efeitos",
+                                onClick = {
+                                    onDismiss()
+                                    onDSPEffectsClick()
                                 }
                             )
                             

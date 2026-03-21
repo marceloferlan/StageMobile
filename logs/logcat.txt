@@ -1,11 +1,396 @@
-Tom,Hexadecimal,Nome Sugerido
-Azul,#5C7080,Blue Slate
-Verde,#6B8E6B,Sage Green
-Vermelho,#A66D6D,Dusty Rose
-Amarelo,#A6966D,Old Gold
-Roxo,#7D6DA6,Muted Iris
-Ciano,#6DA6A6,Ocean Grey
-Laranja,#A6826D,Terracotta
-Oliva,#848E6B,Olive Drab
-Violeta,#936DA6,Deep Mauve
-Cinza Azulado,#6D7DA6,Steel Blue
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
+  [1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
+  [2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
+  [3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
+  [4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
+  [5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
+  [6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
+  [7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
+  [8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
+  [9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
+  [10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
+  [11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
+  [12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
+  [13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
+  [14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
+  [15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
+  [16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
+  [17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
+  [18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
+  [19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
+  [20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
+  [21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
+  [22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
+  [23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
+  [24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
+  [25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
+  [26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
+  [27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
+  FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
+  /Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
+  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
+     31 |         filterL.setup(2, 44100, cutoff, q);
+        |         ~~~~~~~~~~~~~                   ^
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+     87 |   void setup (int order,
+        |        ^      ~~~~~~~~~~
+     88 |               double sampleRate,
+        |               ~~~~~~~~~~~~~~~~~~
+     89 |               double cutoffFrequency);
+        |               ~~~~~~~~~~~~~~~~~~~~~~
+  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
+     32 |         filterR.setup(2, 44100, cutoff, q);
+        |         ~~~~~~~~~~~~~                   ^
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+     87 |   void setup (int order,
+        |        ^      ~~~~~~~~~~
+     88 |               double sampleRate,
+        |               ~~~~~~~~~~~~~~~~~~
+     89 |               double cutoffFrequency);
+        |               ~~~~~~~~~~~~~~~~~~~~~~
+  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
+     85 |             outL[i] += reverb.lastOutLeft();
+        |                        ~~~~~~ ^
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
+     86 |             outR[i] += reverb.lastOutRight();
+        |                        ~~~~~~ ^
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
+     84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
+        |             ^~~~~~~~~~~~~~~~~~~~~~~~
+  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
+    360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
+        |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    361 |         float **left, float **right,
+        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    362 |         float **fx_left, float **fx_right);
+        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  5 errors generated.
+  ninja: build stopped: subcommand failed.
+  
+  C++ build system [build] failed while executing:
+      /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
+        -C \
+        /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
+        synthmodule
+    from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (Powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:135)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:288)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:133)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:121)
+	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:45)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:355)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:342)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:338)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:338)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:327)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.gradle.internal.UncheckedException: com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
+[1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
+[2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
+[3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
+[4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
+[5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
+[6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
+[7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
+[8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
+[9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
+[10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
+[11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
+[12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
+[13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
+[14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
+[15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
+[16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
+[17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
+[18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
+[19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
+[20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
+[21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
+[22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
+[23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
+[24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
+[25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
+[26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
+[27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
+FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
+/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
+   31 |         filterL.setup(2, 44100, cutoff, q);
+      |         ~~~~~~~~~~~~~                   ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+   87 |   void setup (int order,
+      |        ^      ~~~~~~~~~~
+   88 |               double sampleRate,
+      |               ~~~~~~~~~~~~~~~~~~
+   89 |               double cutoffFrequency);
+      |               ~~~~~~~~~~~~~~~~~~~~~~
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
+   32 |         filterR.setup(2, 44100, cutoff, q);
+      |         ~~~~~~~~~~~~~                   ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+   87 |   void setup (int order,
+      |        ^      ~~~~~~~~~~
+   88 |               double sampleRate,
+      |               ~~~~~~~~~~~~~~~~~~
+   89 |               double cutoffFrequency);
+      |               ~~~~~~~~~~~~~~~~~~~~~~
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
+   85 |             outL[i] += reverb.lastOutLeft();
+      |                        ~~~~~~ ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
+   86 |             outR[i] += reverb.lastOutRight();
+      |                        ~~~~~~ ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
+   84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
+  360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
+      |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  361 |         float **left, float **right,
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  362 |         float **fx_left, float **fx_right);
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+5 errors generated.
+ninja: build stopped: subcommand failed.
+
+C++ build system [build] failed while executing:
+    /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
+      -C \
+      /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
+      synthmodule
+  from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
+	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:69)
+	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:42)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:128)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.doExecute(StandardTaskAction.java:58)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:252)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:237)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:220)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:203)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:170)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:68)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:38)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:28)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
+	at org.gradle.internal.Either$Right.fold(Either.java:176)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:64)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:35)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:62)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:40)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:76)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:45)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:136)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:61)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:38)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:297)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:47)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:34)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:64)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
+	... 29 more
+Caused by: com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
+[1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
+[2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
+[3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
+[4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
+[5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
+[6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
+[7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
+[8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
+[9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
+[10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
+[11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
+[12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
+[13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
+[14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
+[15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
+[16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
+[17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
+[18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
+[19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
+[20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
+[21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
+[22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
+[23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
+[24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
+[25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
+[26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
+[27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
+FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
+/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
+   31 |         filterL.setup(2, 44100, cutoff, q);
+      |         ~~~~~~~~~~~~~                   ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+   87 |   void setup (int order,
+      |        ^      ~~~~~~~~~~
+   88 |               double sampleRate,
+      |               ~~~~~~~~~~~~~~~~~~
+   89 |               double cutoffFrequency);
+      |               ~~~~~~~~~~~~~~~~~~~~~~
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
+   32 |         filterR.setup(2, 44100, cutoff, q);
+      |         ~~~~~~~~~~~~~                   ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
+   87 |   void setup (int order,
+      |        ^      ~~~~~~~~~~
+   88 |               double sampleRate,
+      |               ~~~~~~~~~~~~~~~~~~
+   89 |               double cutoffFrequency);
+      |               ~~~~~~~~~~~~~~~~~~~~~~
+In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
+   85 |             outL[i] += reverb.lastOutLeft();
+      |                        ~~~~~~ ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
+   86 |             outR[i] += reverb.lastOutRight();
+      |                        ~~~~~~ ^
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
+   84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~
+/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
+  360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
+      |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  361 |         float **left, float **right,
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  362 |         float **fx_left, float **fx_right);
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+5 errors generated.
+ninja: build stopped: subcommand failed.
+
+C++ build system [build] failed while executing:
+    /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
+      -C \
+      /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
+      synthmodule
+  from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:288)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:108)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:106)
+	at com.android.build.gradle.internal.cxx.timing.TimingEnvironmentKt.time(TimingEnvironment.kt:32)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess(ExecuteProcess.kt:106)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess$default(ExecuteProcess.kt:85)
+	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.executeProcessBatch(CxxRegularBuilder.kt:332)
+	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.build(CxxRegularBuilder.kt:129)
+	at com.android.build.gradle.tasks.ExternalNativeBuildTask.doTaskAction(ExternalNativeBuildTask.kt:72)
+	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask$taskAction$$inlined$recordTaskAction$1.invoke(BaseTask.kt:78)
+	at com.android.build.gradle.internal.tasks.Blocks.recordSpan(Blocks.java:51)
+	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask.taskAction(UnsafeOutputsTask.kt:81)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
+	... 117 more
+Caused by: com.android.ide.common.process.ProcessException: Error while executing process /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja with arguments {-C /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a synthmodule}
+	at com.android.build.gradle.internal.process.GradleProcessResult.buildProcessException(GradleProcessResult.java:73)
+	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:48)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:277)
+	... 129 more
+Caused by: org.gradle.process.ProcessExecutionException: Process 'command '/Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja'' finished with non-zero exit value 1
+	at org.gradle.process.internal.DefaultExecHandle$ExecResultImpl.assertNormalExitValue(DefaultExecHandle.java:450)
+	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:46)
+	... 130 more
+
+
+BUILD FAILED in 1m 29s

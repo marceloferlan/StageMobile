@@ -33,13 +33,13 @@ data class MidiLearnState(
  * Change values here to update ALL learnable components at once.
  */
 object MidiLearnDefaults {
-    val learnColor = Color(0xFF00E5FF)   // Ciano — unmapped, ready to learn
-    val mappedColor = Color(0xFF39FF14)  // Verde neon — already has mapping
-    const val idleAlpha = 0.3f           // Alpha when learn is active but component not selected
-    const val pulseMin = 0.4f            // Pulse animation lower bound
-    const val pulseMax = 1.0f            // Pulse animation upper bound
-    const val pulseDurationMs = 600      // Pulse animation duration
-    val defaultBorderWidth = 2.dp        // Default halo border width
+    val learnColor = Color(0xFFFFEE3B)  // Amarelo Puro Neon — unmapped, ready to learn
+    val mappedColor = Color(0xFF39FF14) // Verde neon — already has mapping
+    const val idleAlpha = 0.5f          // Alpha when learn is active mas componente não selecionado (aumentado para mais vibração)
+    const val pulseMin = 0.6f           // Pulse animation lower bound (menos apagado na descida)
+    const val pulseMax = 1.0f           // Pulse animation upper bound
+    const val pulseDurationMs = 600     // Pulse animation duration
+    val defaultBorderWidth = 3.dp       // Largura da borda nos knobs (aumentada para pop extra)
 }
 
 /**

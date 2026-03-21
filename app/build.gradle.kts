@@ -43,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        prefab = true
     }
 
     externalNativeBuild {
@@ -50,9 +51,19 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
         }
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            pickFirsts.add("**/liboboe.so")
+        }
+    }
 }
 
 dependencies {
+    implementation("com.google.oboe:oboe:1.9.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

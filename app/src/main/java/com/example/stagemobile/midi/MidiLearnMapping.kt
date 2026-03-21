@@ -9,7 +9,8 @@ enum class MidiLearnTarget {
     OCTAVE_UP,
     OCTAVE_DOWN,
     TRANSPOSE_UP,
-    TRANSPOSE_DOWN
+    TRANSPOSE_DOWN,
+    DSP_PARAM
 }
 
 /**
@@ -17,7 +18,9 @@ enum class MidiLearnTarget {
  */
 data class MidiLearnTargetInfo(
     val target: MidiLearnTarget,
-    val channelId: Int
+    val channelId: Int,
+    val effectId: String? = null,
+    val paramId: Int? = null
 )
 
 /**
@@ -28,5 +31,7 @@ data class MidiLearnMapping(
     val channelId: Int,
     val ccNumber: Int,
     val midiChannel: Int, // MIDI channel the CC was received on
-    val deviceName: String? = null // Optional device filter
+    val deviceName: String? = null, // Optional device filter
+    val effectId: String? = null,
+    val paramId: Int? = null
 )

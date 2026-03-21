@@ -53,10 +53,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 
 
+import kotlinx.coroutines.flow.StateFlow
+import androidx.compose.runtime.collectAsState
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun InstrumentChannelStrip(
     channel: InstrumentChannel,
+    levelFlow: StateFlow<Float>,
     onVolumeChange: (Float) -> Unit,
     onOctaveDown: () -> Unit,
     onOctaveUp: () -> Unit,
@@ -86,7 +90,6 @@ fun InstrumentChannelStrip(
     onLearnOctaveDownLongClick: () -> Unit = {},
     onColorChange: (Long?) -> Unit = {},
     onRemoveClick: () -> Unit = {},
-    level: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val isTablet = UiUtils.rememberIsTablet()
@@ -270,23 +273,16 @@ fun InstrumentChannelStrip(
                     .padding(top = 6.dp)
                     .border(width = 1.dp, color = Color(0xFF333333), shape = RoundedCornerShape(4.dp))
                     .padding(1.dp)
-                    .background(Color(0xFF1A1A1A), RoundedCornerShape(3.dp))
-                    .clip(RoundedCornerShape(3.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black)
             ) {
-                val peakHeightPx = constraints.maxHeight.toFloat()
-                val density = LocalDensity.current.density
-                val isTabletValue = if (isTablet) true else false // Auxiliary to avoid confusion with parameter naming if any
+                // Read StateFlow HERE so only this Box recomposes 30fps!
+                val level by levelFlow.collectAsState()
 
-                // 1. The Mask Layout "Off" segments (Subtle Background)
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawRect(
-                        color = Color(0xFF222222),
-                        size = size
-                    )
-                }
-
-                // 2. The Dynamic Gradient Layer (The "Light")
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                // 1. The Actual Audio Level (Solid Green/Yellow/Red)
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     val barHeight = size.height * level.coerceIn(0f, 1f)
                     
                     val brush = androidx.compose.ui.graphics.Brush.verticalGradient(

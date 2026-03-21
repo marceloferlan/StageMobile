@@ -15,7 +15,48 @@ import com.example.stagemobile.ui.theme.StageMobileTheme
 import com.example.stagemobile.ui.components.SplashScreen
 import kotlinx.coroutines.delay
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 class MainActivity : ComponentActivity() {
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (allGranted) {
+            // Permissions granted, potentially re-init audio devices here if needed
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        val permissions = mutableListOf<String>()
+        
+        // Bluetooth permissions for Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        
+        // Legacy storage if needed
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+        
+        // Audio
+        permissions.add(Manifest.permission.RECORD_AUDIO)
+
+        val toRequest = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (toRequest.isNotEmpty()) {
+            requestPermissionLauncher.launch(toRequest.toTypedArray())
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -32,6 +73,8 @@ class MainActivity : ComponentActivity() {
             
             // Hide both Status Bar and Navigation Bar
             windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            
+            checkAndRequestPermissions()
         } catch (e: Exception) {
         }
 

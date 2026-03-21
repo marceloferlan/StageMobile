@@ -51,43 +51,80 @@ class DeviceAudioManager(context: Context) {
         }, 1000)
     }
 
+    private fun getDevicePriority(type: Int): Int {
+        return when (type) {
+            AudioDeviceInfo.TYPE_BLE_HEADSET, 
+            AudioDeviceInfo.TYPE_BLE_SPEAKER, 
+            AudioDeviceInfo.TYPE_BLE_BROADCAST -> 100
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> 90
+            AudioDeviceInfo.TYPE_USB_DEVICE, 
+            AudioDeviceInfo.TYPE_USB_HEADSET -> 80
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES, 
+            AudioDeviceInfo.TYPE_WIRED_HEADSET, 
+            AudioDeviceInfo.TYPE_AUX_LINE -> 70
+            AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> 10
+            else -> 0
+        }
+    }
+
     private fun checkOutputDevices() {
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-        val list = mutableListOf<AudioDeviceState>()
+        val finalSelection = mutableListOf<AudioDeviceState>()
+        val deviceMap = mutableMapOf<String, Pair<Int, AudioDeviceState>>() // Key: Name, Value: (Priority, State)
         var internalAdded = false
         
-        // 1. Prioridade para Speaker Interno (Garante que apareça se disponível)
+        // 1. Prioridade para Speaker Interno
         devices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }?.let {
             val manufacturer = android.os.Build.MANUFACTURER.uppercase()
             val deviceModel = android.os.Build.MODEL
-            list.add(AudioDeviceState(it.id, "Interna (Speaker $manufacturer $deviceModel)"))
+            finalSelection.add(AudioDeviceState(it.id, "Interna (Speaker $manufacturer $deviceModel)"))
             internalAdded = true
         }
 
-        // 2. Adicionar demais dispositivos (USB/Wired) e outros internos apenas se o Speaker falhar
-        devices.forEach {
-            val type = it.type
+        // 2. Processar demais dispositivos com Deduplicação
+        devices.forEach { device ->
+            val type = device.type
+            val isBluetooth = type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || 
+                             type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                             type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                             type == AudioDeviceInfo.TYPE_BLE_SPEAKER ||
+                             type == AudioDeviceInfo.TYPE_BLE_BROADCAST
+                             
             val isExternal = type == AudioDeviceInfo.TYPE_USB_DEVICE || 
-                             type == AudioDeviceInfo.TYPE_USB_HEADSET ||
-                             type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
-                             type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                             type == AudioDeviceInfo.TYPE_AUX_LINE
-            
-            if (isExternal) {
-                val productName = it.productName?.toString() ?: "Interface USB ${it.id}"
-                list.add(AudioDeviceState(it.id, "Externa ($productName)"))
+                            type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                            type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                            type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                            type == AudioDeviceInfo.TYPE_AUX_LINE
+
+            if (isBluetooth || isExternal) {
+                val prefix = if (isBluetooth) "Bluetooth" else "Externa"
+                val productName = try {
+                    device.productName?.toString() ?: "Interface ${device.id}"
+                } catch (e: SecurityException) {
+                    "Dispositivo Protegido (Sem Permissão)"
+                }
+                
+                val displayName = "$prefix ($productName)"
+                val priority = getDevicePriority(type)
+                
+                val existing = deviceMap[displayName]
+                if (existing == null || priority > existing.first) {
+                    deviceMap[displayName] = priority to AudioDeviceState(device.id, displayName)
+                }
             } else if (!internalAdded && type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE) {
-                // Fallback para Earpiece apenas se não houver Speaker (raro)
                 val manufacturer = android.os.Build.MANUFACTURER.uppercase()
                 val deviceModel = android.os.Build.MODEL
-                list.add(AudioDeviceState(it.id, "Interna (Earpiece $manufacturer $deviceModel)"))
+                finalSelection.add(AudioDeviceState(device.id, "Interna (Earpiece $manufacturer $deviceModel)"))
                 internalAdded = true
             }
         }
 
-        if (_availableAudioDevices.value != list) {
-            _availableAudioDevices.value = list
-            Log.i("DeviceAudioManager", "Outputs updated: $list")
+        // Adicionar dispositivos únicos do mapa à lista final
+        finalSelection.addAll(deviceMap.values.map { it.second })
+
+        if (_availableAudioDevices.value != finalSelection) {
+            _availableAudioDevices.value = finalSelection
+            Log.i("DeviceAudioManager", "Outputs updated: $finalSelection")
         }
     }
     

@@ -25,5 +25,6 @@ data class InstrumentChannel(
     val expressionEnabled: Boolean = false, // CC 11
     val pitchBendEnabled: Boolean = true, // Pitch Bend
     val footControllerEnabled: Boolean = false, // CC 4
-    val color: Long? = null // null uses default surface color
+    val color: Long? = null, // null uses default surface color
+    val dspEffects: List<DSPEffectInstance> = emptyList()
 )

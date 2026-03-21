@@ -4,7 +4,8 @@ import android.util.Log
 import com.example.stagemobile.domain.model.Sf2Preset
 
 class DummyAudioEngine : AudioEngine {
-    override fun init(sampleRate: Int, bufferSize: Int, deviceId: Int) {
+    override val isInitialized: Boolean = true
+    override fun initialize(sampleRate: Int, bufferSize: Int, deviceId: Int) {
         Log.d("DummyEngine", "Audio Engine Initialized (SampleRate: $sampleRate, Buffer: $bufferSize, Device: $deviceId)")
     }
 
@@ -26,8 +27,8 @@ class DummyAudioEngine : AudioEngine {
         Log.d("DummyEngine", "Note Off: $key (Channel)")
     }
 
-    override fun setChannelVolume(channelId: Int, volume: Float) {
-        Log.d("DummyEngine", "Channel $channelId Volume: $volume")
+    override fun setVolume(channel: Int, volumeDb: Float) {
+        Log.d("DummyEngine", "Channel $channel Volume (dB): $volumeDb")
     }
 
     override fun controlChange(channel: Int, controller: Int, value: Int) {
@@ -46,8 +47,8 @@ class DummyAudioEngine : AudioEngine {
         Log.d("DummyEngine", "Program Change: ch=$channel, bank=$bank, program=$program")
     }
 
-    override fun programSelect(channel: Int, sfId: Int, bank: Int, program: Int) {
-        Log.d("DummyEngine", "programSelect(ch=$channel, sfId=$sfId, bank=$bank, prog=$program)")
+    override fun programSelect(channelId: Int, sfId: Int, bank: Int, program: Int) {
+        Log.d("DummyEngine", "programSelect(ch=$channelId, sfId=$sfId, bank=$bank, prog=$program)")
     }
 
     override fun getPresets(sfId: Int): List<Sf2Preset> {
@@ -69,6 +70,34 @@ class DummyAudioEngine : AudioEngine {
 
     override fun setMasterLimiter(enabled: Boolean) {
         Log.d("DummyEngine", "Master Limiter set to $enabled")
+    }
+
+    override fun addEffect(channel: Int, type: Int) {
+        Log.d("DummyEngine", "addEffect(ch=$channel, type=$type)")
+    }
+
+    override fun clearEffects(channel: Int) {
+        Log.d("DummyEngine", "clearEffects(ch=$channel)")
+    }
+
+    override fun removeEffect(channel: Int, index: Int) {
+        Log.d("DummyEngine", "removeEffect(ch=$channel, idx=$index)")
+    }
+
+    override fun setEffectParam(channel: Int, index: Int, paramId: Int, value: Float) {
+        Log.d("DummyEngine", "setEffectParam(ch=$channel, idx=$index, pid=$paramId, val=$value)")
+    }
+
+    override fun setEffectEnabled(channel: Int, index: Int, enabled: Boolean) {
+        Log.d("DummyEngine", "setEffectEnabled(ch=$channel, idx=$index, enabled=$enabled)")
+    }
+
+    override fun setDspMasterBypass(enabled: Boolean) {
+        Log.d("DummyEngine", "setDspMasterBypass(enabled=$enabled)")
+    }
+
+    override fun getEffectMeters(channel: Int, index: Int, output: FloatArray): Boolean {
+        return false
     }
 
     override fun destroy() {
