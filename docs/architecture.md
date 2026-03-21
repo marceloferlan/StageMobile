@@ -1,47 +1,55 @@
 # Arquitetura do Sistema: StageMobile
 
-Este documento descreve a infraestrutura técnica, as decisões de design e a organização dos componentes do projeto StageMobile.
+Este documento detalha a infraestrutura técnica, as decisões de design e a organização dos componentes do projeto StageMobile.
 
 ## 1. Stack Tecnológica
 - **Linguagem Principal:** Kotlin (Android) e C++ (Motor de Áudio).
 - **Interface Gráfica:** Jetpack Compose (Material 3).
 - **Motor de Áudio (Nativo):**
-    - **FluidSynth:** Síntese de áudio baseada em tabelas de ondas (SoundFonts).
+    - **FluidSynth:** Síntese de áudio baseada em SoundFonts (SF2).
     - **Oboe:** API de áudio C++ da Google para baixa latência (AAudio/OpenSLES).
     - **STK (Synthesis Toolkit):** Algoritmos de efeitos DSP (Chorus, Reverb, EQ, etc.).
     - **SoundTouch:** Processamento de tempo e pitch.
-- **Persistência:** `SharedPreferences` (via `SettingsRepository`) para configurações globais e mapeamentos MIDI.
+- **Gerenciamento MIDI:** Android MidiManager API.
+- **Persistência:** `SharedPreferences` (via `SettingsRepository`).
 
 ## 2. Componentes e Papéis (Arquitetura)
-O projeto segue uma arquitetura separada por camadas:
 
-### Camada de UI (Kotlin/Compose)
-- **`MixerViewModel`:** Atua como o "Cérebro" do app. Gerencia o estado de 16 canais, roteamento MIDI, carregamento de SoundFonts e sincronização com o motor nativo.
-- **`InstrumentChannelStrip`:** Componente de interface que representa um canal físico.
+### 2.1 Camada de UI (Kotlin/Compose)
+A interface é organizada para separar lógica de componentes puros:
+- **Screens:** Telas de alto nível (`MixerScreen`, `SystemGlobalSettings`, `DownloadsScreen`).
+- **Mixer Logic:** Componentes que traduzem estado em áudio (`InstrumentChannelStrip`, `VirtualKeyboard`).
+- **Custom Components:** Widgets de alta performance (`DSPCircularKnob`, `DSPVerticalFader`, `DSPMeter`).
+- **Theme:** Design System (Cores, Tipografia).
 
-### Camada de Domínio e Modelo
-- **`InstrumentChannel`:** Modelo de dados que contém o estado de um canal (Preset, Mute, Solo, Volume, Pan, Efeitos).
-- **`DSPEffectInstance`:** Contém os metadados e parâmetros de um efeito DSP.
-- **`Sf2Preset`:** Representação de um patch de SoundFont (Bank/Programm).
+### 2.2 Camada de Domínio e Modelo
+- **`InstrumentChannel`:** Objeto central que armazena parâmetros de Mix e a instância do preset SF2.
+- **`Sf2Preset`:** Metadados do patch carregado no FluidSynth.
+- **`DSPEffectInstance`:** Armazena metadados e parâmetros dos efeitos ativos.
 
-### Camada de Motor de Áudio (Native Bridge)
-- **`FluidSynthEngine`:** Wrapper JNI que expõe as funções C++ para o Kotlin.
-- **`fluidsynth_bridge.cpp`:** Gerenciador do ciclo de vida do sintetizador e das threads de áudio.
-- **`dsp_chain.h`:** Rack de efeitos nativo que processa o sinal PCM em tempo real.
+### 2.3 Camada de MIDI (Acesso ao Hardware)
+- **`MidiConnectionManager`:** Monitora portas USB/Bluetooth.
+    - **Regra:** Auto-conecta a múltiplos dispositivos simultaneamente.
+    - **Performance:** Separa o parsing da mensagem MIDI (`MidiReceiver`) em uma `MidiProcessingThread` com prioridade de áudio.
+- **`MidiUtils`:** Utilitários para conversão de notas (ex: 60 -> C4).
+- **`MidiLearnMapping`:** Persiste o vínculo entre um controlador externo (CC) e um alvo interno (`MidiLearnTarget`).
+
+### 2.4 Camada de Motor de Áudio (Native Bridge)
+- **`FluidSynthEngine`:** Interfacia o Kotlin com o motor nativo.
+- **`fluidsynth_bridge.cpp`:** Mantém a `midiQueue` (lock-free) e orquestra a síntese via Fluidsynth.
+- **`dsp_chain.h`:** Rack linear de efeitos que processa o áudio sintetizado.
+
+### 2.5 Utilitários e Infraestrutura
+- **`SystemResourceMonitor`:** Monitoramento de saúde do app.
+    - **Funcionamento:** Medição híbrida de memória (PSS + Native Heap Deltas). O sistema utiliza uma "âncora PSS" atualizada a cada 30 segundos para garantir precisão de longo prazo, enquanto os deltas de Native Heap fornecem reatividade instantânea (baixo jitter) ao carregar SoundFonts de 500MB+.
+- **`UiUtils`:** Inteligência reativa para layouts Tablets vs Celulares baseada em WindowSizeClasses.
 
 ## 3. Comunicação e Concorrência
-- **Threads:** 
-    - **UI Thread (Kotlin):** Interação do usuário.
-    - **Synth Thread (Native):** Processamento da fila MIDI.
-    - **Render Thread (Oboe):** Thread de tempo real de alta prioridade que gera o áudio final.
-- **Sincronização:** Utiliza-se um `midiQueue` (fila de eventos) no C++ com mecanismos de trava mínima para garantir que comandos de UI não interfiram na estabilidade do áudio ("Zero Glitch").
+- **Thread UI (Kotlin):** Recebe inputs e atualiza o estado observável no `MixerViewModel`.
+- **MidiProcessingThread (Java):** Thread de prioridade de áudio que despacha eventos MIDI para o C++.
+- **Render Thread (C++/Oboe):** Thread de tempo real de altíssima prioridade dedicada exclusivamente à geração de amostras sonoras.
 
-## 4. Modelagem de Dados e Persistência
-Não há uso de banco de dados relacional clássico (SQLite/Room) por questões de performance e simplicidade de estado.
-- **Configurações:** Salvas em formato JSON/XML via `SharedPreferences`.
-- **Mapeamento MIDI:** Salvo em `JSONArray` contendo `CC Number`, `Canal` e `Target`.
-
-## 5. Principais Decisões Arquiteturais
-1.  **Fixed Sample Rate:** O app opera prioritariamente em 48kHz para alinhar com o hardware Android moderno, evitando resostragem desnecessária.
-2.  **Stateless Native DSP:** O motor C++ é "burro" em termos de lógica de negócio; ele apenas processa comandos enviados pelo Kotlin, que detém a "Fonte da Verdade" do estado.
-3.  **SF2 Cache:** Implementação de um `sfId` único para evitar carregamentos redundantes de arquivos SoundFont idênticos na memória RAM.
+## 4. Principais Decisões Arquiteturais
+1.  **Threaded MIDI Dispatch:** Eventos MIDI são movidos para fora da UI Thread no momento em que entram no app.
+2.  **Fixed Sample Rate (48kHz):** Todos os cálculos de DSP e Sintetizador são fixados na taxa do hardware para evitar artefatos de aliasing.
+3.  **No-Sort DSP Rack:** A ordem dos efeitos em C++ é idêntica à ordem de inserção no Kotlin, garantindo que o índice visual na UI corresponda exatamente ao índice físico no buffer de áudio.
