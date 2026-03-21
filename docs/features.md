@@ -1,43 +1,67 @@
 # Funcionalidades e Requisitos: StageMobile
 
-Este documento descreve as capacidades funcionais do StageMobile e os requisitos não funcionais que sustentam a aplicação.
+Este documento descreve as capacidades funcionais do StageMobile, detalhando os fluxos de operação e as regras de negócio.
 
-## 1. Principais Funcionalidades
+## 1. Fluxo de MIDI Learn (Mapeamento de Hardware)
+O MIDI Learn permite que o músico vincule controladores físicos (Knobs, Sliders) aos parâmetros da interface de forma dinâmica.
 
-### 1.1 Mixer de 16 Canais (Mixer Multicamadas)
-- **Operação:** Até 16 instrumentos simultâneos.
-- **Controles Individuais:** Fader de Volume, Pan, Mute, Solo e Armamento (Active MIDI Channel).
-- **Indicadores de Nível:** Metering de Peak e RMS integrados com decaimento visual suave.
+```mermaid
+flowchart TD
+    A[Início: Long-Press no Knob/Fader] --> B[Estado: midiLearnMode = Ativo]
+    B --> C{Aguardando MIDI CC}
+    C -- Recebe CC x do Dispositivo Y --> D[Mapeamento: Target Z = CC x]
+    D --> E[Persistência: Salva no SettingsRepository]
+    E --> F[Fim: Knob agora responde ao CC x]
+    C -- Timeout / Cancelar --> G[Fim: Sem alteração]
+```
 
-### 1.2 Gerenciamento de SoundFonts (SF2)
-- **Navegação:** Interface intuitiva para busca de Bancos e Programas.
-- **Presets Dinâmicos:** Possibilidade de rotear múltiplos canais para o mesmo patch ou patches diferentes.
-- **Otimização de Carregamento:** O sistema utiliza um cache de `sfId` para que múltiplos canais que usam o mesmo arquivo SoundFont não dupliquem o uso de memória RAM.
+## 2. Gerenciamento de SoundFonts e Cache de Memória
+Para otimizar o uso de RAM, o sistema evita carregar o mesmo arquivo SF2 múltiplas vezes.
 
-### 1.3 Rack de Efeitos DSP e Cadeia de Sinal
-O processamento de áudio segue uma ordem de sinal fixa ("Signal Chain") inalterável para manter a consistência sonora:
-1. **HPF/LPF** (Filtros de corte) -> 2. **Compressor** -> 3. **EQ Paramétrico** -> 4. **Chorus** -> 5. **Tremolo** -> 6. **Delay** -> 7. **Reverb** -> 8. **Limiter**.
+```mermaid
+flowchart LR
+    A[Solicitação: Carregar SF2 'Piano.sf2'] --> B{Existe no loadedSf2Cache?}
+    B -- Sim --> C[Usa sfId existente]
+    B -- Não --> D[Carrega arquivo em RAM]
+    D --> E[Gera novo sfId]
+    E --> F[Registra no Cache]
+    C --> G[Vincula Canal ao sfId]
+    F --> G
+```
 
-### 1.4 MIDI Learn (Mapeamento de Hardware)
-- **Funcionalidade:** Permite vincular qualquer parâmetro visual (Knobs de EQ, Volume, etc.) a um controlador físico externo.
-- **Processo:** O usuário entra no modo de aprendizado (Long-press), move o controle no teclado externo, e o app armazena o `Control Change` (CC) correspondente através do `MidiConnectionManager`.
-- **Persistência:** Todos os mapeamentos são salvos automaticamente no `SettingsRepository`.
+## 3. Cadeia de Sinal DSP (Signal Chain)
+A ordem dos efeitos é crítica para a sonoridade profissional. O sinal flui linearmente através do rack nativo.
 
-### 1.5 Monitoramento de Recursos e Telemetria
-- **Performance:** Painel informativo que exibe em tempo real o uso de CPU e RAM.
-- **Cálculo Híbrido:** O `SystemResourceMonitor` detecta instantaneamente o carregamento de novas SF2 através da medição de Deltas no Native Heap, proporcionando feedback visual imediato para o músico.
+```mermaid
+graph LR
+    In[Audio Synth] --> F1[HPF/LPF]
+    F1 --> F2[Compressor]
+    F2 --> F3[Parametric EQ]
+    F3 --> F4[Chorus]
+    F4 --> F5[Tremolo]
+    F5 --> F6[Delay]
+    F6 --> F7[Reverb]
+    F7 --> F8[Limiter]
+    F8 --> Out[Master Out]
+```
 
-### 1.6 Teclado Virtual (Keybed Scalable)
-- **Design:** Touch-sensitive com suporte a deslize entre notas (`glissando`) e transposição instantânea (+/- 2 Oitavas / 12 Semitons).
+## 4. Regras de Negócio por Componente
 
-## 2. Fluxos e Regras de Negócio
-- **Armed Channels:** Somente os canais marcados como "Armed" (Luz ligada) respondem prioritariamente aos eventos de Note On.
-- **Global Settings:** O usuário pode configurar globalmente a Polifonia Máxima (até 256 vozes) e o método de Interpolação do FluidSynth para equilibrar fidelidade sonora e consumo de CPU.
-- **Sustain Inversion:** Regra específica para compatibilidade com pedais de polaridade invertida (Yamaha/NC).
-- **Latency First:** O sistema prioriza a renderização de áudio em detrimento de animações da interface se houver sobrecarga de CPU.
-- **Silence DSP:** O app possui um Master Bypass que silencia todo o processamento nativo para diagnóstico.
+### 4.1 Armamento de Canal (Armed State)
+- **Regra:** Apenas canais com o estado `isArmed = true` processam mensagens de `NoteOn` do barramento global.
+- **Exceção:** Mensagens de `ControlChange` (Volume/Pan) são processadas mesmo se o canal não estiver armado, desde que o mapeamento MIDI Learn exista.
 
-## 3. Requisitos Não Funcionais (NFR)
-- **Resiliência:** O áudio continua soando mesmo se a atividade for para segundo plano (Audio-foreground service).
-- **Musicalidade:** Ativação/desativação de efeitos utiliza cross-fades ou filtros de estabilização estruturais para evitar "pops".
-- **Acessibilidade de Palco:** Todos os elementos visuais são dimensionados para manipulação com luvas ou dedos suados/úmidos em contextos de show.
+### 4.2 Polifonia e Performance
+- **Dynamic Voice Allocation:** O FluidSynth gerencia as vozes com base no limite configurado globalmente (16 a 256).
+- **Prioridade:** Notas mais antigas são cortadas (Kill) se o limite for atingido, priorizando a sustentação das notas mais recentes.
+
+### 4.3 Curvas de Velocity
+O sistema aplica uma transformação matemática ao valor de velocity MIDI (0-127) antes de enviá-lo ao sintetizador:
+- **Linear:** Direto (1:1).
+- **Soft/Hard:** Curvas exponenciais para compensar a resistência física de diferentes teclados controladores.
+- **S-Curve:** Compressão de dinâmica nas extremidades.
+
+## 5. Requisitos Não Funcionais (NFR)
+- **Zero Latency:** Prioridade absoluta para a Thread de Renderização (Oboe).
+- **Stability:** O sistema deve suportar trocas abruptas de presets sem travamentos ou spikes de áudio (Glitch-free).
+- **Scalability:** O layout e o motor devem suportar de 1 a 16 canais sem degradação perceptível de performance em dispositivos modernos.
