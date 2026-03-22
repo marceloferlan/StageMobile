@@ -124,14 +124,25 @@ public:
     }
 
     void updateFilters() {
+        float nyquist = sampleRate * 0.5f;
         for (int i = 0; i < 2; ++i) {
+            // Clamps de segurança para frequências fundamentais
+            float fL = clamp(lFreq, 20.0f, nyquist * 0.9f);
+            float fH = clamp(hFreq, 20.0f, nyquist * 0.9f);
+            float fM = clamp(mFreq, 20.0f, nyquist * 0.9f);
+
             // Converter Q para Bandwidth se necessário. O DspFilters BandShelf espera largura de banda em Hz.
-            // Se mBW for tratado como Q no Kotlin (0.5 a 4.0), convertemos aqui.
-            float finalBW = (mBW < 20.0f) ? (mFreq / std::max(0.1f, mBW)) : mBW;
+            float finalBW = (mBW < 20.0f) ? (fM / std::max(0.1f, mBW)) : mBW;
             
-            lowShelf[i].setup(1, sampleRate, lFreq, lGain);
-            midPeak[i].setup(1, sampleRate, mFreq, finalBW, mGain);
-            highShelf[i].setup(1, sampleRate, hFreq, hGain);
+            // Garantir que os limites do BandShelf não extrapolem o Nyquist ou 0
+            // fM + finalBW/2 < Nyquist -> finalBW < 2*(Nyquist - fM)
+            float maxBW = 2.0f * (nyquist * 0.95f - fM);
+            if (finalBW > maxBW) finalBW = maxBW;
+            if (finalBW < 5.0f) finalBW = 5.0f;
+
+            lowShelf[i].setup(2, sampleRate, fL, lGain);
+            midPeak[i].setup(2, sampleRate, fM, finalBW, mGain);
+            highShelf[i].setup(2, sampleRate, fH, hGain);
         }
     }
 

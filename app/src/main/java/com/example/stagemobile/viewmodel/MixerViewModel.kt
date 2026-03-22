@@ -14,9 +14,12 @@ import com.example.stagemobile.midi.MidiConnectionManager
 import com.example.stagemobile.data.SettingsRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import com.example.stagemobile.utils.UiUtils
@@ -50,6 +53,7 @@ class MixerViewModel : ViewModel() {
     private var deviceAudioManager: com.example.stagemobile.audio.DeviceAudioManager? = null
     private var settingsRepo: SettingsRepository? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var appContext: Context? = null
 
     // --- State Flows ---
 
@@ -155,11 +159,30 @@ class MixerViewModel : ViewModel() {
     private var isPeakPollingSuspended = false
     private var logClearJob: Job? = null
 
-    private val _lastSystemEvent = MutableStateFlow("")
-    val lastSystemEvent: StateFlow<String> = _lastSystemEvent.asStateFlow()
+    private val _lastSystemEvent = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 1)
+    val lastSystemEvent: SharedFlow<String> = _lastSystemEvent.asSharedFlow()
 
     private val _isReady = MutableStateFlow(false)
     val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+
+    // --- Set Stage States ---
+    private val _activeSetStageName = MutableStateFlow<String?>(null)
+    val activeSetStageName: StateFlow<String?> = _activeSetStageName.asStateFlow()
+
+    private val _activeSetStageId = MutableStateFlow<String?>(null)
+    val activeSetStageId: StateFlow<String?> = _activeSetStageId.asStateFlow()
+
+    private val _hasUnsavedChanges = MutableStateFlow(false)
+    val hasUnsavedChanges: StateFlow<Boolean> = _hasUnsavedChanges.asStateFlow()
+    
+    private val _currentViewingBank = MutableStateFlow(1)
+    val currentViewingBank: StateFlow<Int> = _currentViewingBank.asStateFlow()
+
+    // Tracking active location
+    private var activeBankId: Int? = null
+    private var activeSlotId: Int? = null
+
+    var setStageRepo: com.example.stagemobile.data.SetStageRepository? = null
 
     // --- SF2 Preset Selector State ---
     data class PendingPresetSelection(
@@ -172,8 +195,9 @@ class MixerViewModel : ViewModel() {
     private val _pendingPresetSelection = MutableStateFlow<PendingPresetSelection?>(null)
     val pendingPresetSelection: StateFlow<PendingPresetSelection?> = _pendingPresetSelection.asStateFlow()
 
-    // Cache: Maps SF2 filename → sfId already loaded in FluidSynth
+    // Cache: Maps SF2 filename -> sfId already loaded in FluidSynth
     private val loadedSf2Cache = mutableMapOf<String, Int>() // Cache SoundFont Name -> sfId
+    private val sf2UriMap = mutableMapOf<String, Uri>() // Cache SoundFont Name -> Original Uri
     // nextId removed, using slot-based IDs (0-15)
 
     // --- MIDI Learn State ---
@@ -262,6 +286,11 @@ class MixerViewModel : ViewModel() {
             MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
             MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
             MidiLearnTarget.DSP_PARAM -> "DSP"
+            MidiLearnTarget.TAP_DELAY -> "TAP"
+            MidiLearnTarget.SET_STAGE_SLOT -> "Slot"
+            MidiLearnTarget.NEXT_BANK -> "Bank+"
+            MidiLearnTarget.PREVIOUS_BANK -> "Bank-"
+            MidiLearnTarget.FAVORITE_SET -> "Fav"
         }
         val chLabel = (channelId + 1).toString().padStart(2, '0')
         Log.i(TAG, "MIDI Learn target: $label CH $chLabel — waiting for CC...")
@@ -283,7 +312,8 @@ class MixerViewModel : ViewModel() {
             midiChannel = midiChannel,
             deviceName = deviceName,
             effectId = target.effectId,
-            paramId = target.paramId
+            paramId = target.paramId,
+            slotIndex = target.slotIndex
         )
 
         // Add new mapping (allow multiple CCs per control), but prevent exact duplicate
@@ -311,6 +341,11 @@ class MixerViewModel : ViewModel() {
             MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
             MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
             MidiLearnTarget.DSP_PARAM -> "Param ${target.paramId}"
+            MidiLearnTarget.TAP_DELAY -> "TAP"
+            MidiLearnTarget.SET_STAGE_SLOT -> "Slot ${target.slotIndex}"
+            MidiLearnTarget.NEXT_BANK -> "Bank+"
+            MidiLearnTarget.PREVIOUS_BANK -> "Bank-"
+            MidiLearnTarget.FAVORITE_SET -> "Fav Set"
         }
         val chLabel = when (target.channelId) {
             MASTER_CHANNEL_ID -> "MASTER"
@@ -319,6 +354,7 @@ class MixerViewModel : ViewModel() {
         }
         val msg = "CC $ccNumber → $label $chLabel"
         _midiLearnFeedback.value = msg
+        updateSystemEvent(msg)
         Log.i(TAG, "MIDI Learn complete: $msg")
 
         feedbackJob?.cancel()
@@ -335,15 +371,18 @@ class MixerViewModel : ViewModel() {
     data class PendingUnmap(
         val target: MidiLearnTarget,
         val channelId: Int,
-        val mappings: List<MidiLearnMapping>
+        val mappings: List<MidiLearnMapping>,
+        val slotIndex: Int? = null
     )
     private val _pendingUnmap = MutableStateFlow<PendingUnmap?>(null)
     val pendingUnmap: StateFlow<PendingUnmap?> = _pendingUnmap.asStateFlow()
 
-    fun requestUnmap(target: MidiLearnTarget, channelId: Int) {
-        val mappings = _midiLearnMappings.value.filter { it.target == target && it.channelId == channelId }
+    fun requestUnmap(target: MidiLearnTarget, channelId: Int, slotIndex: Int? = null) {
+        val mappings = _midiLearnMappings.value.filter { 
+            it.target == target && it.channelId == channelId && (slotIndex == null || it.slotIndex == slotIndex)
+        }
         if (mappings.isEmpty()) return
-        _pendingUnmap.value = PendingUnmap(target, channelId, mappings)
+        _pendingUnmap.value = PendingUnmap(target, channelId, mappings, slotIndex)
     }
 
     fun confirmUnmap(mapping: MidiLearnMapping) {
@@ -370,6 +409,65 @@ class MixerViewModel : ViewModel() {
         _pendingUnmap.value = null
     }
 
+    fun navBank(delta: Int) {
+        val next = _currentViewingBank.value + delta
+        if (next in 1..10) {
+            _currentViewingBank.value = next
+        }
+    }
+
+    fun updateViewingBank(bankId: Int) {
+        if (bankId in 1..10) {
+            _currentViewingBank.value = bankId
+        }
+    }
+
+    private fun triggerMidiSetStageLoad(bankId: Int, slotId: Int) {
+        appContext?.let { ctx ->
+            loadSetStage(ctx, bankId, slotId)
+        }
+    }
+
+    fun selectSetStageLearnTarget(slotIndex: Int) {
+        if (!_isMidiLearnActive.value) return
+        _midiLearnTarget.value = MidiLearnTargetInfo(
+            target = MidiLearnTarget.SET_STAGE_SLOT,
+            channelId = GLOBAL_CHANNEL_ID,
+            slotIndex = slotIndex
+        )
+        Log.i(TAG, "MIDI Learn target: Set Stage Slot $slotIndex")
+    }
+
+    fun selectBankNavLearnTarget(isNext: Boolean) {
+        if (!_isMidiLearnActive.value) return
+        _midiLearnTarget.value = MidiLearnTargetInfo(
+            target = if (isNext) MidiLearnTarget.NEXT_BANK else MidiLearnTarget.PREVIOUS_BANK,
+            channelId = GLOBAL_CHANNEL_ID
+        )
+        Log.i(TAG, "MIDI Learn target: Bank ${if (isNext) "Next" else "Prev"}")
+    }
+
+    fun requestUnmapSetStage(slotIndex: Int) {
+        requestUnmap(MidiLearnTarget.SET_STAGE_SLOT, GLOBAL_CHANNEL_ID, slotIndex)
+    }
+
+    fun requestUnmapBankNav(isNext: Boolean) {
+        requestUnmap(if (isNext) MidiLearnTarget.NEXT_BANK else MidiLearnTarget.PREVIOUS_BANK, GLOBAL_CHANNEL_ID)
+    }
+
+    fun selectFavoriteSetLearnTarget() {
+        if (!_isMidiLearnActive.value) return
+        _midiLearnTarget.value = MidiLearnTargetInfo(
+            target = MidiLearnTarget.FAVORITE_SET,
+            channelId = GLOBAL_CHANNEL_ID
+        )
+        Log.i(TAG, "MIDI Learn target: Favorite Set")
+    }
+
+    fun requestUnmapFavoriteSet() {
+        requestUnmap(MidiLearnTarget.FAVORITE_SET, GLOBAL_CHANNEL_ID)
+    }
+
     fun getMappingsForControl(target: MidiLearnTarget, channelId: Int): List<MidiLearnMapping> {
         return _midiLearnMappings.value.filter { it.target == target && it.channelId == channelId }
     }
@@ -380,7 +478,9 @@ class MixerViewModel : ViewModel() {
         val isTablet = UiUtils.isTablet(context)
         if (settingsRepo == null) {
             val repo = SettingsRepository(context)
+            val setsRepo = com.example.stagemobile.data.SetStageRepository(context)
             settingsRepo = repo
+            setStageRepo = setsRepo
             _bufferSize.value = repo.bufferSize
             _sampleRate.value = repo.sampleRate
             _midiChannel.value = repo.midiChannel
@@ -412,7 +512,7 @@ class MixerViewModel : ViewModel() {
         Log.i(TAG, "System initialization COMPLETE (isReady=true)")
     }
 
-    fun loadSoundFontForChannel(context: Context, channelId: Int, uri: Uri) {
+    fun loadSoundFontForChannel(context: Context, channelId: Int, uri: Uri, targetBank: Int? = null, targetProgram: Int? = null) {
         scope.launch(Dispatchers.IO) {
             isPeakPollingSuspended = true
             try {
@@ -426,6 +526,7 @@ class MixerViewModel : ViewModel() {
                     ?: "soundfont_ch$channelId.sf2"
 
                 // Check SF2 Cache: Is this SF2 already loaded?
+                sf2UriMap[sf2FileName] = uri
                 val cachedSfId = loadedSf2Cache[sf2FileName]
 
                 val sfId: Int
@@ -523,6 +624,28 @@ class MixerViewModel : ViewModel() {
                     )
                     Log.i(TAG, "SF2 multi-preset: emitting ${presets.size} presets for dialog (ch=$channelId)")
                 }
+
+                // --- RESTORE TARGET PRESET IF PROVIDED ---
+                if (targetBank != null && targetProgram != null) {
+                    val presets = audioEngine.getPresets(sfId)
+                    val hasPreset = presets.any { it.bank == targetBank && it.program == targetProgram }
+                    
+                    if (hasPreset) {
+                        _audioEngine.programSelect(channelId, sfId, targetBank, targetProgram)
+                        val presetName = presets.find { it.bank == targetBank && it.program == targetProgram }?.name
+                        val displayName = if (presetName != null) "$sf2FileName [$presetName]" else sf2FileName
+                        
+                        updateChannels(_channels.value.map {
+                            if (it.id == channelId) it.copy(
+                                sfId = sfId,
+                                soundFont = displayName,
+                                bank = targetBank,
+                                program = targetProgram
+                            ) else it
+                        })
+                        Log.i(TAG, "Restored preset $targetBank:$targetProgram for $sf2FileName on ch $channelId")
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading SF2 for channel $channelId: ${e.message}", e)
             } finally {
@@ -609,6 +732,7 @@ class MixerViewModel : ViewModel() {
     // --- MIDI ---
 
     fun initMidi(context: Context) {
+        appContext = context.applicationContext
         val isTablet = UiUtils.isTablet(context)
         initSettings(context)
         _activeMidiDevices.value = settingsRepo?.activeMidiDevices ?: emptySet()
@@ -797,6 +921,37 @@ class MixerViewModel : ViewModel() {
                                 if (value > 64) {
                                     if (mapping.channelId == GLOBAL_CHANNEL_ID) updateGlobalTransposeShift(-1)
                                     else updateTransposeShift(mapping.channelId, -1)
+                                }
+                            }
+                            MidiLearnTarget.TAP_DELAY -> {
+                                if (value > 64) {
+                                    tapGlobalDelayTime()
+                                }
+                            }
+                            MidiLearnTarget.SET_STAGE_SLOT -> {
+                                if (value > 64 && mapping.slotIndex != null) {
+                                    // Trigger Set Stage loading. 
+                                    // We need to trigger this on the main/view-model scope, 
+                                    // and we need a context. We can try to use a dummy or a stored one.
+                                    // Better: fire a SharedFlow event that the Screen listens to, 
+                                    // or store the context from the last initMidi.
+                                    // For now, let's look for a stored context or use the repo if it's already set up.
+                                    // Since it's relative, we use the current viewing bank.
+                                    triggerMidiSetStageLoad(_currentViewingBank.value, mapping.slotIndex)
+                                }
+                            }
+                            MidiLearnTarget.NEXT_BANK -> {
+                                if (value > 64) navBank(1)
+                            }
+                            MidiLearnTarget.PREVIOUS_BANK -> {
+                                if (value > 64) navBank(-1)
+                            }
+                            MidiLearnTarget.FAVORITE_SET -> {
+                                if (value > 64) {
+                                    // By default, let's say it loads Bank 1, Slot 1 (id 0)
+                                    // or whatever was the first set stage ever saved.
+                                    // For now, let's load Bank 1, Slot 1.
+                                    triggerMidiSetStageLoad(1, 1)
                                 }
                             }
                             MidiLearnTarget.DSP_PARAM -> {
@@ -1618,15 +1773,8 @@ class MixerViewModel : ViewModel() {
     }
 
     fun updateSystemEvent(msg: String) {
-        _lastSystemEvent.value = msg
+        _lastSystemEvent.tryEmit(msg)
         Log.i(TAG, "System Event: $msg")
-        
-        // Auto-clear log after 5 seconds
-        logClearJob?.cancel()
-        logClearJob = scope.launch {
-            delay(5000)
-            _lastSystemEvent.value = ""
-        }
     }
 
     fun exitSystem() {
@@ -1928,6 +2076,116 @@ class MixerViewModel : ViewModel() {
             DSPParamType.KNEE -> 0f..12f
             else -> 0f..1f
         }
+    }
+
+    // --- Set Stage Integration ---
+    fun markUnsavedChanges() {
+        if (!_hasUnsavedChanges.value) {
+            _hasUnsavedChanges.value = true
+        }
+    }
+
+    fun saveCurrentSetStage(name: String) {
+        val bank = activeBankId ?: 1
+        val slot = activeSlotId ?: 1
+        saveCurrentSetStage(bank, slot, name)
+    }
+
+    fun saveCurrentSetStage(bankId: Int, slotId: Int, name: String) {
+        val stage = com.example.stagemobile.domain.model.SetStage(
+            id = "${bankId}_${slotId}",
+            bankId = bankId,
+            slotId = slotId,
+            name = name,
+            channels = _channels.value,
+            masterVolume = _masterVolume.value,
+            globalOctaveShift = _globalOctaveShift.value,
+            globalTransposeShift = _globalTransposeShift.value,
+            isMasterLimiterEnabled = _isMasterLimiterEnabled.value,
+            isDspMasterBypass = _isDspMasterBypass.value
+        )
+        setStageRepo?.saveSetStage(stage)
+        activeBankId = bankId
+        activeSlotId = slotId
+        _activeSetStageName.value = name
+        _activeSetStageId.value = "${bankId}_$slotId"
+        _hasUnsavedChanges.value = false
+        Log.i(TAG, "Set Stage salvo: $name (Banco $bankId, Slot $slotId)")
+        updateSystemEvent("SET STAGE SALVO: $name")
+    }
+
+    fun saveAsNewSetStage(name: String) {
+        val nextSlot = setStageRepo?.findNextAvailableSlot()
+        if (nextSlot != null) {
+            saveCurrentSetStage(nextSlot.first, nextSlot.second, name)
+            updateSystemEvent("SET STAGE SALVO: $name")
+        } else {
+            Log.e(TAG, "Não foi possível encontrar um slot livre para salvar o Set Stage")
+            updateSystemEvent("ERRO: MÁXIMO DE SLOTS ATINGIDO (150/150)")
+        }
+    }
+
+    fun loadSetStage(context: Context, bankId: Int, slotId: Int) {
+        scope.launch(Dispatchers.Default) {
+            val stage = setStageRepo?.loadSetStage(bankId, slotId) ?: return@launch
+            
+            withContext(Dispatchers.Main) {
+                activeBankId = bankId
+                activeSlotId = slotId
+                _activeSetStageName.value = stage.name
+                _activeSetStageId.value = "${bankId}_$slotId"
+                
+                _masterVolume.value = stage.masterVolume
+                _globalOctaveShift.value = stage.globalOctaveShift
+                _globalTransposeShift.value = stage.globalTransposeShift
+                _isMasterLimiterEnabled.value = stage.isMasterLimiterEnabled
+                _isDspMasterBypass.value = stage.isDspMasterBypass
+            }
+
+            audioEngine.setMasterLimiter(stage.isMasterLimiterEnabled)
+            updateMasterVolume(stage.masterVolume)
+
+            stage.channels.forEach { ch ->
+                val sf2Name = ch.soundFont
+                if (sf2Name != null) {
+                    val currentSfId = loadedSf2Cache[sf2Name]
+                    if (currentSfId != null) {
+                        val presets = audioEngine.getPresets(currentSfId)
+                        val hasPreset = presets.any { it.bank == ch.bank && it.program == ch.program }
+                        if (hasPreset) {
+                            audioEngine.programSelect(ch.id, currentSfId, ch.bank, ch.program)
+                        } else {
+                            presets.firstOrNull()?.let { first ->
+                                audioEngine.programSelect(ch.id, currentSfId, first.bank, first.program)
+                            }
+                        }
+                    } else {
+                        sf2UriMap[sf2Name]?.let { uri ->
+                            loadSoundFontForChannel(context, ch.id, uri, targetBank = ch.bank, targetProgram = ch.program)
+                        }
+                    }
+                }
+                updateVolume(ch.id, ch.volume)
+                ch.dspEffects.forEachIndexed { effectIdx, effect ->
+                    audioEngine.setEffectEnabled(ch.id, effect.type.id, effect.isEnabled)
+                    effect.params.forEach { (paramId, value) ->
+                        audioEngine.setEffectParam(ch.id, effectIdx, paramId, value)
+                    }
+                }
+            }
+            
+            withContext(Dispatchers.Main) {
+                _channels.value = stage.channels
+                _hasUnsavedChanges.value = false
+                rebuildArmedChannelsCache()
+                Log.i(TAG, "Set Stage carregado assincronamente: ${stage.name}")
+                updateSystemEvent("SET STAGE ATIVADO: ${stage.name}")
+            }
+        }
+    }
+
+    fun deleteSetStage(bankId: Int, slotId: Int) {
+        setStageRepo?.deleteSetStage(bankId, slotId)
     }
 
     override fun onCleared() {

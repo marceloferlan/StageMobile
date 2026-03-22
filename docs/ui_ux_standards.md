@@ -54,13 +54,17 @@ Para facilitar o reconhecimento rápido, as cores dos componentes seguem a categ
 - **Peaking:** Barra de luz que sobe e desce com decaimento suave.
 - **RMS Indicator:** Barra secundária que representa a energia média percebida.
 - **Clipping Warn:** O LED superior acende em vermelho sólido se o sinal ultrapassar 0dBFS.
+- **`MidiLearnModifiers`:** Gerencia o estado visual de "escuta" durante o mapeamento de hardware.
 
 ## 5. Heurísticas de Interação e Gestos
 
 ### 5.1 MIDI Learn Mode
-Ao acionar o MIDI Learn (Long-Press), o componente entra em "Listening Mode":
-- **Feedback:** Overlay pulsante ou borda destacada em cor de destaque.
-- **Confirmação:** Ao receber o sinal MIDI, o overlay desaparece com uma animação rápida ("Pop") confirmando o vínculo.
+Ao acionar o MIDI Learn (ícone **AutoFixHigh**), o sistema entra em estado de escuta:
+- **Cores de Estado:**
+    - **Amarelo (`#xFFFFEE3B`):** Componente em modo de escuta, aguardando sinal MIDI.
+    - **Verde (`#x39FF14`):** Componente já mapeado e operante.
+- **Feedback Visual:** Borda pulsante (Halo) com opacidade variável para indicar atividade.
+- **Confirmação:** Uso do `StageToast` fixo no topo da tela para feedbacks "Set Ativado", "Mapeado" ou "Erro".
 
 ### 5.2 Reset de Parâmetro
 - **Gesto:** Double-tap (Dois toques rápidos).
@@ -69,3 +73,24 @@ Ao acionar o MIDI Learn (Long-Press), o componente entra em "Listening Mode":
 ## 6. Tipografia e Legibilidade
 - **Labels Título:** Uso de FontWeight.ExtraBold para rápida leitura periférica.
 - **Dinamismo Numérico:** Fontes monoespaçadas (ou tabular figures) nos displays de valores para evitar o "jitter" visual durante o giro dos knobs.
+
+## 7. Diretrizes de Composição e Espaçamento de Layout
+
+### 7.1 Containers Estruturais
+- Containers estruturais (`Row`, `Column`, `Box`) devem ocupar todo o espaço disponível por padrão (`fillMaxWidth`, `fillMaxHeight` ou `fillMaxSize`).
+- Evitar `wrapContent` em containers estruturais, salvo quando o tamanho depende explicitamente do conteúdo.
+- Não aplicar padding diretamente em containers estruturais, exceto quando fizer parte do layout intencional.
+- Utilizar `weight` para distribuição proporcional de espaço entre filhos.
+- Espaçamentos devem ser explícitos (`Spacer`, `Arrangement.spacedBy`), nunca implícitos.
+- Evitar aninhamento desnecessário de containers.
+- Sempre declarar alinhamentos explicitamente.
+- Separar containers estruturais de componentes visuais.
+
+### 7.2 Componentes Compostos
+- Elementos compostos por múltiplos subcomponentes relacionados devem ser encapsulados em um único container raiz (`Row`, `Column` ou `Box`).
+- O container deve representar semanticamente o componente como uma unidade coesa.
+- Evitar elementos soltos no layout; todo agrupamento lógico deve estar refletido na estrutura do código.
+- A escolha do container deve seguir o layout (horizontal, vertical ou sobreposição), não sendo obrigatório o uso de `Box`.
+- O componente deve ser facilmente extraível para uma função composable reutilizável.
+- O espaçamento interno é responsabilidade do próprio componente, não do container pai.
+- O componente deve expor um único `Modifier` externo.

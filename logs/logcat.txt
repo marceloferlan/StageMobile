@@ -1,396 +1,64 @@
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
-> com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
-  [1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
-  [2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
-  [3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
-  [4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
-  [5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
-  [6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
-  [7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
-  [8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
-  [9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
-  [10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
-  [11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
-  [12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
-  [13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
-  [14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
-  [15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
-  [16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
-  [17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
-  [18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
-  [19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
-  [20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
-  [21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
-  [22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
-  [23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
-  [24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
-  [25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
-  [26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
-  [27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
-  FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
-  /Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
-  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
-     31 |         filterL.setup(2, 44100, cutoff, q);
-        |         ~~~~~~~~~~~~~                   ^
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-     87 |   void setup (int order,
-        |        ^      ~~~~~~~~~~
-     88 |               double sampleRate,
-        |               ~~~~~~~~~~~~~~~~~~
-     89 |               double cutoffFrequency);
-        |               ~~~~~~~~~~~~~~~~~~~~~~
-  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
-     32 |         filterR.setup(2, 44100, cutoff, q);
-        |         ~~~~~~~~~~~~~                   ^
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-     87 |   void setup (int order,
-        |        ^      ~~~~~~~~~~
-     88 |               double sampleRate,
-        |               ~~~~~~~~~~~~~~~~~~
-     89 |               double cutoffFrequency);
-        |               ~~~~~~~~~~~~~~~~~~~~~~
-  In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
-     85 |             outL[i] += reverb.lastOutLeft();
-        |                        ~~~~~~ ^
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
-     86 |             outR[i] += reverb.lastOutRight();
-        |                        ~~~~~~ ^
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
-     84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
-        |             ^~~~~~~~~~~~~~~~~~~~~~~~
-  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
-    360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
-        |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    361 |         float **left, float **right,
-        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    362 |         float **fx_left, float **fx_right);
-        |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  5 errors generated.
-  ninja: build stopped: subcommand failed.
-  
-  C++ build system [build] failed while executing:
-      /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
-        -C \
-        /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
-        synthmodule
-    from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
-
-* Try:
-> Run with --info or --debug option to get more log output.
-> Run with --scan to generate a Build Scan (Powered by Develocity).
-> Get more help at https://help.gradle.org.
-
-* Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:135)
-	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:288)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:133)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:121)
-	at org.gradle.api.internal.tasks.execution.ProblemsTaskPathTrackingTaskExecuter.execute(ProblemsTaskPathTrackingTaskExecuter.java:41)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:45)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:355)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:342)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:338)
-	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:84)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:338)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:327)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.internal.UncheckedException: com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
-[1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
-[2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
-[3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
-[4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
-[5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
-[6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
-[7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
-[8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
-[9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
-[10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
-[11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
-[12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
-[13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
-[14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
-[15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
-[16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
-[17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
-[18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
-[19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
-[20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
-[21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
-[22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
-[23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
-[24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
-[25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
-[26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
-[27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
-FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
-/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
-   31 |         filterL.setup(2, 44100, cutoff, q);
-      |         ~~~~~~~~~~~~~                   ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-   87 |   void setup (int order,
-      |        ^      ~~~~~~~~~~
-   88 |               double sampleRate,
-      |               ~~~~~~~~~~~~~~~~~~
-   89 |               double cutoffFrequency);
-      |               ~~~~~~~~~~~~~~~~~~~~~~
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
-   32 |         filterR.setup(2, 44100, cutoff, q);
-      |         ~~~~~~~~~~~~~                   ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-   87 |   void setup (int order,
-      |        ^      ~~~~~~~~~~
-   88 |               double sampleRate,
-      |               ~~~~~~~~~~~~~~~~~~
-   89 |               double cutoffFrequency);
-      |               ~~~~~~~~~~~~~~~~~~~~~~
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
-   85 |             outL[i] += reverb.lastOutLeft();
-      |                        ~~~~~~ ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
-   86 |             outR[i] += reverb.lastOutRight();
-      |                        ~~~~~~ ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
-   84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
-      |             ^~~~~~~~~~~~~~~~~~~~~~~~
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
-  360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
-      |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  361 |         float **left, float **right,
-      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  362 |         float **fx_left, float **fx_right);
-      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-5 errors generated.
-ninja: build stopped: subcommand failed.
-
-C++ build system [build] failed while executing:
-    /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
-      -C \
-      /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
-      synthmodule
-  from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
-	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:69)
-	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:42)
-	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:128)
-	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.doExecute(StandardTaskAction.java:58)
-	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
-	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:252)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:237)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:220)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:203)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:170)
-	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
-	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
-	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
-	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
-	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:68)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:38)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
-	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
-	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:39)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:28)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
-	at org.gradle.internal.Either$Right.fold(Either.java:176)
-	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
-	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
-	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:64)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:35)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:62)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:40)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:76)
-	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:45)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:136)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:61)
-	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:38)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
-	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:297)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
-	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
-	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
-	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:47)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:34)
-	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:64)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
-	... 29 more
-Caused by: com.android.ide.common.process.ProcessException: ninja: Entering directory `/Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a'
-[1/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Design.cpp.o
-[2/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/State.cpp.o
-[3/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RBJ.cpp.o
-[4/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Filter.cpp.o
-[5/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/FreeVerb.cpp.o
-[6/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/RootFinder.cpp.o
-[7/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/PoleFilter.cpp.o
-[8/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Cascade.cpp.o
-[9/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Stk.cpp.o
-[10/28] Building CXX object CMakeFiles/synthmodule.dir/externals/DSPFilters/source/Biquad.cpp.o
-[11/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/AAFilter.cpp.o
-[12/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIFOSampleBuffer.cpp.o
-[13/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/FIRFilter.cpp.o
-[14/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Delay.cpp.o
-[15/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/Chorus.cpp.o
-[16/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayL.cpp.o
-[17/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/NRev.cpp.o
-[18/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/DelayA.cpp.o
-[19/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OneZero.cpp.o
-[20/28] Building CXX object CMakeFiles/synthmodule.dir/externals/STK/OnePole.cpp.o
-[21/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateCubic.cpp.o
-[22/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateLinear.cpp.o
-[23/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/InterpolateShannon.cpp.o
-[24/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/RateTransposer.cpp.o
-[25/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/SoundTouch.cpp.o
-[26/28] Building CXX object CMakeFiles/synthmodule.dir/externals/SoundTouch/source/TDStretch.cpp.o
-[27/28] Building CXX object CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o
-FAILED: CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o 
-/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/Users/macbookpro/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dsynthmodule_EXPORTS -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/STK/include -I/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/SoundTouch/include -isystem /Users/macbookpro/.gradle/caches/9.1.0/transforms/e4e0daf2a2bfee60d9e8da3f5dc08d60/transformed/oboe-1.9.3/prefab/modules/oboe/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -MF CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o.d -o CMakeFiles/synthmodule.dir/fluidsynth_bridge.cpp.o -c /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:31:41: error: too many arguments to function call, expected 3, have 4
-   31 |         filterL.setup(2, 44100, cutoff, q);
-      |         ~~~~~~~~~~~~~                   ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-   87 |   void setup (int order,
-      |        ^      ~~~~~~~~~~
-   88 |               double sampleRate,
-      |               ~~~~~~~~~~~~~~~~~~
-   89 |               double cutoffFrequency);
-      |               ~~~~~~~~~~~~~~~~~~~~~~
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:32:41: error: too many arguments to function call, expected 3, have 4
-   32 |         filterR.setup(2, 44100, cutoff, q);
-      |         ~~~~~~~~~~~~~                   ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Butterworth.h:87:8: note: 'setup' declared here
-   87 |   void setup (int order,
-      |        ^      ~~~~~~~~~~
-   88 |               double sampleRate,
-      |               ~~~~~~~~~~~~~~~~~~
-   89 |               double cutoffFrequency);
-      |               ~~~~~~~~~~~~~~~~~~~~~~
-In file included from /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:15:
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:85:31: error: no member named 'lastOutLeft' in 'stk::FreeVerb'
-   85 |             outL[i] += reverb.lastOutLeft();
-      |                        ~~~~~~ ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/dsp_chain.h:86:31: error: no member named 'lastOutRight' in 'stk::FreeVerb'
-   86 |             outR[i] += reverb.lastOutRight();
-      |                        ~~~~~~ ^
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/fluidsynth_bridge.cpp:84:13: error: no matching function for call to 'fluid_synth_nwrite_float'
-   84 |             fluid_synth_nwrite_float(synth, numFrames, NULL, NULL, 1, &outL, ch, 1, &outR);
-      |             ^~~~~~~~~~~~~~~~~~~~~~~~
-/Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/include/fluidsynth/synth.h:360:37: note: candidate function not viable: requires 6 arguments, but 9 were provided
-  360 | FLUID_DEPRECATED FLUIDSYNTH_API int fluid_synth_nwrite_float(fluid_synth_t *synth, int len,
-      |                                     ^                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  361 |         float **left, float **right,
-      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  362 |         float **fx_left, float **fx_right);
-      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-5 errors generated.
-ninja: build stopped: subcommand failed.
-
-C++ build system [build] failed while executing:
-    /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja \
-      -C \
-      /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a \
-      synthmodule
-  from /Users/macbookpro/AndroidStudioProjects/StageMobile/app
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:288)
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:108)
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:106)
-	at com.android.build.gradle.internal.cxx.timing.TimingEnvironmentKt.time(TimingEnvironment.kt:32)
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess(ExecuteProcess.kt:106)
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess$default(ExecuteProcess.kt:85)
-	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.executeProcessBatch(CxxRegularBuilder.kt:332)
-	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.build(CxxRegularBuilder.kt:129)
-	at com.android.build.gradle.tasks.ExternalNativeBuildTask.doTaskAction(ExternalNativeBuildTask.kt:72)
-	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask$taskAction$$inlined$recordTaskAction$1.invoke(BaseTask.kt:78)
-	at com.android.build.gradle.internal.tasks.Blocks.recordSpan(Blocks.java:51)
-	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask.taskAction(UnsafeOutputsTask.kt:81)
-	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
-	... 117 more
-Caused by: com.android.ide.common.process.ProcessException: Error while executing process /Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja with arguments {-C /Users/macbookpro/AndroidStudioProjects/StageMobile/app/.cxx/Debug/6216r4m6/arm64-v8a synthmodule}
-	at com.android.build.gradle.internal.process.GradleProcessResult.buildProcessException(GradleProcessResult.java:73)
-	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:48)
-	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:277)
-	... 129 more
-Caused by: org.gradle.process.ProcessExecutionException: Process 'command '/Users/macbookpro/Library/Android/sdk/cmake/3.22.1/bin/ninja'' finished with non-zero exit value 1
-	at org.gradle.process.internal.DefaultExecHandle$ExecResultImpl.assertNormalExitValue(DefaultExecHandle.java:450)
-	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:46)
-	... 130 more
-
-
-BUILD FAILED in 1m 29s
+2026-03-21 16:35:46.953  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{1ce005 u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:35:46.961  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=1ce005 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0x1a2b467 - animation-leash of window_animation#14995
+2026-03-21 16:35:51.734  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 1.000 -> 0.000 - Surface(name=8f56d1f com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xd012ca - animation-leash of window_animation#15006
+2026-03-21 16:35:51.734  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=8f56d1f com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xd012ca - animation-leash of window_animation#15006
+2026-03-21 16:35:51.746  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.029 - Surface(name=8f56d1f com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xd012ca - animation-leash of window_animation#15006
+2026-03-21 16:35:52.955  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{8f56d1f u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:35:52.964  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=8f56d1f com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xd012ca - animation-leash of window_animation#15009
+2026-03-21 16:35:54.603  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 1.000 -> 0.000 - Surface(name=70c92f6 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xf2b7cd - animation-leash of window_animation#15014
+2026-03-21 16:35:54.603  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=70c92f6 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xf2b7cd - animation-leash of window_animation#15014
+2026-03-21 16:35:54.614  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.029 - Surface(name=70c92f6 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xf2b7cd - animation-leash of window_animation#15014
+2026-03-21 16:35:56.013  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{70c92f6 u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:35:56.020  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=70c92f6 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xf2b7cd - animation-leash of window_animation#15017
+2026-03-21 16:35:56.020  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 1.000 -> 0.000 - Surface(name=828a500 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdba998a - animation-leash of window_animation#15021
+2026-03-21 16:35:56.020  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=828a500 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdba998a - animation-leash of window_animation#15021
+2026-03-21 16:35:56.031  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.029 - Surface(name=828a500 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdba998a - animation-leash of window_animation#15021
+2026-03-21 16:36:28.561  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{828a500 u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:36:28.570  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=828a500 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdba998a - animation-leash of window_animation#15025
+2026-03-21 16:36:30.164  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 1.000 -> 0.000 - Surface(name=53b93b2 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0x8844cb9 - animation-leash of window_animation#15030
+2026-03-21 16:36:30.164  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=53b93b2 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0x8844cb9 - animation-leash of window_animation#15030
+2026-03-21 16:36:30.175  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.029 - Surface(name=53b93b2 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0x8844cb9 - animation-leash of window_animation#15030
+2026-03-21 16:36:31.394  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 1.000 -> 0.000 - Surface(name=eaaedc com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdff486 - animation-leash of window_animation#15037
+2026-03-21 16:36:31.394  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=eaaedc com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdff486 - animation-leash of window_animation#15037
+2026-03-21 16:36:31.394  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{53b93b2 u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:36:31.405  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=53b93b2 com.example.stagemobile/com.example.stagemobile.MainActivity)/@0x8844cb9 - animation-leash of window_animation#15033
+2026-03-21 16:36:31.405  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.029 - Surface(name=eaaedc com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdff486 - animation-leash of window_animation#15037
+2026-03-21 16:36:41.973 23105-23105 libc                 com.example.stagemobile          com.example.stagemobile         A  /Users/macbookpro/AndroidStudioProjects/StageMobile/app/src/main/cpp/externals/DSPFilters/include/DspFilters/Layout.h:111: void Dsp::LayoutBase::add(const ComplexPair &, const ComplexPair &): assertion "zeros.isMatchedPair ()" failed
+2026-03-21 16:36:41.974 23105-23105 libc                 com.example.stagemobile          com.example.stagemobile         A  Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 23105 (ple.stagemobile), pid 23105 (ple.stagemobile)
+2026-03-21 16:36:42.336 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A  Cmdline: com.example.stagemobile
+2026-03-21 16:36:42.336 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A  pid: 23105, tid: 23105, name: ple.stagemobile  >>> com.example.stagemobile <<<
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #02 pc 00000000000dced4  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (Dsp::LayoutBase::add(Dsp::ComplexPair const&, Dsp::ComplexPair const&)+268) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #03 pc 00000000000dc9b8  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (Dsp::BandPassTransform::BandPassTransform(double, double, Dsp::LayoutBase&, Dsp::LayoutBase const&)+1148) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #04 pc 00000000000d5154  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (Dsp::Butterworth::BandShelfBase::setup(int, double, double, double, double)+120) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #05 pc 00000000000c140c  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (stage_audio::ParametricEQEffect::updateFilters()+308) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #06 pc 00000000000c193c  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (stage_audio::ParametricEQEffect::setParam(int, float)+532) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #07 pc 00000000000bea90  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (stage_audio::DSPChain::setEffectParam(int, int, int, float)+240) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #08 pc 00000000000be924  /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk!libsynthmodule.so (offset 0x1c2c000) (Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetEffectParam+112) (BuildId: e817f2051ceebd813a72b6527875e68a6f3eaf54)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #14 pc 0000000000002d7c  [anon:dalvik-classes6.dex extracted in memory from /data/app/~~qEBy-YQnxMZWlQsV-0SPWQ==/com.example.stagemobile-lQH7Up9n05JQ3BwYlBhByg==/base.apk] (com.example.stagemobile.audio.engine.FluidSynthEngine.setEffectParam+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #19 pc 000000000000aa8c  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes8.dex (com.example.stagemobile.viewmodel.MixerViewModel.updateEffectParam$lambda$46+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #24 pc 00000000000056f0  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes8.dex (com.example.stagemobile.viewmodel.MixerViewModel$$ExternalSyntheticLambda13.invoke+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #29 pc 0000000000011470  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes8.dex (com.example.stagemobile.viewmodel.MixerViewModel.updateChannel+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #34 pc 0000000000011634  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes8.dex (com.example.stagemobile.viewmodel.MixerViewModel.updateEffectParam+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #39 pc 0000000000020ca4  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes7.dex (com.example.stagemobile.ui.screens.MixerScreenKt.MixerScreen$lambda$351$lambda$314$lambda$313+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #44 pc 000000000001345c  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes7.dex (com.example.stagemobile.ui.screens.MixerScreenKt$$ExternalSyntheticLambda119.invoke+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #49 pc 000000000001609c  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt.DSPEffectsRackDialog$lambda$82$lambda$81$lambda$80$lambda$79$lambda$77$lambda$76$lambda$75$lambda$64$lambda$63+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #54 pc 0000000000011748  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt$$ExternalSyntheticLambda10.invoke+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #59 pc 0000000000018c54  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt.EffectRackUnit$lambda$223$lambda$222$lambda$119$lambda$118+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #64 pc 0000000000012bcc  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt$$ExternalSyntheticLambda63.invoke+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #69 pc 0000000000018cd8  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt.EffectRackUnit$lambda$223$lambda$222$lambda$156$lambda$142$lambda$141$lambda$140$lambda$139$lambda$138+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #74 pc 00000000000122cc  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPEffectsRackDialogKt$$ExternalSyntheticLambda39.invoke+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #79 pc 000000000000f758  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPCircularKnobKt$DSPCircularKnob$4$1.invokeSuspend$lambda$1+0)
+2026-03-21 16:36:42.337 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #84 pc 000000000000f5a8  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes4.dex (com.example.stagemobile.ui.components.DSPCircularKnobKt$DSPCircularKnob$4$1$$ExternalSyntheticLambda1.invoke+0)
+2026-03-21 16:36:42.338 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #100 pc 00000000001c6798  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes13.dex
+2026-03-21 16:36:42.338 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #116 pc 00000000001be848  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes13.dex
+2026-03-21 16:36:42.338 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #121 pc 00000000001bd9fc  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes13.dex
+2026-03-21 16:36:42.338 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #130 pc 0000000000207f98  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes13.dex
+2026-03-21 16:36:42.338 23933-23933 DEBUG                crash_dump64                     crash_dump64                    A        #139 pc 000000000020737c  /data/data/com.example.stagemobile/code_cache/.overlay/base.apk/classes13.dex
+---------------------------- PROCESS ENDED (23105) for package com.example.stagemobile ----------------------------
+2026-03-21 16:36:42.472  1552-3637  AppOps               system_server                    system_server                   E  attributionTag  not declared in manifest of com.example.stagemobile
+2026-03-21 16:36:42.472  1552-3637  AppOps               system_server                    system_server                   E  Operation not started: uid=10398 pkg=com.example.stagemobile(null) op=CONTROL_AUDIO
+2026-03-21 16:36:42.473  1552-2213  AppOps               system_server                    system_server                   E  attributionTag  not declared in manifest of com.example.stagemobile
+2026-03-21 16:36:42.475  1552-2213  AppOps               system_server                    system_server                   E  Operation not started: uid=10398 pkg=com.example.stagemobile(null) op=CONTROL_AUDIO_PARTIAL
+2026-03-21 16:36:42.646  1552-1581  WindowManager        system_server                    system_server                   E  win=Window{eaaedc u0 com.example.stagemobile/com.example.stagemobile.MainActivity EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:224 com.android.server.wm.WindowState.onAnimationFinished:161 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda8.onAnimationFinished:3 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda0.onAnimationFinished:69 com.android.server.wm.LocalAnimationAdapter$$ExternalSyntheticLambda0.run:10 android.os.Handler.handleCallback:995 android.os.Handler.dispatchMessage:103 
+2026-03-21 16:36:42.657  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.056 -> 0.000 - Surface(name=eaaedc com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdff486 - animation-leash of window_animation#15041
+2026-03-21 16:36:42.657  1185-1185  SurfaceFlinger       surfaceflinger                   surfaceflinger                  E  alpha changed 0.000 -> 0.000 - Surface(name=eaaedc com.example.stagemobile/com.example.stagemobile.MainActivity)/@0xdff486 - animation-leash of window_animation#15041

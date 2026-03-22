@@ -123,7 +123,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateBack = { currentScreen = "mixer" }
                                 )
                             }
-                            "sets" -> SetsScreen(onNavigateBack = { currentScreen = "mixer" })
+                            "sets" -> SetsScreen(onNavigateBack = { currentScreen = "mixer" }, viewModel = viewModel)
                             "drumpads" -> DrumpadsScreen(onNavigateBack = { currentScreen = "mixer" })
                             "continuous_pads" -> ContinuousPadsScreen(onNavigateBack = { currentScreen = "mixer" })
                             "downloads" -> DownloadsScreen(onNavigateBack = { currentScreen = "mixer" })

@@ -3,10 +3,12 @@ package com.example.stagemobile.ui.screens
 import com.example.stagemobile.utils.UiUtils
 import com.example.stagemobile.utils.getMidiNoteName
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
+import com.example.stagemobile.ui.components.StageToastHost
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,8 +28,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Menu
@@ -57,6 +62,8 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +92,7 @@ import com.example.stagemobile.ui.mixer.VirtualKeyboard
 import com.example.stagemobile.ui.mixer.InstrumentChannelSettingsPanel
 import com.example.stagemobile.ui.components.MixerScreenInfoPanel
 import com.example.stagemobile.ui.components.SF2PresetSelectorDialog
+import com.example.stagemobile.ui.components.SetStageQuickSelectorDialog
 import com.example.stagemobile.ui.components.InstrumentChannelOptionsMenu
 import com.example.stagemobile.ui.components.MidiLearnState
 import com.example.stagemobile.ui.components.DSPEffectsRackDialog
@@ -124,8 +132,7 @@ fun MixerScreen(
     val masterVolume by viewModel.masterVolume.collectAsState()
     val masterLevel by viewModel.masterLevel.collectAsState()
     val masterDspEffects by viewModel.masterDspEffects.collectAsState()
-    val systemEvent by viewModel.lastSystemEvent.collectAsState("")
-
+    
     var pendingChannelId by remember { mutableIntStateOf(-1) }
     var showKeyboard by remember { mutableStateOf(false) }
     var channelToRemoveSf2 by remember { mutableIntStateOf(-1) }
@@ -137,6 +144,15 @@ fun MixerScreen(
     var showExitConfirmation by remember { mutableStateOf(false) }
     var showOptionsForChannel by remember { mutableStateOf<Int?>(null) }
     var showDSPEffectsRackForChannel by remember { mutableStateOf<Int?>(null) }
+    
+    // Configurações do Set Stage
+    var showSaveSetStageOptions by remember { mutableStateOf(false) }
+    var showSaveAsDialog by remember { mutableStateOf(false) }
+    var newSetStageName by remember { mutableStateOf("") }
+    val activeSetStageName by viewModel.activeSetStageName.collectAsState()
+    val hasUnsavedChanges by viewModel.hasUnsavedChanges.collectAsState()
+    var showQuickSelector by remember { mutableStateOf(false) }
+    var showSaveCurrentConfirmation by remember { mutableStateOf(false) }
     
     // Obter canais e informações extras do ViewModel
     val activeMidiDevices by viewModel.activeMidiDevices.collectAsState()
@@ -406,6 +422,93 @@ fun MixerScreen(
         }
     }
 
+    // === Save As Dialog ===
+    if (showSaveAsDialog) {
+        Dialog(onDismissRequest = { showSaveAsDialog = false }) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF2C2C2C),
+                tonalElevation = 6.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    // HEADER
+                    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                        Text(
+                            text = "Salvar Novo Set Stage",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(24.dp)
+                                .clickable { showSaveAsDialog = false },
+                            color = Color(0xFF555555),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Outlined.Close,
+                                    contentDescription = "Fechar",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    OutlinedTextField(
+                        value = newSetStageName,
+                        onValueChange = { if (it.length <= 35) newSetStageName = it },
+                        label = { Text("Nome do Set", color = Color.Gray) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFF81C784),
+                            unfocusedBorderColor = Color.Gray
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "O sistema salvará automaticamente no próximo slot livre disponível.",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showSaveAsDialog = false }) {
+                            Text("Cancelar", color = Color.Gray)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (newSetStageName.isNotBlank()) {
+                                    viewModel.saveAsNewSetStage(newSetStageName)
+                                    showSaveAsDialog = false
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF81C784), contentColor = Color.Black)
+                        ) {
+                            Text("Salvar")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -417,9 +520,9 @@ fun MixerScreen(
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
             ) {
-                Spacer(Modifier.height(if (isTablet) 24.dp else 18.dp))
+                Spacer(Modifier.height(if (isTablet) 24.dp else 12.dp))
                 Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = if (isTablet) 32.dp else 8.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = if (isTablet) 16.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Image(
@@ -436,7 +539,7 @@ fun MixerScreen(
                     )
                 }
                 
-                HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 8.dp))
+                HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
                 
                 NavigationDrawerItem(
                     label = { Text("Configurações", fontSize = if (isTablet) 16.sp else 16.sp) },
@@ -453,11 +556,11 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Sets de Performance", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Set Stages", fontSize = if (isTablet) 16.sp else 16.sp) },
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -471,7 +574,7 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
 
                 NavigationDrawerItem(
@@ -489,7 +592,7 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
 
                 NavigationDrawerItem(
@@ -507,7 +610,7 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
 
                 NavigationDrawerItem(
@@ -525,7 +628,7 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
 
                 HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
@@ -548,7 +651,7 @@ fun MixerScreen(
                     ),
                     modifier = Modifier
                         .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 32.dp)
+                        .height(if (isTablet) 56.dp else 30.dp)
                 )
             }
         }
@@ -605,60 +708,14 @@ fun MixerScreen(
                                 }
 
                                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Button(
-                                            onClick = { 
-                                                val nextNum = channels.size + 1
-                                                val formattedNum = nextNum.toString().padStart(2, '0')
-                                                viewModel.addChannel("Instrumento $formattedNum")
-                                            },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color(0xFF81C784)),
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Text("+ CH", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                        }
-                                        Button(
-                                            onClick = { viewModel.toggleMidiLearn() },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (isMidiLearnActive) Color(0xFF00E5FF) else Color(0xFF424242),
-                                                contentColor = if (isMidiLearnActive) Color.Black else Color.White
-                                            ),
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(Icons.Outlined.AutoFixHigh, contentDescription = "MIDI Learn", modifier = Modifier.size(20.dp))
-                                        }
-                                        Button(
-                                            onClick = { viewModel.panic() },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F), contentColor = Color.White),
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(Icons.Outlined.Warning, contentDescription = "Panic", modifier = Modifier.size(20.dp))
-                                        }
-                                        Button(
-                                            onClick = { viewModel.toggleMasterVisibility() },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = if (isMasterVisible) Color(0xFF81C784) else Color(0xFF424242), contentColor = Color.White),
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(Icons.Outlined.GraphicEq, contentDescription = "Master", modifier = Modifier.size(20.dp))
-                                        }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Button(
-                                            onClick = { showExitConfirmation = true },
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                            contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
-                                        ) {
-                                            Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Sair", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
-                                        }
+                                    Button(
+                                        onClick = { showExitConfirmation = true },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Sair", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
                                     }
                                 }
                             }
@@ -670,13 +727,14 @@ fun MixerScreen(
                 MixerScreenInfoPanel(
                     ramUsage = ramUsageMb,
                     cpuUsage = cpuUsagePercent.toInt(),
-                    activeSet = "LIVE PERFORMANCE ALPHA",
+                    activeSet = if (activeSetStageName != null) activeSetStageName!! + (if (hasUnsavedChanges) " *" else "") else "Nenhum",
                     midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
                     lastEvent = "BUFFER: $bufferSize",
-                    systemEvent = systemEvent,
+                    audioInterface = audioInterfaceName,
                     sampleRate = sampleRate,
                     isTablet = isTablet,
-                    midiLearnFeedback = midiLearnFeedback
+                    midiLearnFeedback = midiLearnFeedback,
+                    onActiveSetLongClick = { showQuickSelector = true }
                 )
 
                 MixerScreenToolBar(
@@ -686,7 +744,31 @@ fun MixerScreen(
                     isMidiLearnActive = isMidiLearnActive,
                     midiLearnTarget = midiLearnTarget,
                     midiLearnMappings = midiLearnMappings,
-                    isTablet = isTablet
+                    isTablet = isTablet,
+                    activeSetStageName = activeSetStageName,
+                    hasUnsavedChanges = hasUnsavedChanges,
+                    onSaveClick = {
+                        if (activeSetStageName == null) {
+                            showSaveAsDialog = true
+                        } else {
+                            showSaveSetStageOptions = true
+                        }
+                    },
+                    showSaveSetStageOptions = showSaveSetStageOptions,
+                    onDismissSaveOptions = { showSaveSetStageOptions = false },
+                    onSaveCurrent = { showSaveCurrentConfirmation = true },
+                    onSaveAs = {
+                        newSetStageName = ""
+                        showSaveAsDialog = true
+                    },
+                    channelsCount = channels.size,
+                    onAddChannel = {
+                        val nextNum = channels.size + 1
+                        val formattedNum = nextNum.toString().padStart(2, '0')
+                        viewModel.addChannel("Instrumento $formattedNum")
+                    },
+                    isMasterVisible = isMasterVisible,
+                    onToggleMaster = { viewModel.toggleMasterVisibility() }
                 )
 
                 BoxWithConstraints(
@@ -909,7 +991,8 @@ fun MixerScreen(
                     channelId = channelId,
                     onTestNoteOn = { ch, n, v -> viewModel.playTestNoteOn(ch, n, v) },
                     onTestNoteOff = { ch, n -> viewModel.playTestNoteOff(ch, n) },
-                    engine = viewModel.audioEngine
+                    engine = viewModel.audioEngine,
+                    viewModel = viewModel
                 )
             } else {
                 showDSPEffectsRackForChannel = null
@@ -927,6 +1010,11 @@ fun MixerScreen(
                 MidiLearnTarget.TRANSPOSE_UP -> "Trn+"
                 MidiLearnTarget.TRANSPOSE_DOWN -> "Trn-"
                 MidiLearnTarget.DSP_PARAM -> "DSP"
+                MidiLearnTarget.TAP_DELAY -> "TAP"
+                MidiLearnTarget.SET_STAGE_SLOT -> "Slot ${unmap.slotIndex}"
+                MidiLearnTarget.NEXT_BANK -> "Bank+"
+                MidiLearnTarget.PREVIOUS_BANK -> "Bank-"
+                MidiLearnTarget.FAVORITE_SET -> "Fav Set"
             }
             val chLabel = when (unmap.channelId) {
                 MixerViewModel.MASTER_CHANNEL_ID -> "MASTER"
@@ -973,7 +1061,50 @@ fun MixerScreen(
                 }
             }
         }
+
+
+    // === Save Current Confirmation Dialog ===
+    if (showSaveCurrentConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showSaveCurrentConfirmation = false },
+            title = { Text("Confirmar Salvamento", color = Color.White) },
+            text = { 
+                Column {
+                    Text("Isso irá sobrescrever as configurações do Set Stage '${activeSetStageName}'.", color = Color.LightGray)
+                    Text("Deseja continuar?", color = Color.LightGray)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSaveCurrentConfirmation = false
+                        activeSetStageName?.let { viewModel.saveCurrentSetStage(it) }
+                    }
+                ) {
+                    Text("SALVAR", color = Color(0xFF81C784), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveCurrentConfirmation = false }) {
+                    Text("CANCELAR", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF222222)
+        )
     }
+
+    // Quick Selector Dialog
+    if (showQuickSelector) {
+        SetStageQuickSelectorDialog(
+            onDismissRequest = { showQuickSelector = false },
+            viewModel = viewModel
+        )
+    }
+
+    // --- ELEGANT TOAST NOTIFICATION ---
+    // --- REUSABLE TOAST SYSTEM ---
+    StageToastHost(viewModel)
+}
 }
 
 @Composable
@@ -984,7 +1115,18 @@ fun MixerScreenToolBar(
     isMidiLearnActive: Boolean,
     midiLearnTarget: com.example.stagemobile.midi.MidiLearnTargetInfo?,
     midiLearnMappings: List<com.example.stagemobile.midi.MidiLearnMapping>,
-    isTablet: Boolean
+    isTablet: Boolean,
+    activeSetStageName: String?,
+    hasUnsavedChanges: Boolean,
+    onSaveClick: () -> Unit,
+    showSaveSetStageOptions: Boolean,
+    onDismissSaveOptions: () -> Unit,
+    onSaveCurrent: () -> Unit,
+    onSaveAs: () -> Unit,
+    channelsCount: Int,
+    onAddChannel: () -> Unit,
+    isMasterVisible: Boolean,
+    onToggleMaster: () -> Unit
 ) {
     val pulseAlpha = rememberMidiLearnPulse(isMidiLearnActive)
     val barHeight = if (isTablet) 38.dp else 28.dp
@@ -995,11 +1137,73 @@ fun MixerScreenToolBar(
             .height(barHeight),
         color = Color(0xFF1A1A1A)
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+            // --- LEFT: SAVE + MIDI LEARN ---
             Row(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+                modifier = Modifier.align(Alignment.CenterStart),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box {
+                    Button(
+                        onClick = onSaveClick,
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2), contentColor = Color.White),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Salvar",
+                            modifier = Modifier.size(if (isTablet) 20.dp else 16.dp)
+                        )
+                    }
+
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = showSaveSetStageOptions,
+                        onDismissRequest = onDismissSaveOptions,
+                        modifier = Modifier.background(Color(0xFF222222))
+                    ) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Salvar atual", color = Color.White) },
+                            onClick = {
+                                onDismissSaveOptions()
+                                onSaveCurrent()
+                            }
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Salvar como...", color = Color.White) },
+                            onClick = {
+                                onDismissSaveOptions()
+                                onSaveAs()
+                            }
+                        )
+                    }
+                }
+
+                // MIDI Learn Button
+                Button(
+                    onClick = { viewModel.toggleMidiLearn() },
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isMidiLearnActive) Color(0xFFFFEE3B) else Color(0xFF424242),
+                        contentColor = if (isMidiLearnActive) Color.Black else Color.White
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoFixHigh,
+                        contentDescription = "MIDI Learn",
+                        modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
+                    )
+                }
+            }
+
+            // --- CENTER: GLOBAL CONTROLS ---
+            Row(
+                modifier = Modifier.align(Alignment.Center),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // --- GLOBAL OCTAVE ---
                 NoteShiftControl(
@@ -1009,8 +1213,8 @@ fun MixerScreenToolBar(
                     onDelta = { viewModel.updateGlobalOctaveShift(it) },
                     isMidiLearnActive = isMidiLearnActive,
                     pulseAlpha = pulseAlpha,
-                    targetUp = MidiLearnTarget.OCTAVE_UP,
-                    targetDown = MidiLearnTarget.OCTAVE_DOWN,
+                    targetUp = com.example.stagemobile.midi.MidiLearnTarget.OCTAVE_UP,
+                    targetDown = com.example.stagemobile.midi.MidiLearnTarget.OCTAVE_DOWN,
                     midiLearnTarget = midiLearnTarget,
                     midiLearnMappings = midiLearnMappings,
                     viewModel = viewModel,
@@ -1018,54 +1222,66 @@ fun MixerScreenToolBar(
                     labelOnLeft = true
                 )
 
-                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 8.dp))
                 
                 // Vertical Divider
                 Box(modifier = Modifier.width(1.dp).height(if (isTablet) 18.dp else 10.dp).background(Color(0xFF444444)))
                 
-                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 8.dp))
 
                 // --- GLOBAL TAP DELAY ---
-                val btnSize = if (isTablet) 28.dp else 22.dp
+                val tapBtnSize = if (isTablet) 26.dp else 20.dp
+                val tapState = com.example.stagemobile.ui.components.MidiLearnState(
+                    isMidiLearnActive,
+                    midiLearnTarget?.target == com.example.stagemobile.midi.MidiLearnTarget.TAP_DELAY && midiLearnTarget?.channelId == com.example.stagemobile.viewmodel.MixerViewModel.GLOBAL_CHANNEL_ID,
+                    midiLearnMappings.any { it.target == com.example.stagemobile.midi.MidiLearnTarget.TAP_DELAY && it.channelId == com.example.stagemobile.viewmodel.MixerViewModel.GLOBAL_CHANNEL_ID }
+                )
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "TAP",
+                        text = "TAP", // Shorter label for better fit
                         color = Color.Gray,
                         fontSize = if (isTablet) 8.sp else 6.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(end = if (isTablet) 10.dp else 4.dp)
+                        modifier = Modifier.padding(end = if (isTablet) 6.dp else 3.dp)
                     )
                     Surface(
                         modifier = Modifier
-                            .size(btnSize)
+                            .size(tapBtnSize)
                             .clip(RoundedCornerShape(4.dp))
-                            .clickable { viewModel.tapGlobalDelayTime() },
+                            .midiLearnHalo(tapState, RoundedCornerShape(4.dp), pulseAlpha = pulseAlpha)
+                            .midiLearnClickable(
+                                tapState,
+                                onLearnClick = { viewModel.selectLearnTarget(com.example.stagemobile.midi.MidiLearnTarget.TAP_DELAY, com.example.stagemobile.viewmodel.MixerViewModel.GLOBAL_CHANNEL_ID) },
+                                onLearnLongClick = { viewModel.requestUnmap(com.example.stagemobile.midi.MidiLearnTarget.TAP_DELAY, com.example.stagemobile.viewmodel.MixerViewModel.GLOBAL_CHANNEL_ID) },
+                                onClick = { viewModel.tapGlobalDelayTime() }
+                            ),
                         color = Color(0xFF222222),
                         border = BorderStroke(1.dp, Color(0xFF444444))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("●", color = Color(0xFFBA68C8), fontSize = if (isTablet) 18.sp else 14.sp)
+                            Text("●", color = Color(0xFFBA68C8), fontSize = if (isTablet) 16.sp else 12.sp)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 8.dp))
                 
                 // Vertical Divider
                 Box(modifier = Modifier.width(1.dp).height(if (isTablet) 18.dp else 10.dp).background(Color(0xFF444444)))
                 
-                Spacer(modifier = Modifier.width(if (isTablet) 32.dp else 16.dp))
+                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 8.dp))
 
                 // --- GLOBAL TRANSPOSE ---
                 NoteShiftControl(
                     label = "TRANSPOSE",
                     value = globalTranspose,
                     unit = "st",
-                    onDelta = { viewModel.updateGlobalTransposeShift(it) },
+                    onDelta = { delta -> viewModel.updateGlobalTransposeShift(delta) },
                     isMidiLearnActive = isMidiLearnActive,
                     pulseAlpha = pulseAlpha,
-                    targetUp = MidiLearnTarget.TRANSPOSE_UP,
-                    targetDown = MidiLearnTarget.TRANSPOSE_DOWN,
+                    targetUp = com.example.stagemobile.midi.MidiLearnTarget.TRANSPOSE_UP,
+                    targetDown = com.example.stagemobile.midi.MidiLearnTarget.TRANSPOSE_DOWN,
                     midiLearnTarget = midiLearnTarget,
                     midiLearnMappings = midiLearnMappings,
                     viewModel = viewModel,
@@ -1073,8 +1289,63 @@ fun MixerScreenToolBar(
                     labelOnLeft = false
                 )
             }
-            
-            HorizontalDivider(color = Color(0xFF333333), thickness = 1.dp)
+
+            // --- RIGHT: CH + MASTER + PANIC ---
+            Row(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // Button + CH
+                Button(
+                    onClick = onAddChannel,
+                    enabled = channelsCount < 16,
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF424242),
+                        contentColor = Color(0xFF81C784),
+                        disabledContainerColor = Color(0xFF222222),
+                        disabledContentColor = Color.DarkGray
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Text("+CH", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 10.sp else 8.sp)
+                }
+
+                // Button Master
+                Button(
+                    onClick = onToggleMaster,
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isMasterVisible) Color(0xFF81C784) else Color(0xFF424242),
+                        contentColor = if (isMasterVisible) Color.Black else Color.White
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.GraphicEq,
+                        contentDescription = "Master",
+                        modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
+                    )
+                }
+
+                // PANIC Button
+                Button(
+                    onClick = { viewModel.panic() },
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F), contentColor = Color.White),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Warning,
+                        contentDescription = "Panic",
+                        modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
+                    )
+                }
+            }
         }
     }
 }

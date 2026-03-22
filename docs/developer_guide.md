@@ -53,3 +53,13 @@ Para inserir um novo efeito no Rack Nativo:
 - **NUNCA** use `println` ou `Log.d` dentro do loop de áudio nativo (`onAudioReady`).
 - **NUNCA** aloque memória (`new` / `malloc`) dentro do loop de áudio. Use pré-alocação no `prepare()`.
 - **SEMPRE** use `lock-free queues` para comunicação entre a UI e o Motor de Áudio.
+- **SEMPRE** valide a integridade estrutural (chaves e imports) após refatorações.
+
+## 6. Protocolo de Integridade de Código (Prevenção de Erros)
+
+Para evitar erros recorrentes de compilação, siga este checklist antes de concluir uma refatoração:
+
+1.  **Verificação de Escopo:** Após editar blocos aninhados (especialmente Lambdas do Compose), verifique o alinhamento das chaves (`}`). Um erro comum é deixar um `Dialog` ou `Box` aberto, o que corrompe o escopo de todas as funções subsequentes no arquivo.
+2.  **Auditoria de Imports:** Ao componentizar ou mover elementos entre pacotes (ex: de `ui.screens` para `ui.components`), certifique-se de que todos os arquivos afetados atualizaram seus `import`.
+3.  **Build de Verificação:** Realize um build local (`./gradlew assembleDebug`) após qualquer alteração que modifique assinaturas de funções ou a estrutura de componentes compartilhados.
+4.  **Substituições Seguras:** Ao usar ferramentas de edição de texto em arquivos grandes (> 500 linhas), prefira edições pequenas e localizadas para evitar remoções acidentais de delimitadores de escopo.

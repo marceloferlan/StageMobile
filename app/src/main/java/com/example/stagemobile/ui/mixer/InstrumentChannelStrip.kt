@@ -124,7 +124,7 @@ fun InstrumentChannelStrip(
             )
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(bounded = true, color = Color.White.copy(alpha = 0.1f)),
+                indication = null, // Desabilitado a pedido do usuário (iluminação indesejada no toque)
                 onClick = { /* No action on simple tap */ },
                 onLongClick = { onRemoveClick() }
             )

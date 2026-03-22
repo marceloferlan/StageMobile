@@ -1,7 +1,8 @@
 package com.example.stagemobile.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -27,11 +28,12 @@ fun MixerScreenInfoPanel(
     activeSet: String = "STAGE SET ALPHA",
     midiStatus: String = "OMNI / ALL DEVICES",
     lastEvent: String = "",
-    systemEvent: String = "",
+    audioInterface: String = "Buscando...",
     sampleRate: Int = 44100,
     isError: Boolean = false,
     isTablet: Boolean = UiUtils.rememberIsTablet(),
-    midiLearnFeedback: String? = null
+    midiLearnFeedback: String? = null,
+    onActiveSetLongClick: () -> Unit = {}
 ) {
     val lcdBackground = Brush.verticalGradient(
         colors = listOf(Color(0xFF0A0A0A), Color(0xFF1A1A1A))
@@ -68,9 +70,14 @@ fun MixerScreenInfoPanel(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-            // Seção 1: Stage Set & Program
+            @OptIn(ExperimentalFoundationApi::class)
             Column(
-                modifier = Modifier.weight(1.5f),
+                modifier = Modifier
+                    .weight(1.5f)
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = onActiveSetLongClick
+                    ),
                 verticalArrangement = if (isTablet) Arrangement.spacedBy(2.dp) else Arrangement.Center
             ) {
                 if (isTablet) {
@@ -127,14 +134,14 @@ fun MixerScreenInfoPanel(
                 Box(modifier = Modifier.width(1.dp).height(20.dp).background(Color(0xFF333333)))
             }
 
-            // Seção 3: System Events / MIDI Learn Feedback
+            // Seção 3: Audio Interface Info / MIDI Learn Feedback
             Column(
-                modifier = Modifier.weight(if (isTablet) 2f else 2.5f),
+                modifier = Modifier.weight(if (isTablet) 2f else 3f),
                 verticalArrangement = if (isTablet) Arrangement.spacedBy(2.dp) else Arrangement.Center
             ) {
                 if (isTablet) {
                     Text(
-                        text = "MENSAGENS DO SISTEMA",
+                        text = "INTERFACE DE ÁUDIO",
                         color = Color.Gray,
                         fontSize = labelSize,
                         fontWeight = FontWeight.Bold,
@@ -153,7 +160,7 @@ fun MixerScreenInfoPanel(
                     )
                 } else {
                     Text(
-                        text = systemEvent.uppercase(),
+                        text = audioInterface.uppercase(),
                         color = displayColor.copy(alpha = 0.8f),
                         fontSize = valueSize3,
                         fontWeight = FontWeight.Medium,

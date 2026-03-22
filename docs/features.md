@@ -2,18 +2,18 @@
 
 Este documento descreve as capacidades funcionais do StageMobile, detalhando os fluxos de operação e as regras de negócio.
 
-## 1. Fluxo de MIDI Learn (Mapeamento de Hardware)
-O MIDI Learn permite que o músico vincule controladores físicos (Knobs, Sliders) aos parâmetros da interface de forma dinâmica.
+## 1. Fluxos de MIDI Learn (Mapeamento de Hardware)
+O MIDI Learn permite que o músico vincule controladores físicos (Knobs, Sliders, Pads) aos parâmetros da interface de forma dinâmica.
 
-```mermaid
-flowchart TD
-    A[Início: Long-Press no Knob/Fader] --> B[Estado: midiLearnMode = Ativo]
-    B --> C{Aguardando MIDI CC}
-    C -- Recebe CC x do Dispositivo Y --> D[Mapeamento: Target Z = CC x]
-    D --> E[Persistência: Salva no SettingsRepository]
-    E --> F[Fim: Knob agora responde ao CC x]
-    C -- Timeout / Cancelar --> G[Fim: Sem alteração]
-```
+### 1.1 Mapeamento de Parâmetros DSP
+- **Modo:** Toque longo no componente alvo.
+- **Escopo:** Global ou por canal.
+
+### 1.2 Mapeamento de Set Stages (Relative Mapping)
+Para evitar conflitos entre múltiplos bancos, o sistema utiliza o conceito de **Mapeamento Relativo**:
+- **Slots 1-15:** Vinculados ao banco atualmente visível na tela de Sets.
+- **Navegação de Bancos:** Alvos MIDI dedicados para `Bank +` e `Bank -`.
+- **Set Favorito:** Atalho global `FAVORITE_SET` para carregar um preset mestre instantaneamente (ex: Banco 1, Slot 1).
 
 ## 2. Gerenciamento de SoundFonts e Cache de Memória
 Para otimizar o uso de RAM, o sistema evita carregar o mesmo arquivo SF2 múltiplas vezes.
@@ -61,7 +61,17 @@ O sistema aplica uma transformação matemática ao valor de velocity MIDI (0-12
 - **Soft/Hard:** Curvas exponenciais para compensar a resistência física de diferentes teclados controladores.
 - **S-Curve:** Compressão de dinâmica nas extremidades.
 
-## 5. Requisitos Não Funcionais (NFR)
+## 5. Gerenciamento de Sets e Performance
+### 5.1 Renomeação e Customização
+- **Bancos:** Suportam nomes complementares persistentes (ex: "Show de Sábado").
+- **Slots:** Renomeação individual para fácil identificação em palco.
+
+### 5.2 Carregamento Assíncrono (Latency Zero)
+O carregamento de Set Stages ocorre em `Dispatchers.Default`, permitindo:
+- **Navegação Fluida:** A UI não trava durante a troca de presets.
+- **Feedback Imediato:** Toasts de confirmação disparados instantaneamente após o toque.
+
+## 6. Requisitos Não Funcionais (NFR)
 - **Zero Latency:** Prioridade absoluta para a Thread de Renderização (Oboe).
 - **Stability:** O sistema deve suportar trocas abruptas de presets sem travamentos ou spikes de áudio (Glitch-free).
 - **Scalability:** O layout e o motor devem suportar de 1 a 16 canais sem degradação perceptível de performance em dispositivos modernos.

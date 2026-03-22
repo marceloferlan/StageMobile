@@ -149,7 +149,8 @@ fun DSPEffectsRackDialog(
     channelId: Int = -1,
     onTestNoteOn: (Int, Int, Int) -> Unit = { _, _, _ -> },
     onTestNoteOff: (Int, Int) -> Unit = { _, _ -> },
-    engine: com.example.stagemobile.audio.engine.AudioEngine? = null
+    engine: com.example.stagemobile.audio.engine.AudioEngine? = null,
+    viewModel: com.example.stagemobile.viewmodel.MixerViewModel? = null
 ) {
     val isTablet = com.example.stagemobile.utils.UiUtils.rememberIsTablet()
     
@@ -467,6 +468,9 @@ fun DSPEffectsRackDialog(
                 }
             }
         }
+        
+        // --- REUSABLE TOAST SYSTEM ---
+        StageToastHost(viewModel)
     }
 }
 }
