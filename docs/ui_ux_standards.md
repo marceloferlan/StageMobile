@@ -94,3 +94,21 @@ Ao acionar o MIDI Learn (ícone **AutoFixHigh**), o sistema entra em estado de e
 - O componente deve ser facilmente extraível para uma função composable reutilizável.
 - O espaçamento interno é responsabilidade do próprio componente, não do container pai.
 - O componente deve expor um único `Modifier` externo.
+
+## 8. Visibilidade e Hierarquia de Ações (Novo)
+### 8.1 Opções de Canal Condicionais
+- **Regra:** Opções avançadas ("Colorizar", "Parâmetros", "Rack de Efeitos") são exibidas apenas se o canal possuir um SoundFont carregado.
+- **Vantagem:** Reduz a carga cognitiva e evita disparos de UI sobre estados vazios do motor.
+
+## 9. Sistema de Alturas do Rack de Efeitos (Novo)
+Para otimizar o espaço vertical e reduzir o scroll, o sistema utiliza alturas graduadas (propriedade `expandedHeight`):
+
+| Tipo de Card | Altura Phone | Altura Tablet | Justificativa |
+| :--- | :--- | :--- | :--- |
+| **Padrão / Compressor** | 380.dp | 420.dp | Suporta 7+ parâmetros e Meters dinâmicos. |
+| **Equalizador** | 260.dp | 300.dp | Formato horizontal de 3 bandas + output. |
+| **Reverb** | 285.dp | 315.dp | Ajustado para mix de dials e seletor Master/Local. |
+| **Compacto (Simple FX)** | 247.dp | 273.dp | 35% menor; para HPF, LPF, Chorus, Tremolo, Delay e Limiter. |
+
+### 9.1 Ajuste de Conteúdo Compacto
+Ao utilizar a altura **Compacta**, os knobs devem usar um multiplicador de escala reduzido (~1.2x a 1.4x em vez de 2.0x) e o espaçamento vertical entre linhas de knobs deve ser reduzido para 4.dp.

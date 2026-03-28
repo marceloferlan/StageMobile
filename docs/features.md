@@ -73,5 +73,32 @@ O carregamento de Set Stages ocorre em `Dispatchers.Default`, permitindo:
 
 ## 6. Requisitos Não Funcionais (NFR)
 - **Zero Latency:** Prioridade absoluta para a Thread de Renderização (Oboe).
-- **Stability:** O sistema deve suportar trocas abruptas de presets sem travamentos ou spikes de áudio (Glitch-free).
+- **Stability:** O sistema deve suportar trocas abruptas de presets e ajustes de parâmetros em tempo real sem travamentos ou spikes de áudio (Glitch-free). Implementado via smoothing de parâmetros, crossfade de filtros e ponte JNI lock-free.
 - **Scalability:** O layout e o motor devem suportar de 1 a 16 canais sem degradação perceptível de performance em dispositivos modernos.
+
+## 7. Gerenciador Interno de SoundFonts (SF2 Library)
+Para eliminar a dependência de arquivos externos e garantir que os Set Stages funcionem em qualquer dispositivo, o sistema utiliza uma biblioteca interna.
+
+### 7.1 Armazenamento Privado
+- **Local:** `/data/user/0/stagemobile/files/soundfonts/`
+- **Vantagem:** Arquivos importados para esta pasta são imunes a deleções acidentais na galeria ou gerenciador de arquivos do Android.
+
+### 7.2 Metadados e Categorização (Firebase)
+- **Sincronização:** Metadados como `tags`, `categorias` e `data de adição` são persistidos no Firebase Firestore.
+- **Busca Rápida:** O seletor de instrumentos permite filtrar por categorias (Piano, Pad, Synth, etc.) em vez de navegar por pastas.
+- **Tratamento de Conflitos:** O sistema detecta duplicatas por nome de arquivo e solicita confirmação (Substituir/Cancelar) durante a importação.
+
+### 7.3 Integridade de Set Stages
+- **Referência:** Set Stages salvos utilizam o nome do arquivo interno.
+- **Resiliência:** Ao carregar um set, o sistema prioriza o arquivo na biblioteca interna. Se não existir, tenta o fallback para o URI legado (se disponível no mapa de cache).
+- **Aviso de Exclusão:** O sistema impede/alerta a exclusão de um SF2 que esteja sendo utilizado em algum Set Stage salvo nos 10 bancos disponíveis.
+
+## 8. UX de Carregamento e Identificação (Novo)
+### 8.1 Auto-Seleção de Preset Único
+- **Lógica:** Se um arquivo SF2 possuir apenas 1 preset/programa, o sistema pula o diálogo de seleção e o carrega instantaneamente no canal.
+- **Vantagem:** Agiliza a montagem de sets em palco para instrumentos de timbre único (ex: Pianos dedicados).
+
+### 8.2 Títulos Dinâmicos e Sincronizados
+- **Formato:** Os títulos dos canais na Mixer e nos Diálogos seguem o padrão `Nome_do_SF2 [Nome_do_Preset]`.
+- **Efeito Visual:** No Rack de Efeitos e Menu de Opções, o preset é destacado graficamente (cor verde) para facilitar a leitura rápida.
+- **Sincronização:** O `MixerViewModel` garante que o nome do canal reflita o estado atual do motor de áudio em tempo real.
