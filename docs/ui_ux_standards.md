@@ -140,4 +140,4 @@ Para agilizar a troca de instrumentos e limpeza do mixer:
 - **Long Press (Pressione Longo):**
     - Se o canal estiver carregado, aciona a modal de **LIMPAR (Unload)**.
     - Se o canal estiver vazio, abre o seletor de SoundFonts.
-- **Modal de Limpeza:** Deve ser compacta (**45% da largura e 33% da altura**) para não obstruir a visão global do mixer durante a confirmação.
+- **Modais de Confirmação (Limpeza/Exclusão):** Devem ser compactas (**45% da largura e 33% da altura**) para não obstruir a visão global do mixer ou da biblioteca durante a confirmação.

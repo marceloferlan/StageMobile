@@ -376,7 +376,7 @@ class MainActivity : ComponentActivity() {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.9f).testTag("delete_confirmation").clickable(enabled=false){},
+                                    modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.33f).testTag("delete_confirmation").clickable(enabled=false){},
                                     shape = RoundedCornerShape(20.dp),
                                     color = Color(0xFF2C2C2C)
                                 ) {
