@@ -291,7 +291,7 @@ class MainActivity : ComponentActivity() {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Surface(
-                                        modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.33f).testTag("unload_confirmation_overlay").clickable(enabled=false){},
+                                        modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.40f).testTag("unload_confirmation_overlay").clickable(enabled=false){},
                                         shape = RoundedCornerShape(20.dp),
                                         color = Color(0xFF2C2C2C)
                                     ) {
@@ -376,7 +376,7 @@ class MainActivity : ComponentActivity() {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.33f).testTag("delete_confirmation").clickable(enabled=false){},
+                                    modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.40f).testTag("delete_confirmation").clickable(enabled=false){},
                                     shape = RoundedCornerShape(20.dp),
                                     color = Color(0xFF2C2C2C)
                                 ) {
