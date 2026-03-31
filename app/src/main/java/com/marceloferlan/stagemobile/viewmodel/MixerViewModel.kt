@@ -205,6 +205,100 @@ class MixerViewModel : ViewModel() {
         val presets: List<Sf2Preset>,
         val isInitialLoad: Boolean
     )
+
+    // --- Overlay / Modal Visibility States (Phase 5) ---
+    private val _showSoundFontSelectorForChannel = MutableStateFlow<Int?>(null)
+    val showSoundFontSelectorForChannel = _showSoundFontSelectorForChannel.asStateFlow()
+
+    private val _showQuickSelector = MutableStateFlow(false)
+    val showQuickSelector = _showQuickSelector.asStateFlow()
+
+    private val _showDSPEffectsRackForChannel = MutableStateFlow<Int?>(null)
+    val showDSPEffectsRackForChannel: StateFlow<Int?> = _showDSPEffectsRackForChannel.asStateFlow()
+
+    private val _showAdvancedParamsForChannel = MutableStateFlow<Int?>(null)
+    val showAdvancedParamsForChannel: StateFlow<Int?> = _showAdvancedParamsForChannel.asStateFlow()
+
+    private val _showOptionsForChannel = MutableStateFlow<Int?>(null)
+    val showOptionsForChannel: StateFlow<Int?> = _showOptionsForChannel.asStateFlow()
+
+    private val _showUnloadConfirmationForChannel = MutableStateFlow<Int?>(null)
+    val showUnloadConfirmationForChannel: StateFlow<Int?> = _showUnloadConfirmationForChannel.asStateFlow()
+
+    // --- Maintenance Overlay States ---
+    private val _showSf2ImportTagSelector = MutableStateFlow<android.net.Uri?>(null)
+    val showSf2ImportTagSelector = _showSf2ImportTagSelector.asStateFlow()
+
+    private val _showSf2RenameDialog = MutableStateFlow<SoundFontMetadata?>(null)
+    val showSf2RenameDialog = _showSf2RenameDialog.asStateFlow()
+
+    private val _showSf2DeleteConfirmation = MutableStateFlow<SoundFontMetadata?>(null)
+    val showSf2DeleteConfirmation = _showSf2DeleteConfirmation.asStateFlow()
+
+    fun showSoundFontSelector(channelId: Int) {
+        _showSoundFontSelectorForChannel.value = channelId
+    }
+
+    fun dismissSoundFontSelector() {
+        _showSoundFontSelectorForChannel.value = null
+    }
+
+    fun showQuickSelector() {
+        _showQuickSelector.value = true
+    }
+
+    fun dismissQuickSelector() {
+        _showQuickSelector.value = false
+    }
+
+    fun showEffectsRack(channelId: Int) {
+        _showDSPEffectsRackForChannel.value = channelId
+    }
+
+    fun dismissEffectsRack() {
+        _showDSPEffectsRackForChannel.value = null
+    }
+
+    fun showChannelAdvancedSettings(channelId: Int) {
+        _showAdvancedParamsForChannel.value = channelId
+    }
+
+    fun dismissChannelAdvancedSettings() {
+        _showAdvancedParamsForChannel.value = null
+    }
+
+    fun showChannelOptions(channelId: Int) {
+        _showOptionsForChannel.value = channelId
+    }
+
+    fun dismissChannelOptions() {
+        _showOptionsForChannel.value = null
+    }
+
+    fun showUnloadConfirmation(channelId: Int) {
+        _showUnloadConfirmationForChannel.value = channelId
+    }
+
+    fun dismissUnloadConfirmation() {
+        _showUnloadConfirmationForChannel.value = null
+    }
+
+    // --- DSP & MIDI Aliases for UI Compatibility ---
+    fun updateDspParam(channelId: Int, effectId: String, paramId: Int, value: Float) = 
+        updateEffectParam(channelId, effectId, paramId, value)
+    
+    fun toggleDspEffect(channelId: Int, effectId: String, enabled: Boolean) = 
+        toggleEffect(channelId, effectId, enabled)
+    
+    fun addDspEffect(channelId: Int, type: DSPEffectType) = 
+        addEffectToChannel(channelId, type)
+    
+    fun removeDspEffect(channelId: Int, effectId: String) = 
+        removeEffectFromChannel(channelId, effectId)
+    
+    fun toggleChannelMidiFilter(channelId: Int, filterType: String, isEnabled: Boolean) = 
+        updateChannelMidiFilter(channelId, filterType, isEnabled)
+
     private val _pendingPresetSelection = MutableStateFlow<PendingPresetSelection?>(null)
     val pendingPresetSelection: StateFlow<PendingPresetSelection?> = _pendingPresetSelection.asStateFlow()
 
@@ -653,6 +747,29 @@ class MixerViewModel : ViewModel() {
                 isPeakPollingSuspended = false
             }
         }
+    }
+    fun showSf2Import(uri: Uri) {
+        _showSf2ImportTagSelector.value = uri
+    }
+
+    fun dismissSf2Import() {
+        _showSf2ImportTagSelector.value = null
+    }
+
+    fun showSf2Rename(metadata: SoundFontMetadata) {
+        _showSf2RenameDialog.value = metadata
+    }
+
+    fun dismissSf2Rename() {
+        _showSf2RenameDialog.value = null
+    }
+
+    fun showSf2Delete(metadata: SoundFontMetadata) {
+        _showSf2DeleteConfirmation.value = metadata
+    }
+
+    fun dismissSf2Delete() {
+        _showSf2DeleteConfirmation.value = null
     }
 
     fun loadSoundFontForChannel(context: Context, channelId: Int, uri: Uri, targetBank: Int? = null, targetProgram: Int? = null) {
@@ -1441,6 +1558,7 @@ class MixerViewModel : ViewModel() {
         _channels.value.forEach { 
             channelInternalLevels[it.id] = 0f 
         }
+        _lastSystemEvent.tryEmit("Todas as notas OFF")
     }
 
     fun updateChannelKeyRange(channelId: Int, minNote: Int, maxNote: Int) {

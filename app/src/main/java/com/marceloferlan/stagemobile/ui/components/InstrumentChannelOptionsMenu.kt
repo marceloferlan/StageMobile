@@ -1,4 +1,5 @@
 package com.marceloferlan.stagemobile.ui.components
+import androidx.compose.ui.platform.testTag
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -27,8 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.activity.compose.BackHandler
 import com.marceloferlan.stagemobile.domain.model.InstrumentChannel
 
 private enum class ChannelDialogState { MAIN, COLOR_PICKER, REMOVE_CONFIRM }
@@ -63,18 +63,25 @@ fun InstrumentChannelOptionsMenu(
         0xFFFF5722  // Deep Orange
     )
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .clickable(enabled = true, onClick = onDismiss),
+        contentAlignment = Alignment.Center
     ) {
         val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
-        val dialogWidth = if (isTablet) 0.24f else 0.35f
+        val dialogWidth = 0.9f
 
         androidx.compose.material3.Surface(
             modifier = Modifier
                 .fillMaxWidth(dialogWidth)
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(28.dp),
+                .fillMaxHeight(0.9f)
+                .testTag("instrument_channel_options_menu")
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(20.dp),
             color = Color(0xFF1E1E1E),
             tonalElevation = 8.dp
         ) {

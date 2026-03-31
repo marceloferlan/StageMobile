@@ -1,4 +1,5 @@
 package com.marceloferlan.stagemobile.ui.components
+import androidx.compose.ui.platform.testTag
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -38,6 +39,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,8 +62,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.activity.compose.BackHandler
 import com.marceloferlan.stagemobile.domain.model.DSPEffectInstance
 import com.marceloferlan.stagemobile.domain.model.DSPEffectType
 import com.marceloferlan.stagemobile.domain.model.DSPParamType
@@ -137,6 +142,7 @@ fun Modifier.brushedMetalBackground(): Modifier = this.drawBehind {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DSPEffectsRackDialog(
     title: String,
@@ -160,8 +166,6 @@ fun DSPEffectsRackDialog(
     engine: com.marceloferlan.stagemobile.audio.engine.AudioEngine? = null,
     viewModel: com.marceloferlan.stagemobile.viewmodel.MixerViewModel? = null
 ) {
-    val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
-    
     // === Test Player States ===
     var isTestPlayerOpen by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -205,44 +209,36 @@ fun DSPEffectsRackDialog(
         }
     }
     
-    Dialog(
-        onDismissRequest = {
-            isPlaying = false
-            onDismiss()
-        },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+    BackHandler(onBack = { onDismiss() })
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .clickable(enabled = true, onClick = { onDismiss() }),
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Transparent top spacer to show Mixer top bar but block clicks
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(if (isTablet) 56.dp else 48.dp)
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, _ -> change.consume() }
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { /* Bloqueia cliques na topbar */ }
-                    )
-            )
-            
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                color = Color(0xFF1E1E1E),
-                tonalElevation = 8.dp
-            ) {
+        val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
+        val screenConfig = LocalConfiguration.current
+        val screenWidth = screenConfig.screenWidthDp.dp
+        val screenHeight = screenConfig.screenHeightDp.dp
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.9f)
+                .testTag("dsp_effects_rack_dialog")
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF1E1E1E)
+        ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header (Following InstrumentChannelOptionsMenu pattern)
                 Column(modifier = Modifier.fillMaxWidth().padding(
-                    top = if (isTablet) 12.dp else 8.dp,
+                    top = if (isTablet) 12.dp else 4.dp,
                     start = if (isTablet) 16.dp else 12.dp,
                     end = if (isTablet) 16.dp else 12.dp,
-                    bottom = if (isTablet) 8.dp else 4.dp
+                    bottom = if (isTablet) 8.dp else 0.dp
                 )) {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -260,7 +256,7 @@ fun DSPEffectsRackDialog(
                                 text = baseTitle.uppercase(),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = Color.White,
-                                modifier = Modifier.padding(top = if (isTablet) 4.dp else 2.dp)
+                                modifier = Modifier.padding(top = if (isTablet) 4.dp else 0.dp)
                             )
                             if (presetName != null) {
                                 Text(
@@ -347,7 +343,7 @@ fun DSPEffectsRackDialog(
                         }
                     }
                 }
-                
+
                 // === Painel do Test Player ===
                 AnimatedVisibility(
                     visible = isTestPlayerOpen,
@@ -368,12 +364,6 @@ fun DSPEffectsRackDialog(
                             selectedContainerColor = Color(0xFF4FC3F7).copy(alpha = 0.2f),
                             labelColor = Color.Gray,
                             selectedLabelColor = Color(0xFF4FC3F7)
-                        )
-                        val chipBorder = FilterChipDefaults.filterChipBorder(
-                            borderColor = Color(0xFF555555),
-                            selectedBorderColor = Color(0xFF4FC3F7),
-                            enabled = true,
-                            selected = false
                         )
                         
                         FilterChip(
@@ -451,7 +441,6 @@ fun DSPEffectsRackDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
-
                     val visibleEffects = effects.filter { it.type != DSPEffectType.REVERB_SEND }
                     val reverbSendEffect = effects.find { it.type == DSPEffectType.REVERB_SEND }
 
@@ -487,7 +476,7 @@ fun DSPEffectsRackDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF1A1A1A))
-                        .padding(12.dp),
+                        .padding(if (isTablet) 12.dp else 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -502,7 +491,6 @@ fun DSPEffectsRackDialog(
         // --- REUSABLE TOAST SYSTEM ---
         StageToastHost(viewModel)
     }
-}
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -799,7 +787,6 @@ fun EffectRackUnit(
                                         accentColor = accentColor,
                                         knobImageResId = R.drawable.knob_custom,
                                         valueFormatter = { formatValue(it, param) },
-                                        knobModifier = getLearnModifier(i, CircleShape),
                                         onValueChange = { onUpdateParam(i, it) },
                                         enabled = effect.isEnabled
                                     )
@@ -824,7 +811,6 @@ fun EffectRackUnit(
                                         accentColor = accentColor,
                                         knobImageResId = R.drawable.knob_custom,
                                         valueFormatter = { formatValue(it, param) },
-                                        knobModifier = getLearnModifier(i, CircleShape),
                                         onValueChange = { onUpdateParam(i, it) },
                                         enabled = effect.isEnabled
                                     )
@@ -849,7 +835,6 @@ fun EffectRackUnit(
                                         accentColor = accentColor,
                                         knobImageResId = R.drawable.knob_custom,
                                         valueFormatter = { formatValue(it, param) },
-                                        knobModifier = getLearnModifier(i, CircleShape),
                                         onValueChange = { onUpdateParam(i, it) },
                                         enabled = effect.isEnabled
                                     )
@@ -881,7 +866,6 @@ fun EffectRackUnit(
                                         accentColor = accentColor,
                                         knobImageResId = R.drawable.knob_custom_golden,
                                         valueFormatter = { formatValue(it, param) },
-                                        knobModifier = getLearnModifier(outputIdx, CircleShape),
                                         onValueChange = { onUpdateParam(outputIdx, it) },
                                         enabled = effect.isEnabled
                                     )
@@ -1007,7 +991,6 @@ fun EffectRackUnit(
                                     accentColor = accentColor,
                                     knobImageResId = R.drawable.knob_custom,
                                     valueFormatter = { formatValue(it, param) },
-                                    knobModifier = getLearnModifier(0, CircleShape),
                                     onValueChange = { onUpdateParam(0, it) },
                                     enabled = effect.isEnabled
                                 )
@@ -1186,7 +1169,7 @@ fun EffectRackUnit(
 
                                     // Botões de Preset (Lista Vertical)
                                     Column(
-                                        modifier = Modifier.padding(start = 24.dp),
+                                        modifier = Modifier.padding(start = 108.dp),
                                         verticalArrangement = Arrangement.spacedBy(6.dp),
                                         horizontalAlignment = Alignment.Start
                                     ) {
