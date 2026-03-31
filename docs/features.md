@@ -102,3 +102,23 @@ Para eliminar a dependência de arquivos externos e garantir que os Set Stages f
 - **Formato:** Os títulos dos canais na Mixer e nos Diálogos seguem o padrão `Nome_do_SF2 [Nome_do_Preset]`.
 - **Efeito Visual:** No Rack de Efeitos e Menu de Opções, o preset é destacado graficamente (cor verde) para facilitar a leitura rápida.
 - **Sincronização:** O `MixerViewModel` garante que o nome do canal reflita o estado atual do motor de áudio em tempo real.
+
+## 9. Fluxos Ágeis de Gestão de Canal (Novo)
+Para minimizar interrupções durante o show, o sistema implementa atalhos de interação profunda no mixer.
+
+### 9.1 Limpeza de Canal (Unload Inteligente)
+- **Gesto:** Pressione longo (Long Press) sobre o painel do instrumento.
+- **Lógica Contextual:**
+    - Se o canal tiver um SoundFont: Dispara a modal de confirmação para **LIMPAR** o instrumento do motor de síntese.
+    - Se o canal estiver vazio: Dispara o seletor de SoundFonts original.
+- **Segurança de Palco:** A modal de limpeza é compacta para manter a visibilidade dos outros canais e exige confirmação explícita para evitar remoções acidentais pelo toque.
+
+### 9.2 Edição Contextual
+Ao clicar no nome de um canal já carregado, o sistema abre diretamente o menu de opções (`InstrumentChannelOptionsMenu`), permitindo ajustes rápidos de cor, roteamento de efeitos ou acesso aos parâmetros avançados de MIDI.
+
+## 10. Otimização da Biblioteca Interna (SF2)
+### 10.1 Filtro de Importação Inteligente (High Light)
+Durante o processo de importação de novos patches pela tela de manutenção:
+- **Destaque Visual:** Arquivos com extensão `.sf2` (MIMEs `audio/x-soundfont`, `application/x-executable`, etc.) são exibidos em **High Light** (Branco brilhante/Verde).
+- **Esmaecimento Contextual:** Arquivos de sistema ou formatos não suportados na mesma pasta são exibidos com opacidade reduzida (Disabled appearance), orientando visualmente o músico para a seleção correta.
+- **Densidade para Smartphones:** A lista de arquivos em dispositivos móveis possui uma redução de **35%** na altura das linhas para maximizar a quantidade de itens visíveis sem scroll excessivo.

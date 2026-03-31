@@ -112,3 +112,32 @@ Para otimizar o espaço vertical e reduzir o scroll, o sistema utiliza alturas g
 
 ### 9.1 Ajuste de Conteúdo Compacto
 Ao utilizar a altura **Compacta**, os knobs devem usar um multiplicador de escala reduzido (~1.2x a 1.4x em vez de 2.0x) e o espaçamento vertical entre linhas de knobs deve ser reduzido para 4.dp.
+
+## 10. Painel LCD e Toolbar (Performance Mode)
+
+Para garantir a legibilidade crítica durante shows ao vivo, o painel de status (LCD) e a Toolbar seguem regras de adaptação dinâmica.
+
+### 10.1 MixerScreenInfoPanel (O LCD de Status)
+Em dispositivos móveis (celulares), o painel reduz sua altura para **30.dp**, exigindo uma reorganização linear:
+- **Layout de Célula:** Labels e valores são dispostos em `Row` (horizontal) em vez de `Column`.
+- **Estilo Visual:**
+    - **Labels:** Todos os títulos (STAGE SET, INTERFACE DE ÁUDIO) devem estar em **CAIXA ALTA** e cor **Color.Gray**.
+    - **Valores:** Mantêm a cor de destaque (Cyan Neon ou Channel Color) para contraste imediato.
+    - **Legibilidade:** Fonte de labels aumentada para **8.sp** em celulares para garantir leitura periférica.
+- **Distribuição de Espaço (Weights):**
+    - **STAGE SET:** Peso **1.8f** (Prioridade de visualização do patch ativo).
+    - **INTERFACE DE ÁUDIO:** Peso **2.4f** (Informação técnica secundária).
+
+### 10.2 Toolbar e Botões de Controle
+Os controles de performance na Toolbar devem ser oticamente balanceados:
+- **Botão TAP:** O indicador de tempo (`●`) deve ser centralizado verticalmente usando `offset` e `includeFontPadding = false` para evitar deslocamentos causados pela linha de base da fonte.
+- **Render de Bordas:** Bordas de 1.dp em botões com cantos arredondados (`RoundedCornerShape`) devem ser aplicadas diretamente ao parâmetro `shape` do `Surface` para garantir que a linha acompanhe perfeitamente o contorno do botão.
+
+## 11. Gestão de Memória e Instrumentos (Fluxo)
+### 11.1 Comportamento Inteligente de Long Press
+Para agilizar a troca de instrumentos e limpeza do mixer:
+- **Toque Simples:** Abre o seletor de SoundFonts (se vazio) ou troca o preset (se carregado).
+- **Long Press (Pressione Longo):**
+    - Se o canal estiver carregado, aciona a modal de **LIMPAR (Unload)**.
+    - Se o canal estiver vazio, abre o seletor de SoundFonts.
+- **Modal de Limpeza:** Deve ser compacta (**45% da largura e 33% da altura**) para não obstruir a visão global do mixer durante a confirmação.
