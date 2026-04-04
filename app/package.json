@@ -1,0 +1,9 @@
+{
+  "name": "stagemobile-admin-tools",
+  "version": "1.0.0",
+  "description": "Ferramentas administrativas para StageMobile",
+  "main": "manage-soundfonts.js",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

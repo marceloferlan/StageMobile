@@ -18,6 +18,7 @@
 
 #define LOG_TAG "StageAudioEngine"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 using namespace stage_audio;
@@ -106,7 +107,13 @@ public:
         float *outputBuffer = static_cast<float *>(audioData);
         memset(outputBuffer, 0, numFrames * 2 * sizeof(float));
 
-        if (numFrames > 4096) return oboe::DataCallbackResult::Continue;
+        if (numFrames > MAX_AUDIO_FRAME_SIZE) {
+            static int overflowCount = 0;
+            if (overflowCount++ % 100 == 0) {
+                LOGE("AUDIO FATAL: numFrames %d > %d! Bluetooth jitter? Silencing buffer.", numFrames, MAX_AUDIO_FRAME_SIZE);
+            }
+            return oboe::DataCallbackResult::Continue;
+        }
 
         // 1. Snapshot de Dados e Lock de Renderização
         std::unique_lock<std::recursive_mutex> lock(engine_mutex, std::try_to_lock);
@@ -128,23 +135,14 @@ public:
         // Renderização do FluidSynth (Ponto crítico)
         fluid_synth_nwrite_float(synth, numFrames, leftPointers, rightPointers, nullptr, nullptr);
 
-        // Diagnóstico: Verificar se o synth produziu algo no ch=0 (UI Canal 1)
-        {
-            float synthLogMax = 0.0f;
-            for(int k=0; k<numFrames; k++) {
-                synthLogMax = std::max(synthLogMax, std::max(std::abs(channelBuffersL[0][k]), std::abs(channelBuffersR[0][k])));
-            }
-            if (synthLogMax > 0.0001f) {
-                static int synthLogCount = 0;
-                if (synthLogCount++ % 500 == 0) {
-                    LOGI("SYNTH DIAG: ch=0 (Canal 1) produziu áudio! Peak=%.6f", synthLogMax);
-                }
-            }
-        }
+        // Diagnóstico: Verificar se o synth produziu algo (Master Bus Interno)
+        static int silenceCount = 0;
+        static int diagCounter = 0;
+        float masterPeak = 0.0f;
 
         // 2. Processar Canais e Mixar no Barramento Master
-        memset(finalL, 0, 4096 * sizeof(float));
-        memset(finalR, 0, 4096 * sizeof(float));
+        memset(finalL, 0, numFrames * sizeof(float));
+        memset(finalR, 0, numFrames * sizeof(float));
         
         uint32_t newMask = currentMask;
         for (int ch = 0; ch < 16; ++ch) {
@@ -182,6 +180,7 @@ public:
                 }
 
                 channelPeaks[ch].store(maxVal);
+                if (maxVal > masterPeak) masterPeak = maxVal; // Track overall peak
 
                 if (maxVal < 0.0001f && activeNotesCountPerChannel[ch] <= 0) {
                     newMask &= ~(1 << ch);
@@ -195,7 +194,29 @@ public:
         activeChannelsMask.store(newMask);
         
         // 3. Processar Master Rack sobre a Mistura Final
-        dspChain->processMaster(finalL, finalR, numFrames);
+        if (!dspMasterBypass.load()) {
+            dspChain->processMaster(finalL, finalR, numFrames);
+            // Re-check peak after master effects (Limiter/etc)
+            for (int i = 0; i < numFrames; i++) {
+                float p = std::max(std::abs(finalL[i]), std::abs(finalR[i]));
+                if (p > masterPeak) masterPeak = p;
+            }
+        }
+
+        // Diagnóstico Final: Reportar silêncio ou sinal a cada ~2 segundos
+        if (diagCounter++ % 1000 == 0) {
+            if (masterPeak < 0.00001f) {
+                silenceCount++;
+                if (silenceCount > 5) { // ~10 segundos de silêncio persistente
+                    LOGW("AUDIO DIAG: Persistent Silence (Peak=%.8f) | Mask=%u | Voices=%d", 
+                         masterPeak, currentMask, fluid_synth_get_active_voice_count(synth));
+                }
+            } else {
+                silenceCount = 0;
+                LOGI("AUDIO DIAG: Signal Active | MasterPeak=%.6f | Mask=%u | Voices=%d", 
+                     masterPeak, currentMask, fluid_synth_get_active_voice_count(synth));
+            }
+        }
         
         // 4. Intercalar Barramento para o OutputBuffer Oboe (NEON)
         int i = 0;
@@ -215,7 +236,7 @@ public:
         return oboe::DataCallbackResult::Continue;
     }
 
-    void start(int sampleRate, int bufferSize, int deviceId) {
+    oboe::Result start(int sampleRate, int bufferSize, int deviceId) {
         oboe::AudioStreamBuilder builder;
         builder.setFormat(oboe::AudioFormat::Float)
                ->setChannelCount(oboe::ChannelCount::Stereo)
@@ -225,9 +246,27 @@ public:
                ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
                ->setCallback(this);
         if (deviceId >= 0) builder.setDeviceId(deviceId);
+        
         oboe::Result result = builder.openStream(stream);
-        if (result == oboe::Result::OK) stream->requestStart();
+        if (result == oboe::Result::OK) {
+            result = stream->requestStart();
+            if (result != oboe::Result::OK) {
+                LOGE("Oboe stream requestStart FAILED: %s", oboe::convertToText(result));
+            }
+        } else {
+            LOGE("Oboe openStream FAILED: %s (SR=%d, Buf=%d, Dev=%d)", 
+                 oboe::convertToText(result), sampleRate, bufferSize, deviceId);
+        }
+        return result;
     }
+
+    void onErrorAfterClose(oboe::AudioStream *oboeStream, oboe::Result error) override {
+        LOGE("OBOE ERROR AFTER CLOSE: %s. Stream is now dead.", oboe::convertToText(error));
+        streamDead.store(true);
+    }
+    
+    bool isStreamDead() const { return streamDead.load(); }
+    void resetStreamDead() { streamDead.store(false); }
 
     void stop() {
         if (stream) { stream->requestStop(); stream->close(); stream.reset(); }
@@ -235,10 +274,11 @@ public:
 
 private:
     std::shared_ptr<oboe::AudioStream> stream;
-    float channelBuffersL[16][4096] = {0.0f};
-    float channelBuffersR[16][4096] = {0.0f};
-    float finalL[4096] = {0.0f};
-    float finalR[4096] = {0.0f};
+    std::atomic<bool> streamDead{false};
+    float channelBuffersL[16][MAX_AUDIO_FRAME_SIZE] = {0.0f};
+    float channelBuffersR[16][MAX_AUDIO_FRAME_SIZE] = {0.0f};
+    float finalL[MAX_AUDIO_FRAME_SIZE] = {0.0f};
+    float finalR[MAX_AUDIO_FRAME_SIZE] = {0.0f};
     float* leftPointers[16];
     float* rightPointers[16];
 };
@@ -247,8 +287,8 @@ static std::unique_ptr<StageAudioEngine> audioEngine = nullptr;
 
 extern "C" {
 
-JNIEXPORT jboolean JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
+JNIEXPORT jint JNICALL
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
         JNIEnv* env, jobject thiz, jint sampleRate, jint bufferSize, jint deviceId) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     ::stk::Stk::setSampleRate((float)sampleRate);
@@ -262,36 +302,41 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
     fluid_settings_setnum(settings, "synth.gain", 0.6);
     synth = new_fluid_synth(settings);
     dspChain = std::make_unique<DSPChain>();
-    dspChain->prepare(bufferSize, (float)sampleRate); // Define o sample rate inicial
+    dspChain->prepare(bufferSize, (float)sampleRate); 
     audioEngine = std::make_unique<StageAudioEngine>();
-    audioEngine->start(sampleRate, bufferSize, deviceId);
-    if (!midiThreadRunning.load()) { midiThreadRunning.store(true); midiThread = std::thread(midiProcessingLoop); }
-    return JNI_TRUE;
+    oboe::Result result = audioEngine->start(sampleRate, bufferSize, deviceId);
+    
+    if (!midiThreadRunning.load()) { 
+        midiThreadRunning.store(true); 
+        midiThread = std::thread(midiProcessingLoop); 
+    }
+    
+    return (jint)result;
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOn(JNIEnv* env, jobject thiz, jint ch, jint key, jint vel) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOn(JNIEnv* env, jobject thiz, jint ch, jint key, jint vel) {
     std::lock_guard<std::mutex> lock(queueMutex);
     midiQueue.push_back({MidiEvent::NoteOn, (int)ch, (int)key, (int)vel});
     queueCv.notify_one();
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOff(JNIEnv* env, jobject thiz, jint ch, jint key) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeNoteOff(JNIEnv* env, jobject thiz, jint ch, jint key) {
     std::lock_guard<std::mutex> lock(queueMutex);
     midiQueue.push_back({MidiEvent::NoteOff, (int)ch, (int)key, 0});
     queueCv.notify_one();
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeUnloadSf2(JNIEnv* env, jobject thiz, jint sfId) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeUnloadSf2(JNIEnv* env, jobject thiz, jint sfId) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
     return (fluid_synth_sfunload(synth, sfId, 1) == FLUID_OK) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(JNIEnv* env, jobject thiz, jstring path) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(JNIEnv* env, jobject thiz, jstring path) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return -1;
     const char* sf2Path = env->GetStringUTFChars(path, nullptr);
@@ -301,7 +346,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeLoadSf2(JNIEnv*
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevels(JNIEnv* env, jobject thiz, jfloatArray output) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevels(JNIEnv* env, jobject thiz, jfloatArray output) {
     float local_levels[16] = {0.0f};
     for (int i = 0; i < 16; i++) {
         local_levels[i] = channelPeaks[i].load();
@@ -310,7 +355,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetChannelLevel
 }
 
 JNIEXPORT jobjectArray JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetPresets(JNIEnv* env, jobject thiz, jint sfId) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeGetPresets(JNIEnv* env, jobject thiz, jint sfId) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     jclass stringClass = env->FindClass("java/lang/String");
     if (!synth) return env->NewObjectArray(0, stringClass, nullptr);
@@ -331,7 +376,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetPresets(JNIE
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativePanic(JNIEnv* env, jobject thiz) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativePanic(JNIEnv* env, jobject thiz) {
     std::lock_guard<std::mutex> lock(queueMutex);
     LOGI("PANIC: Enqueuing full reset for all channels");
     for (int ch = 0; ch < 16; ch++) {
@@ -352,7 +397,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativePanic(JNIEnv* e
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(JNIEnv* env, jobject thiz) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(JNIEnv* env, jobject thiz) {
     midiThreadRunning.store(false); queueCv.notify_all();
     if (midiThread.joinable()) midiThread.join();
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
@@ -362,7 +407,7 @@ Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(JNIEnv*
     audioEngine.reset(); dspChain.reset(); synth = nullptr; settings = nullptr;
 }
 
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(JNIEnv* env, jobject thiz, jint ch, jfloat volDb) {
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetVolume(JNIEnv* env, jobject thiz, jint ch, jfloat volDb) {
     std::lock_guard<std::mutex> lock(queueMutex);
     float normalized = (volDb <= -60.0f) ? 0.0f : (volDb + 60.0f) / 60.0f;
     midiQueue.push_back({MidiEvent::CC, (int)ch, 7, (int)(normalized * 127.0f)});
@@ -370,28 +415,48 @@ JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngin
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeControlChange(JNIEnv* env, jobject thiz, jint ch, jint controller, jint value) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeControlChange(JNIEnv* env, jobject thiz, jint ch, jint controller, jint value) {
     std::lock_guard<std::mutex> lock(queueMutex);
     midiQueue.push_back({MidiEvent::CC, (int)ch, (int)controller, (int)value});
     queueCv.notify_one();
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativePitchBend(JNIEnv* env, jobject thiz, jint ch, jint value) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativePitchBend(JNIEnv* env, jobject thiz, jint ch, jint value) {
     std::lock_guard<std::mutex> lock(queueMutex);
     midiQueue.push_back({MidiEvent::PitchBend, (int)ch, (int)value, 0});
     queueCv.notify_one();
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramChange(JNIEnv* env, jobject thiz, jint ch, jint bank, jint prog) {
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeProgramChange(JNIEnv* env, jobject thiz, jint ch, jint bank, jint prog) {
     std::lock_guard<std::mutex> lock(queueMutex);
     if (bank >= 0) midiQueue.push_back({MidiEvent::BankSelect, (int)ch, (int)bank, 0});
     midiQueue.push_back({MidiEvent::ProgramChange, (int)ch, 0, (int)prog});
     queueCv.notify_one();
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(JNIEnv* env, jobject thiz, jint ch, jint sfId, jint bank, jint prog) {
+JNIEXPORT jboolean JNICALL
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeIsStreamDead(
+        JNIEnv* env, jobject thiz) {
+    if (audioEngine) {
+        bool isDead = audioEngine->isStreamDead();
+        if (isDead) {
+            LOGW("JNI: nativeIsStreamDead RETURNING TRUE");
+        }
+        return isDead ? JNI_TRUE : JNI_FALSE;
+    }
+    return JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeResetStreamDead(
+        JNIEnv* env, jobject thiz) {
+    LOGI("JNI: nativeResetStreamDead CALLED");
+    if (audioEngine) audioEngine->resetStreamDead();
+}
+
+JNIEXPORT jboolean JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeProgramSelect(JNIEnv* env, jobject thiz, jint ch, jint sfId, jint bank, jint prog) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) {
         LOGE("JNI: nativeProgramSelect FAILED (synth null) ch=%d sfId=%d bank=%d prog=%d", ch, sfId, bank, prog);
@@ -407,68 +472,68 @@ JNIEXPORT jboolean JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthE
     }
 }
 
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetInterpolation(JNIEnv* env, jobject thiz, jint method) {
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetInterpolation(JNIEnv* env, jobject thiz, jint method) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (synth) for (int ch = 0; ch < 16; ch++) fluid_synth_set_interp_method(synth, ch, method);
 }
 
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetPolyphony(JNIEnv* env, jobject thiz, jint voices) {
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetPolyphony(JNIEnv* env, jobject thiz, jint voices) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (synth) fluid_synth_set_polyphony(synth, voices);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetChannelEqCutoff(JNIEnv* env, jobject thiz, jint ch, jfloat cutoff) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetChannelEqCutoff(JNIEnv* env, jobject thiz, jint ch, jfloat cutoff) {
+    // Lock-free: setParam() escreve em std::atomic/SmoothedParam
     if (dspChain) dspChain->setChannelEQ(ch, cutoff);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetChannelSendLevel(JNIEnv* env, jobject thiz, jint ch, jfloat level) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetChannelSendLevel(JNIEnv* env, jobject thiz, jint ch, jfloat level) {
+    // Lock-free: setParam() escreve em std::atomic/SmoothedParam
     if (dspChain) dspChain->setChannelSend(ch, level);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeAddEffect(JNIEnv* env, jobject thiz, jint ch, jint type) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeAddEffect(JNIEnv* env, jobject thiz, jint ch, jint type) {
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex); // Mantém: modifica estrutura (vector push)
     if (dspChain) dspChain->addEffect(ch, type);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeRemoveEffect(JNIEnv* env, jobject thiz, jint ch, jint index) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeRemoveEffect(JNIEnv* env, jobject thiz, jint ch, jint index) {
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex); // Mantém: modifica estrutura (vector erase)
     if (dspChain) dspChain->removeEffect(ch, index);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeClearEffects(JNIEnv* env, jobject thiz, jint ch) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeClearEffects(JNIEnv* env, jobject thiz, jint ch) {
+    std::lock_guard<std::recursive_mutex> lock(engine_mutex); // Mantém: modifica estrutura (vector clear)
     if (dspChain) dspChain->clearEffects(ch);
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetEffectParam(JNIEnv* env, jobject thiz, jint ch, jint index, jint paramId, jfloat value) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetEffectParam(JNIEnv* env, jobject thiz, jint ch, jint index, jint paramId, jfloat value) {
+    // Lock-free: setParam() escreve em std::atomic/SmoothedParam, lido pelo audio thread sem lock
     if (dspChain) {
         dspChain->setEffectParam(ch, index, paramId, value);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetEffectEnabled(JNIEnv* env, jobject thiz, jint ch, jint index, jboolean enabled) {
-    std::lock_guard<std::recursive_mutex> lock(engine_mutex);
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetEffectEnabled(JNIEnv* env, jobject thiz, jint ch, jint index, jboolean enabled) {
+    // Lock-free: `enabled` é um bool simples, escrito pela UI e lido pelo audio thread
     if (dspChain) {
         dspChain->setEffectEnabled(ch, index, enabled);
     }
 }
 
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetDspMasterBypass(JNIEnv* env, jobject thiz, jboolean bypass) {
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetDspMasterBypass(JNIEnv* env, jobject thiz, jboolean bypass) {
     dspMasterBypass.store(bypass);
 }
 
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeSetMasterLimiter(JNIEnv* env, jobject thiz, jboolean enabled) {}
-JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeWarmUpChannel(JNIEnv* env, jobject thiz, jint ch) {
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeSetMasterLimiter(JNIEnv* env, jobject thiz, jboolean enabled) {}
+JNIEXPORT void JNICALL Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeWarmUpChannel(JNIEnv* env, jobject thiz, jint ch) {
     std::lock_guard<std::mutex> lock(queueMutex);
     LOGI("WARM-UP: Channel %d", (int)ch);
     // Silent note to trigger voice allocation and sample caching
@@ -478,7 +543,7 @@ JNIEXPORT void JNICALL Java_com_example_stagemobile_audio_engine_FluidSynthEngin
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_example_stagemobile_audio_engine_FluidSynthEngine_nativeGetEffectMeters(
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeGetEffectMeters(
         JNIEnv* env, jobject thiz, jint ch, jint index, jfloatArray output) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!dspChain) return JNI_FALSE;

@@ -468,15 +468,10 @@ fun AudioEngineSection(
 
         // Polyphony slider
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
-            val performanceLabel = when {
-                maxPolyphony <= 64 -> "OTIMIZADO (LEVE)"
-                maxPolyphony <= 128 -> "PERFORMANCE ALTA"
-                else -> "CARGA PESADA (RISCO DE GLITCH)"
-            }
-            val performanceColor = when {
-                maxPolyphony <= 64 -> Color.Gray
-                maxPolyphony <= 128 -> Color(0xFF00E5FF)
-                else -> Color(0xFFFFC107)
+            val (performanceLabel, currentTensionColor) = when {
+                maxPolyphony <= 96 -> "OTIMIZADO (SEGURO)" to Color(0xFF4CAF50) // Verde
+                maxPolyphony <= 192 -> "PERFORMANCE ALTA (ALERTA)" to Color(0xFFFFC107) // Amarelo/Âmbar
+                else -> "CARGA CRÍTICA (RISCO DE GLITCH)" to Color(0xFFEF5350) // Vermelho
             }
 
             Row(
@@ -490,7 +485,7 @@ fun AudioEngineSection(
                 )
                 Text(
                     "$maxPolyphony vozes",
-                    color = Color(0xFF00E5FF),
+                    color = currentTensionColor,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -501,7 +496,7 @@ fun AudioEngineSection(
                 valueRange = 16f..256f,
                 steps = 14, // (256-16)/16 - 1 = 14 steps for increments of 16
                 colors = SliderDefaults.colors(
-                    thumbColor = Color(0xFF00E5FF),
+                    thumbColor = currentTensionColor,
                     activeTrackColor = Color.Transparent,
                     inactiveTrackColor = Color.Transparent
                 ),
@@ -514,10 +509,9 @@ fun AudioEngineSection(
                         drawRoundRect(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    Color.Gray,
                                     Color(0xFF4CAF50), // Verde (Conforto)
-                                    Color(0xFF00E5FF), // Ciano (Performance)
-                                    Color(0xFFFFC107)  // Âmbar (Pesado)
+                                    Color(0xFFFFC107), // Amarelo (Alerta)
+                                    Color(0xFFEF5350)  // Vermelho (Crítico)
                                 )
                             ),
                             cornerRadius = CornerRadius(10f, 10f)
@@ -533,7 +527,7 @@ fun AudioEngineSection(
                 Text("16", color = Color.Gray, fontSize = 10.sp)
                 Text(
                     performanceLabel,
-                    color = performanceColor.copy(alpha = 0.8f),
+                    color = currentTensionColor.copy(alpha = 0.9f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.ExtraBold
                 )

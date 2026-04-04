@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.imageResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -151,6 +152,7 @@ fun DSPCircularKnob(
                     bitmap = ImageBitmap.imageResource(id = knobImageResId),
                     contentDescription = null,
                     filterQuality = FilterQuality.High,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize(0.85f) // Margem para o arco de valor
                         .graphicsLayer {
@@ -233,10 +235,18 @@ fun DSPCircularKnob(
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    val radius = (size.toPx()) * tickLabelRadiusMultiplier
                     val center = Offset(size.toPx() / 2, size.toPx() / 2)
                     
                     measuredLabels.forEachIndexed { index, textLayoutResult ->
+                        // Inteligência v11.1: Afasta apenas rótulos longos ou críticos indicados pelo Dev
+                        val labelText = tickLabels[index]
+                        val dynamicRadiusMultiplier = when {
+                            labelText == "-60dB" || labelText == "-40dB" || labelText == "100ms" -> tickLabelRadiusMultiplier * 1.10f
+                            else -> tickLabelRadiusMultiplier
+                        }
+                        
+                        val radius = (size.toPx()) * dynamicRadiusMultiplier
+                        
                         // Distribui as labels entre 135 e 405 graus
                         val angleDeg = 135f + (270f * index / (measuredLabels.size - 1))
                         val angleRad = Math.toRadians(angleDeg.toDouble())

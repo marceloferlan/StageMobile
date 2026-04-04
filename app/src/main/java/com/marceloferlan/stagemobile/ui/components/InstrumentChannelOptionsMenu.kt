@@ -36,6 +36,7 @@ private enum class ChannelDialogState { MAIN, COLOR_PICKER, REMOVE_CONFIRM }
 @Composable
 fun InstrumentChannelOptionsMenu(
     channel: InstrumentChannel,
+    channelIndex: Int,
     onDismiss: () -> Unit,
     onColorChange: (Long?) -> Unit,
     onRemoveClick: () -> Unit,
@@ -73,12 +74,11 @@ fun InstrumentChannelOptionsMenu(
         contentAlignment = Alignment.Center
     ) {
         val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
-        val dialogWidth = 0.9f
+        val dialogWidth = if (isTablet) 0.5f else 0.6f
 
         androidx.compose.material3.Surface(
             modifier = Modifier
                 .fillMaxWidth(dialogWidth)
-                .fillMaxHeight(0.9f)
                 .testTag("instrument_channel_options_menu")
                 .clickable(enabled = false) {},
             shape = RoundedCornerShape(20.dp),
@@ -86,12 +86,12 @@ fun InstrumentChannelOptionsMenu(
             tonalElevation = 8.dp
         ) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(top = 10.dp, start = 10.dp, end = 10.dp, bottom = 6.dp), // Bottom super reduzido
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header (Always same or contextual?)
+                // Header
                 val headerText = when(currentState) {
-                    ChannelDialogState.MAIN -> "OPÇÕES" // Encurtado para largura slim
+                    ChannelDialogState.MAIN -> "OPÇÕES" 
                     ChannelDialogState.COLOR_PICKER -> "CORES"
                     ChannelDialogState.REMOVE_CONFIRM -> "REMOVER"
                 }
@@ -116,8 +116,8 @@ fun InstrumentChannelOptionsMenu(
                     }
                     
                     Text(
-                        text = headerText,
-                        style = MaterialTheme.typography.labelMedium, // Reduzido para largura slim
+                        text = if (currentState == ChannelDialogState.MAIN) "CANAL $channelIndex" else headerText,
+                        style = MaterialTheme.typography.labelMedium,
                         color = Color.Gray,
                         letterSpacing = 1.sp,
                         fontWeight = FontWeight.Bold,
@@ -126,7 +126,7 @@ fun InstrumentChannelOptionsMenu(
                     )
 
                     if (currentState != ChannelDialogState.MAIN) {
-                        Spacer(modifier = Modifier.size(28.dp)) // Balance
+                        Spacer(modifier = Modifier.size(28.dp))
                     }
                 }
                 
@@ -136,21 +136,26 @@ fun InstrumentChannelOptionsMenu(
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                    modifier = Modifier.padding(top = 0.dp, bottom = 2.dp).fillMaxWidth(0.85f)
                 ) {
                     Text(
-                        text = baseSf2Name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                        textAlign = TextAlign.Center
+                        text = baseSf2Name.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF81C784),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                     if (hasPreset) {
                         Text(
-                            text = presetName,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF81C784),
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            text = presetName.uppercase(),
+                            style = MaterialTheme.typography.labelSmall, // Consistência
+                            color = Color(0xFF81C784).copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Normal,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -159,60 +164,62 @@ fun InstrumentChannelOptionsMenu(
 
                 when (currentState) {
                     ChannelDialogState.MAIN -> {
-                        // Main Menu Selection
-                        Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                         if (channel.soundFont != null) {
                             OptionItem(
                                 icon = Icons.Outlined.Palette,
-                                label = "Colorizar", // Encurtado
+                                label = "Colorizar",
+                                isTablet = isTablet,
                                 onClick = { currentState = ChannelDialogState.COLOR_PICKER }
                             )
                             
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 8.dp)) // Mais respiro central em tablets
 
                             OptionItem(
                                 icon = Icons.Outlined.Construction,
                                 label = "Parâmetros do canal",
+                                isTablet = isTablet,
                                 onClick = {
                                     onDismiss()
                                     onAdvancedOptionsClick()
                                 }
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 8.dp)) // Mais respiro central em tablets
 
                             OptionItem(
                                 icon = Icons.Default.Settings,
                                 label = "Rack de Efeitos",
+                                isTablet = isTablet,
                                 onClick = {
                                     onDismiss()
                                     onDSPEffectsClick()
                                 }
                             )
                             
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 8.dp)) // Mais respiro central em tablets
                         }
                             
                             OptionItem(
                                 icon = Icons.Default.Delete,
-                                label = "Remover canal", // Encurtado
+                                label = "Remover canal",
                                 color = Color(0xFFEF5350),
+                                isTablet = isTablet,
                                 onClick = { currentState = ChannelDialogState.REMOVE_CONFIRM }
                             )
                         }
                     }
                     
                     ChannelDialogState.COLOR_PICKER -> {
-                        // Color Grid Selection
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(4),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(max = 280.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
+                                .heightIn(max = 240.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
                             items(premiumColors) { colorVal ->
                                 Box(
@@ -237,13 +244,12 @@ fun InstrumentChannelOptionsMenu(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                     
                     ChannelDialogState.REMOVE_CONFIRM -> {
-                        // Removal Confirmation
                         Column(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
@@ -252,7 +258,7 @@ fun InstrumentChannelOptionsMenu(
                                 tint = Color(0xFFEF5350),
                                 modifier = Modifier.size(32.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "Deseja remover este canal?",
                                 style = MaterialTheme.typography.bodyLarge,
@@ -260,15 +266,14 @@ fun InstrumentChannelOptionsMenu(
                                 textAlign = TextAlign.Center
                             )
                             Text(
-                                text = "Instrumentos e configurações serão perdidos.",
+                                text = "Configurações serão perdidas.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 2.dp)
+                                textAlign = TextAlign.Center
                             )
                             
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 OutlinedButton(
@@ -296,19 +301,21 @@ fun InstrumentChannelOptionsMenu(
                 }
 
                 if (currentState == ChannelDialogState.MAIN || currentState == ChannelDialogState.COLOR_PICKER) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(2.dp)) // Super compacto
                     Spacer(modifier = Modifier.height(0.5.dp).fillMaxWidth().background(Color(0xFF333333)))
                     TextButton(
                         onClick = {
                             if (currentState == ChannelDialogState.MAIN) onDismiss()
                             else currentState = ChannelDialogState.MAIN
                         },
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 0.dp),
+                        contentPadding = PaddingValues(vertical = 0.dp) // Densidade máxima
                     ) {
                         Text(
                             text = if (currentState == ChannelDialogState.MAIN) "FECHAR" else "CANCELAR",
                             color = Color.Gray,
                             fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp, // Fonte levemente menor para garantir espaco
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -323,6 +330,7 @@ private fun OptionItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     color: Color = Color.LightGray,
+    isTablet: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -330,7 +338,7 @@ private fun OptionItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(vertical = 12.dp, horizontal = 16.dp),
+            .padding(vertical = if (isTablet) 10.dp else 4.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -339,12 +347,13 @@ private fun OptionItem(
             tint = color,
             modifier = Modifier.size(24.dp)
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             color = color,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
         )
     }
 }

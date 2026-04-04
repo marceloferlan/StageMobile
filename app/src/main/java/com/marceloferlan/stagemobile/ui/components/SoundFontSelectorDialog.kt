@@ -44,8 +44,9 @@ fun SoundFontSelectorDialog(
     )
 
     val filteredSF2: List<MixerViewModel.SoundFontListItem> = remember(availableSoundFonts, selectedTags) {
-        if (selectedTags.isEmpty()) availableSoundFonts
-        else availableSoundFonts.filter { it.metadata.tags.any { tag -> selectedTags.contains(tag) } }
+        val locals = availableSoundFonts.filter { it.isLocal }
+        if (selectedTags.isEmpty()) locals
+        else locals.filter { it.metadata.tags.any { tag -> selectedTags.contains(tag) } }
     }
 
     BackHandler(onBack = onDismiss)

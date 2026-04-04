@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -137,7 +138,7 @@ fun MixerScreen(
     var pendingChannelId by remember { mutableIntStateOf(-1) }
     var showKeyboard by remember { mutableStateOf(false) }
     var showRangeDialogForChannel by remember { mutableIntStateOf(-1) }
-    var channelIdToRemove by remember { mutableIntStateOf(-1) }
+
     var showInfoPanel by remember { mutableStateOf(false) }
     var showExitConfirmation by remember { mutableStateOf(false) }
     
@@ -180,64 +181,7 @@ fun MixerScreen(
 
     // === Remove FULL CHANNEL Confirmation Dialog ===
 
-    if (channelIdToRemove >= 0) {
-        val ch = channels.firstOrNull { it.id == channelIdToRemove }
-        if (ch != null) {
-            val hasInstrument = ch.soundFont != null
-            if (!hasInstrument) {
-                viewModel.removeChannel(channelIdToRemove)
-                channelIdToRemove = -1
-            } else {
-                Dialog(onDismissRequest = { channelIdToRemove = -1 }) {
-                    androidx.compose.material3.Surface(
-                        modifier = Modifier.fillMaxWidth(0.8f),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFF2C2C2C),
-                        tonalElevation = 6.dp
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Outlined.Warning,
-                                contentDescription = null,
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.padding(top = 16.dp).size(32.dp)
-                            )
-                            Text(
-                                text = "Remover Canal Completo?",
-                                modifier = Modifier.padding(16.dp),
-                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp),
-                                textAlign = TextAlign.Center,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
-                            Text(
-                                text = "Isso removerá o canal \"${ch.name}\" e descarregará o instrumento \"${ch.soundFont}\" da memória. Confirmar?",
-                                modifier = Modifier.padding(16.dp),
-                                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                                textAlign = TextAlign.Center,
-                                color = Color(0xFFAAAAAA)
-                            )
-                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(Color(0xFF424242)))
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(4.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                TextButton(onClick = { channelIdToRemove = -1 }) {
-                                    Text("Cancelar", color = Color.White)
-                                }
-                                TextButton(onClick = {
-                                    viewModel.removeChannel(channelIdToRemove)
-                                    channelIdToRemove = -1
-                                }) {
-                                    Text("REMOVER", color = Color(0xFFEF5350), fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+
 
     // Range selector is now handled in Advanced Settings Overlay or here if needed
     // Assuming for now it's not needed as local Dialog here.
@@ -408,10 +352,11 @@ fun MixerScreen(
                     )
                 }
                 
-                HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
-                
+                val drawerItemHeight = if (isTablet) 48.dp else 28.dp
+                val drawerItemPadding = if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+
                 NavigationDrawerItem(
-                    label = { Text("Configurações", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Configurações", fontSize = 16.sp) }, // Removido if redundante
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -424,12 +369,12 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Set Stages", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Set Stages", fontSize = 16.sp) },
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -442,12 +387,12 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Drumpads", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Drumpads", fontSize = 16.sp) },
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -460,12 +405,12 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Pads Contínuos", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Pads Contínuos", fontSize = 16.sp) },
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -478,12 +423,31 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
+                )
+
+                // NOVO ITEM: BIBLIOTECA SF2
+                NavigationDrawerItem(
+                    label = { Text("Biblioteca SF2", fontSize = 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        onNavigateToSf2Maintenance()
+                    },
+                    icon = { Icon(Icons.Outlined.LibraryMusic, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Downloads", fontSize = if (isTablet) 16.sp else 16.sp) },
+                    label = { Text("Downloads", fontSize = 16.sp) },
                     selected = false,
                     onClick = { 
                         scope.launch { drawerState.close() }
@@ -496,8 +460,8 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
 
                 HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
@@ -519,8 +483,8 @@ fun MixerScreen(
                         unselectedTextColor = Color.White
                     ),
                     modifier = Modifier
-                        .padding(if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 8.dp))
-                        .height(if (isTablet) 56.dp else 30.dp)
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
                 )
             }
         }
@@ -663,6 +627,7 @@ fun MixerScreen(
                         channels.forEachIndexed { index, channel ->
                             InstrumentChannelStrip(
                                 channel = channel,
+                                channelIndex = index + 1,
                                 levelFlow = if (channel.id in viewModel.channelLevels.indices) viewModel.channelLevels[channel.id] else MutableStateFlow(0f),
                                 modifier = Modifier.width(channelWidth),
                                 onVolumeChange = { viewModel.updateVolume(channel.id, it) },
@@ -677,13 +642,13 @@ fun MixerScreen(
                                     }
                                 },
                                 onNameLongClick = {
-                                    if (channel.soundFont != null) {
+                                     if (channel.soundFont != null) {
                                         viewModel.showUnloadConfirmation(channel.id)
                                     } else {
                                         viewModel.showSoundFontSelector(channel.id)
                                     }
                                 },
-                                onMidiChannelClick = { viewModel.showChannelOptions(channel.id) },
+                                onInstrumentChannelClick = { viewModel.showChannelOptions(channel.id) },
                                 onAdvancedOptionsClick = { viewModel.showChannelAdvancedSettings(channel.id) },
                                 onDSPEffectsClick = {
                                     viewModel.showEffectsRack(channel.id)
@@ -708,7 +673,6 @@ fun MixerScreen(
                                 onLearnOctaveUpLongClick = { viewModel.requestUnmap(MidiLearnTarget.OCTAVE_UP, channel.id) },
                                 onLearnOctaveDownLongClick = { viewModel.requestUnmap(MidiLearnTarget.OCTAVE_DOWN, channel.id) },
                                 onColorChange = { color -> viewModel.updateChannelColor(channel.id, color) },
-                                onRemoveClick = { channelIdToRemove = channel.id }
                             )
                         }
                     }
@@ -972,16 +936,11 @@ fun MixerScreenToolBar(
                         border = BorderStroke(1.dp, Color(0xFF444444))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                "●", 
-                                color = Color(0xFFBA68C8), 
-                                fontSize = if (isTablet) 20.sp else 18.sp,
-                                modifier = Modifier.offset(y = (-1).dp),
-                                style = androidx.compose.ui.text.TextStyle(
-                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(
-                                        includeFontPadding = false
-                                    )
-                                )
+                            // Indicador geométrico circular para precisão absoluta (evita baseline de fontes)
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isTablet) 9.dp else 8.dp)
+                                    .background(Color(0xFFBA68C8), androidx.compose.foundation.shape.CircleShape)
                             )
                         }
                     }

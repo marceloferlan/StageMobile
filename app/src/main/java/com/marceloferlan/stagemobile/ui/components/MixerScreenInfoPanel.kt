@@ -163,8 +163,7 @@ fun MixerScreenInfoPanel(
                         color = Color.Gray,
                         fontSize = labelSize,
                         fontWeight = FontWeight.Bold,
-                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                        modifier = Modifier.padding(start = 8.dp)
+                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                     )
 
                     if (midiLearnFeedback != null) {
@@ -198,8 +197,7 @@ fun MixerScreenInfoPanel(
                         color = Color.Gray,
                         fontSize = labelSize,
                         fontWeight = FontWeight.Bold,
-                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                        modifier = Modifier.padding(start = 8.dp)
+                        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
                     )
 
                     if (midiLearnFeedback != null) {

@@ -40,7 +40,7 @@ fun ContinuousPadsScreen(onNavigateBack: () -> Unit) {
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                Text("Conteúdo da tela de Pads Contínuos virá aqui.", color = Color.Gray)
+                Text("Em breve Pads Contínuos aqui...", color = Color.Gray)
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -36,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,6 +64,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -91,7 +94,7 @@ import com.marceloferlan.stagemobile.R
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.delay
-import com.marceloferlan.stagemobile.ui.components.VerticalDSPMeter
+import com.marceloferlan.stagemobile.ui.components.DSPCompressorMeter
 import com.marceloferlan.stagemobile.ui.components.MeterType
 import com.marceloferlan.stagemobile.viewmodel.MixerViewModel
 import androidx.compose.runtime.getValue
@@ -146,6 +149,7 @@ fun Modifier.brushedMetalBackground(): Modifier = this.drawBehind {
 @Composable
 fun DSPEffectsRackDialog(
     title: String,
+    subtitle: String = "",
     effects: List<DSPEffectInstance>,
     onDismiss: () -> Unit,
     onUpdateParam: (String, Int, Float) -> Unit,
@@ -242,38 +246,53 @@ fun DSPEffectsRackDialog(
                 )) {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "RACK DE EFEITOS",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.Gray,
-                                letterSpacing = 1.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            val baseTitle = if (title.contains(" [")) title.substringBefore(" [") else title
-                            val presetName = if (title.contains(" [")) title.substringAfter(" [", "").removeSuffix("]") else null
-
-                            Text(
-                                text = baseTitle.uppercase(),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = Color.White,
-                                modifier = Modifier.padding(top = if (isTablet) 4.dp else 0.dp)
-                            )
-                            if (presetName != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = presetName.uppercase(),
+                                    text = "RACK DE EFEITOS - ",
                                     style = MaterialTheme.typography.labelMedium,
+                                    color = Color.Gray,
+                                    letterSpacing = 1.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = title.uppercase(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White,
+                                    letterSpacing = 1.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (subtitle.isNotEmpty()) {
+                                Text(
+                                    text = subtitle.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF81C784),
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(top = 2.dp)
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = if (isTablet) 4.dp else 2.dp).fillMaxWidth(0.8f)
                                 )
                             }
                         }
                         
-                        IconButton(
-                            onClick = onDismiss,
-                            modifier = Modifier.align(Alignment.TopEnd).size(32.dp)
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(24.dp)
+                                .clickable { onDismiss() }
+                                .padding(2.dp), // Margem leve para não colar na borda do SURFACE pai
+                            color = Color(0xFF555555),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Fechar", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "Fechar",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp) // Proporção equilibrada para o rack
+                                )
+                            }
                         }
                     }
                     
@@ -437,37 +456,40 @@ fun DSPEffectsRackDialog(
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isTablet) 4.dp else 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp)
+                    contentPadding = PaddingValues(vertical = if (isTablet) 8.dp else 6.dp),
                 ) {
                     val visibleEffects = effects.filter { it.type != DSPEffectType.REVERB_SEND }
                     val reverbSendEffect = effects.find { it.type == DSPEffectType.REVERB_SEND }
 
                     items(visibleEffects.size, key = { index -> visibleEffects[index].id }) { index ->
                         val effect = visibleEffects[index]
-                        EffectRackUnit(
-                            effect = effect,
-                            isTablet = isTablet,
-                            onUpdateParam = { paramId, value -> onUpdateParam(effect.id, paramId, value) },
-                            onToggle = { onToggleEffect(effect.id, it) },
-                            onRemove = { onRemoveEffect(effect.id) },
-                            onTapDelay = { onTapDelay(effect.id) },
-                            onReset = { onResetEffect(effect.id) },
-                            isMidiLearnActive = isMidiLearnActive,
-                            onSelectMidiLearnTarget = { paramId -> onSelectMidiLearnTarget(effect.id, paramId) },
-                            midiLearnTarget = midiLearnTarget,
-                            channelId = channelId,
-                            effectIndex = index,
-                            engine = engine,
-                            reverbSendEffect = if (effect.type == DSPEffectType.REVERB) reverbSendEffect else null,
-                            onToggleReverbSend = { sendEnabled ->
-                                reverbSendEffect?.let { onToggleEffect(it.id, sendEnabled) }
-                            },
-                            onUpdateReverbSendParam = { paramId, value ->
-                                reverbSendEffect?.let { onUpdateParam(it.id, paramId, value) }
-                            }
-                        )
+                        // Box wrapper com zIndex agressivo para garantir prioridade de desenho do item superior
+                        Box(modifier = Modifier.fillMaxWidth().zIndex((20 - index).toFloat())) {
+                            EffectRackUnit(
+                                effect = effect,
+                                isTablet = isTablet,
+                                onUpdateParam = { paramId, value -> onUpdateParam(effect.id, paramId, value) },
+                                onToggle = { onToggleEffect(effect.id, it) },
+                                onRemove = { onRemoveEffect(effect.id) },
+                                onTapDelay = { onTapDelay(effect.id) },
+                                onReset = { onResetEffect(effect.id) },
+                                isMidiLearnActive = isMidiLearnActive,
+                                onSelectMidiLearnTarget = { paramId -> onSelectMidiLearnTarget(effect.id, paramId) },
+                                midiLearnTarget = midiLearnTarget,
+                                channelId = channelId,
+                                effectIndex = effects.indexOf(effect),
+                                engine = engine,
+                                reverbSendEffect = if (effect.type == DSPEffectType.REVERB) reverbSendEffect else null,
+                                onToggleReverbSend = { sendEnabled ->
+                                    reverbSendEffect?.let { onToggleEffect(it.id, sendEnabled) }
+                                },
+                                onUpdateReverbSendParam = { paramId, value ->
+                                    reverbSendEffect?.let { onUpdateParam(it.id, paramId, value) }
+                                }
+                            )
+                        }
                     }
                 }
                 
@@ -571,19 +593,25 @@ fun EffectRackUnit(
         }
     }
     
+    val collapsedHeight = if (isTablet) 52.dp else 48.dp
+    val animatedHeight by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isExpanded) expandedHeight else collapsedHeight,
+        animationSpec = spring(
+            dampingRatio = if (isExpanded) Spring.DampingRatioLowBouncy else Spring.DampingRatioNoBouncy,
+            stiffness = if (isExpanded) (Spring.StiffnessLow * 1.2f) else Spring.StiffnessVeryLow // Expansão rápida, colapso suave
+        ),
+        label = "rack_height"
+    )
+
+    // Estado local para preset de reverb
+    var activeReverbPreset by remember(effect.id) { mutableStateOf<String?>(null) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
-            )
-            .then(
-                if (isExpanded) Modifier.height(expandedHeight) else (Modifier as Modifier)
-            )
+            .height(animatedHeight)
+            .zIndex((15 - effectIndex).toFloat()) // Camadas simples para evitar sobreposição
+            .graphicsLayer { clip = false } // Impede o clipping da borda fina
             .brushedMetalBackground()
             .clickable(
                 interactionSource = interactionSource,
@@ -593,9 +621,10 @@ fun EffectRackUnit(
             },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = BorderStroke(1.dp, Color(0xFF333333))
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(8.dp)) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -640,7 +669,7 @@ fun EffectRackUnit(
                     Switch(
                         checked = effect.isEnabled,
                         onCheckedChange = onToggle,
-                        modifier = Modifier.scale(0.7f),
+                        modifier = Modifier.scale(0.85f),
                         colors = switchColors
                     )
                     
@@ -873,106 +902,7 @@ fun EffectRackUnit(
                             }
                         }
                     }
-                    DSPEffectType.REVERB -> {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                            if (hasSend && channelId != MixerViewModel.MASTER_CHANNEL_ID) {
-                                // Add Switch (Canal vs Master)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("CANAL", fontSize = 12.sp, color = if (reverbMode == 0) accentColor else Color.Gray, fontWeight = if (reverbMode == 0) FontWeight.Bold else FontWeight.Normal)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Switch(
-                                        checked = reverbMode == 1,
-                                        onCheckedChange = { isMaster ->
-                                            reverbMode = if (isMaster) 1 else 0
-                                            if (isMaster) {
-                                                if (effect.isEnabled) {
-                                                    onToggle(false)
-                                                    onToggleReverbSend(true)
-                                                }
-                                            } else {
-                                                if (reverbSendEffect?.isEnabled == true) {
-                                                    onToggleReverbSend(false)
-                                                    onToggle(true)
-                                                }
-                                            }
-                                        },
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = accentColor,
-                                            checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                                            checkedBorderColor = accentColor.copy(alpha = 0.3f),
-                                            uncheckedThumbColor = accentColor,
-                                            uncheckedTrackColor = Color.DarkGray,
-                                            uncheckedBorderColor = accentColor.copy(alpha = 0.3f)
-                                        )
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("MASTER", fontSize = 12.sp, color = if (reverbMode == 1) accentColor else Color.Gray, fontWeight = if (reverbMode == 1) FontWeight.Bold else FontWeight.Normal)
-                                }
-                            }
 
-                            if (!hasSend || reverbMode == 0 || channelId == MixerViewModel.MASTER_CHANNEL_ID) {
-                                // Render Local Reverb Knobs
-                                val paramsCount = effect.type.params.size
-                                val multiplier = if (paramsCount == 2) 2.0f else if (paramsCount == 3) 1.5f else 1.0f
-                                val dynamicKnobSize = knobSize * multiplier
-                                val dynamicLabelFontSize = knobLabelFontSize * (if (multiplier > 1f) multiplier * 0.9f else 1.0f)
-                                val dynamicValueFontSize = knobValueFontSize * (if (multiplier > 1f) multiplier * 0.9f else 1.0f)
-
-                                FlowRow(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    effect.type.params.forEachIndexed { i, param ->
-                                        DSPCircularKnob(
-                                            label = param.label,
-                                            value = effect.params[i] ?: 0f,
-                                            range = getRange(param),
-                                            size = dynamicKnobSize,
-                                            labelFontSize = dynamicLabelFontSize,
-                                            valueFontSize = dynamicValueFontSize,
-                                            accentColor = accentColor,
-                                            knobImageResId = R.drawable.knob_custom,
-                                            valueFormatter = { formatValue(it, param) },
-                                            knobModifier = getLearnModifier(i, CircleShape),
-                                            onValueChange = { onUpdateParam(i, it) },
-                                            enabled = effect.isEnabled
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Render Master Send Knob
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    reverbSendEffect?.let { sendEffect ->
-                                        val param = sendEffect.type.params.getOrNull(0)
-                                        if (param != null) {
-                                            DSPCircularKnob(
-                                                label = param.label,
-                                                value = sendEffect.params[0] ?: 0f,
-                                                range = getRange(param),
-                                                size = knobSize * 1.5f,
-                                                labelFontSize = knobLabelFontSize * 1.2f,
-                                                valueFontSize = knobValueFontSize * 1.2f,
-                                                accentColor = accentColor,
-                                                knobImageResId = R.drawable.knob_custom_golden,
-                                                valueFormatter = { formatValue(it, param) },
-                                                knobModifier = getLearnModifier(0, CircleShape),
-                                                onValueChange = { onUpdateReverbSendParam(0, it) },
-                                                enabled = sendEffect.isEnabled
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                     DSPEffectType.REVERB_SEND -> {
                         Column(
                             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -1009,18 +939,24 @@ fun EffectRackUnit(
                     }
                     DSPEffectType.COMPRESSOR -> {
                         var activePreset by remember { mutableStateOf("Custom") }
-                        var inputPeak by remember { mutableStateOf(0f) }
-                        var outputPeak by remember { mutableStateOf(0f) }
-                        var grDb by remember { mutableStateOf(0f) }
+                        var inputPeak by remember { mutableFloatStateOf(0f) }
+                        var outputPeak by remember { mutableFloatStateOf(0f) }
+                        var grDb by remember { mutableFloatStateOf(0f) }
                         val meterValues = remember { FloatArray(3) }
 
                         LaunchedEffect(channelId, effectIndex) {
+                            fun dbToLinear(db: Float): Float {
+                                if (db <= -60f) return 0f // Noise floor / Mute
+                                return Math.pow(10.0, (db / 20.0)).toFloat().coerceIn(0f, 1f)
+                            }
+                            
                             while (true) {
                                 if (engine != null && engine.isInitialized) {
                                     if (engine.getEffectMeters(channelId, effectIndex, meterValues)) {
+                                        // engine.getEffectMeters returns linear peaks [0, 1] for in/out
                                         inputPeak = meterValues[0]
                                         outputPeak = meterValues[1]
-                                        grDb = meterValues[2]
+                                        grDb = meterValues[2] // GR is already dB (0..-30)
                                     }
                                 }
                                 delay(50)
@@ -1032,9 +968,9 @@ fun EffectRackUnit(
                             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Coluna 1: METERS (15%)
+                            // Coluna 1: METERS (18% ajustado para escala)
                             Column(
-                                modifier = Modifier.weight(0.15f).fillMaxHeight().padding(horizontal = 4.dp),
+                                modifier = Modifier.weight(0.18f).fillMaxHeight().padding(horizontal = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.SpaceEvenly
                             ) {
@@ -1042,22 +978,38 @@ fun EffectRackUnit(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     modifier = Modifier.fillMaxSize().padding(bottom = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
+                                    // dB Scale
+                                    Column(
+                                        modifier = Modifier.fillMaxHeight().padding(top = 11.dp), 
+                                        verticalArrangement = Arrangement.SpaceBetween,
+                                        horizontalAlignment = Alignment.End
+                                    ) {
+                                        listOf("0", "-6", "-12", "-18", "-24", "-30").forEach { label ->
+                                            Text(
+                                                text = label,
+                                                color = Color.Gray,
+                                                fontSize = if (isTablet) 9.sp else 8.sp,
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text("GR", color = Color(0xFFFFB300), fontSize = if (isTablet) 8.sp else 7.sp)
                                         Spacer(modifier = Modifier.height(2.dp))
-                                        VerticalDSPMeter(value = grDb, type = MeterType.REDUCTION, modifier = Modifier.fillMaxHeight().width(if (isTablet) 10.dp else 8.dp))
+                                        DSPCompressorMeter(value = grDb, type = MeterType.REDUCTION, modifier = Modifier.fillMaxHeight().width(if (isTablet) 11.dp else 9.dp))
                                     }
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text("IN", color = Color.White, fontSize = if (isTablet) 8.sp else 7.sp)
                                         Spacer(modifier = Modifier.height(2.dp))
-                                        VerticalDSPMeter(value = inputPeak, type = MeterType.LEVEL, modifier = Modifier.fillMaxHeight().width(if (isTablet) 10.dp else 8.dp))
+                                        DSPCompressorMeter(value = inputPeak, type = MeterType.LEVEL, modifier = Modifier.fillMaxHeight().width(if (isTablet) 11.dp else 9.dp))
                                     }
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text("OUT", color = Color.White, fontSize = if (isTablet) 8.sp else 7.sp)
                                         Spacer(modifier = Modifier.height(2.dp))
-                                        VerticalDSPMeter(value = outputPeak, type = MeterType.LEVEL, modifier = Modifier.fillMaxHeight().width(if (isTablet) 10.dp else 8.dp))
+                                        DSPCompressorMeter(value = outputPeak, type = MeterType.LEVEL, modifier = Modifier.fillMaxHeight().width(if (isTablet) 11.dp else 9.dp))
                                     }
                                 }
                             }
@@ -1169,8 +1121,8 @@ fun EffectRackUnit(
 
                                     // Botões de Preset (Lista Vertical)
                                     Column(
-                                        modifier = Modifier.padding(start = 108.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(start = if (isTablet) 80.dp else 54.dp),
+                                        verticalArrangement = Arrangement.spacedBy(if (isTablet) 6.dp else 2.dp),
                                         horizontalAlignment = Alignment.Start
                                     ) {
                                         listOf("Soft", "Balanced", "Hard", "Custom").forEach { presetName ->
@@ -1211,21 +1163,30 @@ fun EffectRackUnit(
                                                             onUpdateParam(6, 1.0f)
                                                         }
                                                     }
-                                                    .padding(vertical = 4.dp) // Aumenta área de toque vertical
+                                                    .padding(vertical = 4.dp) // Respiro vertical restaurado após ajuste da borda colada
                                             ) {
                                                 // Imagem do Preset (substituindo o Box desenhado)
-                                                Image(
-                                                    painter = painterResource(
-                                                        id = if (isSelected) R.drawable.compressor_preset_button_on else R.drawable.compressor_preset_button_off
-                                                    ),
-                                                    contentDescription = presetName,
-                                                    modifier = Modifier.size(30.dp)
-                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .width(36.dp)
+                                                        .height(22.dp)
+                                                        .border(1.dp, Color(0xFF444444)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(
+                                                            id = if (isSelected) R.drawable.compressor_preset_button_on else R.drawable.compressor_preset_button_off
+                                                        ),
+                                                        contentDescription = presetName,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.FillBounds
+                                                    )
+                                                }
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
                                                     text = presetName, 
-                                                    color = if (isSelected) Color.White else Color.Gray, 
-                                                    fontSize = 11.sp,  // Aumentado levemente para legibilidade
+                                                    color = if (isSelected) Color.White else Color(0xFFAAAAAA), 
+                                                    fontSize = 11.sp, 
                                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                                 )
                                             }
@@ -1351,6 +1312,178 @@ fun EffectRackUnit(
                                                     onUpdateParam(i, actualValue) 
                                                 },
                                                 enabled = effect.isEnabled
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    DSPEffectType.REVERB -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            if (hasSend && channelId != MixerViewModel.MASTER_CHANNEL_ID) {
+                                // Add Switch (Canal vs Master)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("CANAL", fontSize = 11.sp, color = if (reverbMode == 0) accentColor else Color.Gray, fontWeight = if (reverbMode == 0) FontWeight.Bold else FontWeight.Normal)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Switch(
+                                        checked = reverbMode == 1,
+                                        onCheckedChange = { isMaster ->
+                                            reverbMode = if (isMaster) 1 else 0
+                                            if (isMaster) {
+                                                if (effect.isEnabled) {
+                                                    onToggle(false)
+                                                    onToggleReverbSend(true)
+                                                }
+                                            } else {
+                                                if (reverbSendEffect?.isEnabled == true) {
+                                                    onToggleReverbSend(false)
+                                                    onToggle(true)
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.scale(0.8f),
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = accentColor,
+                                            checkedTrackColor = accentColor.copy(alpha = 0.5f),
+                                            checkedBorderColor = accentColor.copy(alpha = 0.3f),
+                                            uncheckedThumbColor = accentColor,
+                                            uncheckedTrackColor = Color.DarkGray,
+                                            uncheckedBorderColor = accentColor.copy(alpha = 0.3f)
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("MASTER", fontSize = 11.sp, color = if (reverbMode == 1) accentColor else Color.Gray, fontWeight = if (reverbMode == 1) FontWeight.Bold else FontWeight.Normal)
+                                }
+                            }
+
+                            if (!hasSend || reverbMode == 0 || channelId == MixerViewModel.MASTER_CHANNEL_ID) {
+                                // Preset Selector (Only in Canal mode)
+                                var expanded by remember { mutableStateOf(false) }
+                                val presets = listOf(
+                                    Triple("Small Room", 0.2f, 0.5f),
+                                    Triple("Large Room", 0.5f, 0.4f),
+                                    Triple("Hall", 0.8f, 0.3f),
+                                    Triple("Church", 0.9f, 0.25f),
+                                    Triple("Tunnel", 0.95f, 0.15f),
+                                    Triple("Custom", 0.0f, 0.0f)
+                                )
+                                
+                                Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .height(32.dp)
+                                            .width(if (isTablet) 180.dp else 150.dp)
+                                            .clickable(enabled = effect.isEnabled) { expanded = true },
+                                        color = Color(0xFF333333),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = BorderStroke(1.dp, Color(0xFF555555))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = (activeReverbPreset ?: "Custom").uppercase(),
+                                                color = if (effect.isEnabled) Color.White else Color.Gray,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Filled.ArrowDropDown,
+                                                contentDescription = null,
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false },
+                                        modifier = Modifier.background(Color(0xFF2A2A2A)).width(180.dp)
+                                    ) {
+                                        presets.forEach { (name, room, damp) ->
+                                            DropdownMenuItem(
+                                                text = { 
+                                                    Text(
+                                                        name.uppercase(), 
+                                                        color = if (activeReverbPreset == name) accentColor else Color.White,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    ) 
+                                                },
+                                                onClick = {
+                                                    if (name != "Custom") {
+                                                        activeReverbPreset = name
+                                                        onUpdateParam(0, room) // ROOM
+                                                        onUpdateParam(1, damp) // DAMPING
+                                                    }
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    effect.type.params.forEachIndexed { i, param ->
+                                        DSPCircularKnob(
+                                            label = param.label,
+                                            value = effect.params[i] ?: 0f,
+                                            range = getRange(param),
+                                            size = knobSize * 1.2f,
+                                            labelFontSize = knobLabelFontSize,
+                                            valueFontSize = knobValueFontSize,
+                                            accentColor = accentColor,
+                                            knobImageResId = R.drawable.knob_custom,
+                                            valueFormatter = { formatValue(it, param) },
+                                            knobModifier = getLearnModifier(i, CircleShape),
+                                            onValueChange = { newValue ->
+                                                if (activeReverbPreset != "Custom") {
+                                                    activeReverbPreset = "Custom"
+                                                }
+                                                onUpdateParam(i, newValue)
+                                            },
+                                            enabled = effect.isEnabled
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Render Master Send Knob
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    reverbSendEffect?.let { sendEffect ->
+                                        val param = sendEffect.type.params.getOrNull(0)
+                                        if (param != null) {
+                                            DSPCircularKnob(
+                                                label = param.label,
+                                                value = sendEffect.params[0] ?: 0f,
+                                                range = getRange(param),
+                                                size = knobSize * 2.0f,
+                                                labelFontSize = knobLabelFontSize * 1.4f,
+                                                valueFontSize = knobValueFontSize * 1.4f,
+                                                accentColor = accentColor,
+                                                knobImageResId = R.drawable.knob_custom_golden,
+                                                valueFormatter = { formatValue(it, param) },
+                                                knobModifier = getLearnModifier(0, CircleShape),
+                                                onValueChange = { onUpdateReverbSendParam(0, it) },
+                                                enabled = sendEffect.isEnabled
                                             )
                                         }
                                     }

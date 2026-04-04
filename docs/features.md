@@ -93,6 +93,14 @@ Para eliminar a dependência de arquivos externos e garantir que os Set Stages f
 - **Resiliência:** Ao carregar um set, o sistema prioriza o arquivo na biblioteca interna. Se não existir, tenta o fallback para o URI legado (se disponível no mapa de cache).
 - **Aviso de Exclusão:** O sistema impede/alerta a exclusão de um SF2 que esteja sendo utilizado em algum Set Stage salvo nos 10 bancos disponíveis.
 
+### 7.4 Acesso Global (Novo)
+- **Menu Lateral**: Adicionado o item "Biblioteca SF2" no Navigation Drawer.
+- **Independência**: Permite a manutenção, renomeação e exclusão de instrumentos de forma global (usando `GLOBAL_CHANNEL_ID = -2`), sem a necessidade de acionar um canal de áudio específico.
+
+### 7.5 Filtragem Local Restritiva (Regra Temporária)
+- **Regra**: Enquanto o repositório remoto de binários (.sf2) não está implementado no Firebase Storage, o sistema filtra todas as listagens de SoundFonts para exibir **apenas** arquivos que existam fisicamente no dispositivo (`isLocal == true`).
+- **Objetivo**: Evitar confusão do usuário com o ícone de nuvem (indicativo de outro dispositivo) em itens que ainda não podem ser baixados diretamente.
+
 ## 8. UX de Carregamento e Identificação (Novo)
 ### 8.1 Auto-Seleção de Preset Único
 - **Lógica:** Se um arquivo SF2 possuir apenas 1 preset/programa, o sistema pula o diálogo de seleção e o carrega instantaneamente no canal.

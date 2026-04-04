@@ -68,7 +68,7 @@ fun InstrumentChannelStrip(
     onArmToggle: () -> Unit,
     onNameClick: () -> Unit,
     onNameLongClick: () -> Unit,
-    onMidiChannelClick: () -> Unit,
+    onInstrumentChannelClick: () -> Unit,
     onAdvancedOptionsClick: () -> Unit,
     activeMidiDevices: Set<String> = emptySet(),
     availableMidiDevices: List<MidiDeviceState> = emptyList(),
@@ -92,6 +92,7 @@ fun InstrumentChannelStrip(
     onColorChange: (Long?) -> Unit = {},
     onRemoveClick: () -> Unit = {},
     onDSPEffectsClick: () -> Unit = {},
+    channelIndex: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val isTablet = UiUtils.rememberIsTablet()
@@ -129,7 +130,7 @@ fun InstrumentChannelStrip(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null, // Desabilitado a pedido do usuário (iluminação indesejada no toque)
                 onClick = { /* No action on simple tap */ },
-                onLongClick = { onRemoveClick() }
+                onLongClick = { onInstrumentChannelClick() }
             )
             .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 6.dp)
     ) {
@@ -206,8 +207,8 @@ fun InstrumentChannelStrip(
                     tonalElevation = 4.dp
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxSize().padding(start = if (hasSf2) 16.dp else 2.dp, end = 2.dp),
+                        horizontalAlignment = if (hasSf2) Alignment.Start else Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         // Line 1: SF2 File Name
@@ -216,7 +217,7 @@ fun InstrumentChannelStrip(
                             style = if (isTablet) MaterialTheme.typography.labelSmall else TextStyle(fontSize = 9.sp),
                             fontWeight = if (isPresetEmpty) FontWeight.Bold else FontWeight.Normal,
                             color = if (hasSf2) Color(0xFFAAAAAA) else Color(0xFFB0BEC5),
-                            textAlign = TextAlign.Center,
+                            textAlign = if (hasSf2) TextAlign.Start else TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -228,13 +229,37 @@ fun InstrumentChannelStrip(
                                 style = if (isTablet) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF81C784), // Vivid Green for the active sound
-                                textAlign = TextAlign.Center,
+                                textAlign = if (hasSf2) TextAlign.Start else TextAlign.Center,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                 }
+            }
+
+            // CHANNEL NUMBER INDICATOR (Top-Left)
+            val indicatorBgColor = if (isArmed) Color(0xFF81C784) else Color(0xFF424242)
+            val indicatorTextColor = if (isArmed) Color(0xFF2C2C2C) else Color.White
+            
+            Box(
+                modifier = Modifier
+                    .padding(top = 6.dp, start = 0.dp)
+                    .size(if (isTablet) 15.dp else 13.dp)
+                    .clip(RoundedCornerShape(bottomEnd = 6.dp))
+                    .background(indicatorBgColor)
+                    .align(Alignment.TopStart),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "$channelIndex",
+                    color = indicatorTextColor,
+                    fontSize = if (isTablet) 9.sp else 8.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    style = TextStyle(
+                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    )
+                )
             }
         }
         

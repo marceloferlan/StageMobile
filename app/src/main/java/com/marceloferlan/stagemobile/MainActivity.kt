@@ -30,6 +30,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -206,14 +207,18 @@ class MainActivity : ComponentActivity() {
                         showDSPEffectsRackForChannel?.let { chId ->
                             val channels by viewModel.channels.collectAsState()
                             val ch = if (chId == MixerViewModel.MASTER_CHANNEL_ID) null else channels.find { it.id == chId }
-                            val title = ch?.name ?: "MASTER BUS"
+                            val channelIndex = if (chId == MixerViewModel.MASTER_CHANNEL_ID) -1 else channels.indexOfFirst { it.id == chId } + 1
+                            val displayTitle = if (chId == MixerViewModel.MASTER_CHANNEL_ID) "MASTER" else "CANAL $channelIndex"
+                            val subtitle = ch?.name ?: ""
+                            
                             val effects = if (chId == MixerViewModel.MASTER_CHANNEL_ID)
                                 viewModel.masterDspEffects.collectAsState().value
                             else
                                 ch?.dspEffects ?: emptyList()
 
                             DSPEffectsRackDialog(
-                                title = title,
+                                title = displayTitle,
+                                subtitle = subtitle,
                                 effects = effects,
                                 onDismiss = { viewModel.dismissEffectsRack() },
                                 onUpdateParam = { effectId, paramId, value -> viewModel.updateEffectParam(chId, effectId, paramId, value) },
@@ -231,7 +236,8 @@ class MainActivity : ComponentActivity() {
                                 channelId = chId,
                                 onTestNoteOn = { cId, note, vel -> viewModel.playTestNoteOn(cId, note, vel) },
                                 onTestNoteOff = { cId, note -> viewModel.playTestNoteOff(cId, note) },
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                engine = viewModel.audioEngine
                             )
                         }
 
@@ -262,6 +268,7 @@ class MainActivity : ComponentActivity() {
                             targetCh?.let { ch ->
                                 InstrumentChannelOptionsMenu(
                                     channel = ch,
+                                    channelIndex = channels.indexOfFirst { it.id == ch.id } + 1,
                                     onDismiss = { viewModel.dismissChannelOptions() },
                                     onColorChange = { color -> viewModel.updateChannelColor(ch.id, color) },
                                     onRemoveClick = { 
@@ -282,6 +289,7 @@ class MainActivity : ComponentActivity() {
 
                         val showUnloadConfirmationForChannel by viewModel.showUnloadConfirmationForChannel.collectAsState()
                         showUnloadConfirmationForChannel?.let { chId ->
+                            val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
                             val channels by viewModel.channels.collectAsState()
                             val targetCh = channels.find { it.id == chId }
                             targetCh?.let { ch ->
@@ -291,12 +299,33 @@ class MainActivity : ComponentActivity() {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Surface(
-                                        modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.40f).testTag("unload_confirmation_overlay").clickable(enabled=false){},
+                                        modifier = Modifier
+                                            .fillMaxWidth(if (isTablet) 0.2925f else 0.45f)
+                                            .fillMaxHeight(if (isTablet) 0.163f else 0.36f)
+                                            .testTag("unload_confirmation_overlay")
+                                            .clickable(enabled=false){},
                                         shape = RoundedCornerShape(20.dp),
                                         color = Color(0xFF2C2C2C)
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                                            Text("Limpar $sf2Name?", color = Color.White, fontWeight = FontWeight.Bold)
+                                            val channelIndex = channels.indexOfFirst { it.id == ch.id } + 1
+                                            Text(
+                                                text = "LIMPAR DO CANAL $channelIndex?", 
+                                                color = Color.White, 
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                            )
+                                            Text(
+                                                text = sf2Name.uppercase(), 
+                                                color = Color(0xFF81C784),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
                                             Spacer(modifier = Modifier.height(16.dp))
                                             Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                                                 TextButton(onClick = { viewModel.dismissUnloadConfirmation() }) { Text("CANCELAR", color = Color.Gray) }
@@ -370,25 +399,49 @@ class MainActivity : ComponentActivity() {
 
                         val showSf2Delete by viewModel.showSf2DeleteConfirmation.collectAsState()
                         showSf2Delete?.let { sf2 ->
+                            val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
                             val isInUse = viewModel.isSoundFontInUse(sf2.fileName)
                             Box(
                                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)).clickable { viewModel.dismissSf2Delete() },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Surface(
-                                    modifier = Modifier.fillMaxWidth(0.45f).fillMaxHeight(0.40f).testTag("delete_confirmation").clickable(enabled=false){},
+                                    modifier = Modifier
+                                        .fillMaxWidth(if (isTablet) 0.36f else 0.45f)
+                                        .fillMaxHeight(if (isTablet) 0.20f else 0.40f)
+                                        .testTag("delete_confirmation")
+                                        .clickable(enabled=false){},
                                     shape = RoundedCornerShape(20.dp),
                                     color = Color(0xFF2C2C2C)
                                 ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                                        Text(if (isInUse) "Arquivo em Uso!" else "Excluir SoundFont?", color = Color.White, fontWeight = FontWeight.Bold)
-                                        Spacer(modifier = Modifier.height(12.dp))
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                        Text(if (isInUse) "Arquivo em Uso!" else "Excluir SoundFont?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        
+                                        // Highlighted FileName with Truncate
                                         Text(
-                                            if (isInUse) "O arquivo '${sf2.fileName}' está vinculado a um ou mais Set Stages. Deseja continuar?" 
-                                            else "Isso removerá '${sf2.fileName}' da biblioteca interna.",
-                                            color = Color.Gray, textAlign = TextAlign.Center, fontSize = 13.sp
+                                            text = sf2.fileName,
+                                            color = Color(0xFF81C784),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(horizontal = 8.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(20.dp))
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        
+                                        Text(
+                                            text = if (isInUse) "Arquivo vinculado a Set Stages. Continuar?" 
+                                                   else "Confirmar a remoção permanente do arquivo?",
+                                            color = Color.Gray, 
+                                            textAlign = TextAlign.Center, 
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
+                                        
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                                             TextButton(onClick = { viewModel.dismissSf2Delete() }) { Text("CANCELAR", color = Color.Gray) }
                                             TextButton(onClick = { 
@@ -437,12 +490,16 @@ fun TagSelectionOverlay(
     ) {
         val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
         Surface(
-            modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.9f).testTag("tag_selection_overlay").clickable(enabled = false) {},
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(if (isTablet) 0.52f else 0.9f)
+                .testTag("tag_selection_overlay")
+                .clickable(enabled = false) {},
             shape = RoundedCornerShape(20.dp),
             color = Color(0xFF1A1A1A)
         ) {
             Column(modifier = Modifier.padding(start = if (isTablet) 20.dp else 12.dp, end = if (isTablet) 20.dp else 12.dp, top = if (isTablet) 20.dp else 12.dp, bottom = if (isTablet) 20.dp else 8.dp).fillMaxWidth()) {
-                Text("Configurar SoundFont", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Configurar SoundFont", fontSize = if (isTablet) 20.sp else 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -530,7 +587,7 @@ fun TagSelectionOverlay(
                                 Text(
                                     category, 
                                     color = if (selectedTags.contains(category)) Color(0xFF4CAF50) else Color.White, 
-                                    fontSize = if (isTablet) 11.sp else 12.sp, 
+                                    fontSize = if (isTablet) 14.sp else 12.sp, 
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )

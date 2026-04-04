@@ -40,7 +40,7 @@ fun DownloadsScreen(onNavigateBack: () -> Unit) {
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
-                Text("Conteúdo da tela de Downloads virá aqui (gerenciador de SF2, etc).", color = Color.Gray)
+                Text("Em breve Downloads de SF2 aqui...", color = Color.Gray)
             }
         }
     }

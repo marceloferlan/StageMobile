@@ -44,8 +44,9 @@ fun SoundFontMaintenanceScreen(
     )
 
     val filteredSF2 = remember(availableSF2, selectedTags) {
-        if (selectedTags.isEmpty()) availableSF2
-        else availableSF2.filter { it.metadata.tags.any { tag -> selectedTags.contains(tag) } }
+        val locals = availableSF2.filter { it.isLocal }
+        if (selectedTags.isEmpty()) locals
+        else locals.filter { it.metadata.tags.any { tag -> selectedTags.contains(tag) } }
     }
 
     val launcher = rememberLauncherForActivityResult(

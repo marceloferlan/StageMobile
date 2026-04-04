@@ -87,9 +87,11 @@ class MixerViewModel : ViewModel() {
         if (devices.isEmpty()) {
             "NENHUMA SAÍDA IDENTIFICADA"
         } else {
-            devices.find { it.id == selectedId }?.name ?: "Buscando Interface..."
+            // Inteligência v20.1: Se o ID ainda for -1 mas tivermos dispositivos, mostra o primeiro como "preview"
+            val device = devices.find { it.id == selectedId } ?: devices.first()
+            device.name
         }
-    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), "Buscando Interface...")
+    }.stateIn(scope, SharingStarted.WhileSubscribed(5000), "Sincronizando...")
 
     private val _sf2Loaded = MutableStateFlow(false)
     val sf2Loaded: StateFlow<Boolean> = _sf2Loaded

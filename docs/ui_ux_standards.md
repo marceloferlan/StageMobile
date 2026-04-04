@@ -140,4 +140,23 @@ Para agilizar a troca de instrumentos e limpeza do mixer:
 - **Long Press (Pressione Longo):**
     - Se o canal estiver carregado, aciona a modal de **LIMPAR (Unload)**.
     - Se o canal estiver vazio, abre o seletor de SoundFonts.
-- **Modais de Confirmação (Limpeza/Exclusão):** Devem ser compactas (**45% da largura e 40% da altura**) para não obstruir a visão global do mixer ou da biblioteca durante a confirmação.
+- **Modais de Confirmação (Limpeza/Exclusão):**
+    - **Dimensões Smartphones:** ~45% da largura e 40% da altura.
+    - **Dimensões Tablets:** **36% da largura e 20% da altura**.
+    - **Regra de Visibilidade**: Botões de confirmação devem sempre estar visíveis sem scroll. Espaçadores (`Spacers`) devem ser reduzidos para 4.dp ou menos se necessário.
+
+## 12. Padrões do Navigation Drawer (Menu Lateral)
+Para acomodar a crescente lista de ferramentas (Pads, Biblioteca SF2, Downloads), o sistema utiliza alturas reduzidas no menu.
+
+| Item de Menu | Altura Smartphone | Altura Tablet | Espaçamento (Padding) |
+| :--- | :--- | :--- | :--- |
+| **Padrão** | **28.dp** | **48.dp** | 4.dp (Vertical) |
+| **Dividers** | 4.dp | 8.dp | 16.dp (Horizontal) |
+
+- **Heurística:** Toda a lista de funcionalidades (atualmente 7 itens) deve ser visível na página inicial do menu sem necessidade de rolagem ("Above the Fold").
+
+## 13. Heurística de Truncamento de Texto em Modais
+Para nomes de arquivos SoundFont longos ou caminhos de diretório complexos:
+- **Prioridade Visual**: O nome do arquivo deve ser exibido em destaque (cor verde `#xFF81C784`).
+- **Truncamento**: Utilizar `maxLines = 1` e `overflow = TextOverflow.Ellipsis`.
+- **Integridade da Ação**: O nome do arquivo deve sofrer o truncamento **individualmente**, nunca permitindo que o texto empurre os botões de ação (Confirmar/Cancelar) ou as frases explicativas para fora da área visível da modal.
