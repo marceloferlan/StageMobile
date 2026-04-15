@@ -1,0 +1,4 @@
+- [StageMobile — Visão Geral do Projeto](project_stagemobile.md) — Arquitetura, stack, render dual-path (Oboe + Superpowered USB), thread affinity, settings críticas do FluidSynth
+- [Estado da investigação de clicks de áudio](project_audio_tuning_state.md) — Causas raiz, fixes aplicados, testes pendentes da sessão de tuning abril/2026
+- [Consultar docs/ antes de investigar](feedback_consult_docs_first.md) — Começar por docs/INDEX.md, ler só os docs relevantes, ser seletivo
+- [Workflow: análise antes de aplicar](feedback_workflow.md) — Análise + plano antes de editar problemas não-triviais; edições triviais podem ser diretas

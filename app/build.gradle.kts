@@ -24,7 +24,9 @@ android {
         externalNativeBuild {
             cmake {
                 arguments += "-DANDROID_STL=c++_shared"
+                arguments += "-DANDROID_ARM_NEON=TRUE"
                 cppFlags += "-std=c++17"
+                cppFlags += "-fsigned-char"
             }
         }
     }
@@ -64,6 +66,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":superpowered-usb"))
     implementation("com.google.oboe:oboe:1.9.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

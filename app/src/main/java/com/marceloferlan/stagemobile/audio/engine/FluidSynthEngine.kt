@@ -22,6 +22,7 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
     }
 
     private external fun nativeInit(sampleRate: Int, bufferSize: Int, deviceId: Int): Int
+    private external fun nativeRegisterSpBridge(): Boolean
     private external fun nativeLoadSf2(path: String): Int
     private external fun nativeUnloadSf2(sfId: Int): Boolean
     private external fun nativeNoteOn(channel: Int, key: Int, velocity: Int)
@@ -37,6 +38,7 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
     private external fun nativeSetInterpolation(method: Int)
     private external fun nativeSetPolyphony(maxVoices: Int)
     private external fun nativeWarmUpChannel(channel: Int)
+    private external fun nativeGetAudioStats(): FloatArray?
 
     // --- DSP Effects ---
     private external fun nativeSetChannelEqCutoff(channel: Int, cutoff: Float)
@@ -92,9 +94,18 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
             isInitialized = (result == 0) // 0 is oboe::Result::OK
             if (isInitialized) {
                 Log.i(TAG, "FluidSynth initialized @ $sampleRate Hz (Oboe OK)")
+                val bridgeRegistered = nativeRegisterSpBridge()
+                Log.i(TAG, "Superpowered Bridge registered: $bridgeRegistered")
             } else {
                 Log.e(TAG, "FluidSynth initialization FAILED with Oboe result: $result")
             }
+        }
+    }
+
+    fun forceInitializedState() {
+        if (!isInitialized) {
+            isInitialized = true
+            Log.i(TAG, "FluidSynthEngine forced to initialized state (Superpowered Bypass Mode)")
         }
     }
 
@@ -190,13 +201,13 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
 
     override fun destroy() {
         if (isInitialized) {
-            try {
-                nativeDestroy()
-                Log.i(TAG, "FluidSynth destroyed")
-            } catch (e: Exception) {
-                Log.e(TAG, "destroy error: ${e.message}")
-            }
+            nativeDestroy()
             isInitialized = false
+            Log.i(TAG, "FluidSynth destroyed (Oboe stopped)")
         }
+    }
+
+    override fun getAudioStats(): FloatArray? {
+        return if (isInitialized) nativeGetAudioStats() else null
     }
 }

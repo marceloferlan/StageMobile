@@ -25,7 +25,10 @@ graph TD
         F --> G[FluidSynth Instance]
         G --> H[DSPChain Rack]
         H --> I[Google Oboe Render]
-        I --> J[Saída de Áudio Física]
+        H --> N[sp_bridge C Render Callback]
+        N --> O[Superpowered USB Engine]
+        I --> J[Saída de Áudio Interna/P2]
+        O --> P[Saída de Áudio Físca USB]
     end
 ```
 
@@ -34,7 +37,8 @@ graph TD
 - **Interface Gráfica:** Jetpack Compose (Material 3).
 - **Motor de Áudio (Nativo):**
     - **FluidSynth:** Síntese de áudio baseada em Wavetables (SoundFonts).
-    - **Oboe:** API de áudio C++ da Google para latência ultra-baixa.
+    - **Oboe:** API de áudio C++ da Google para latência ultra-baixa (Dispositivos Internos).
+    - **Superpowered SDK:** (Isolado no módulo `:superpowered-usb`) via Áudio USB direto em Hardware Bypass. Comunicação inter-bibliotecas feita por ponte C (`extern "C"` / `dlopen`).
     - **STK (Synthesis Toolkit):** Algoritmos de efeitos DSP (Chorus, Reverb, EQ, etc.).
     - **SoundTouch:** Manipulação de Pitch e Time-stretch.
 - **Gerenciamento MIDI:** Android MidiManager API.
@@ -64,6 +68,27 @@ Para garantir a ausência de clicks e pops durante ajustes em tempo real, o sist
 1.  **Parameter Smoothing:** Interpolação exponencial (`SmoothedParam`) para parâmetros de ganho, tempo e filtros.
 2.  **Filter Crossfading:** Double-buffering de filtros IIR (EQ, HPF, LPF) com transição suave (64 samples) ao alterar frequências.
 3.  **Lock-Free Bridge:** Parâmetros críticos são transmitidos via `std::atomic`, eliminando a contenção de mutex entre a UI thread e a Audio Render thread.
+
+### 3.2 Thread Affinity e Prioridade (Big Cluster Pinning)
+A thread `synthRenderLoop` é pinned ao big cluster do SoC em runtime via detecção de frequência máxima lendo `/sys/devices/system/cpu/cpuN/cpufreq/cpuinfo_max_freq`:
+
+- **Exynos 1380 (Tab S9 FE):** detecta cores 4-7 (Cortex-A78 @ 2.4GHz), ignora cores 0-3 (A55 @ 2.0GHz).
+- **Snapdragon 8 Gen 3 (S24 Ultra):** detecta o prime core (Cortex-X4).
+- **Qualquer SoC:** funciona sem hardcode — escolhe todas as cores com a freq máxima.
+
+Prioridade: tenta `SCHED_FIFO` (realtime), Android nega com `EPERM` para apps de usuário, fallback automático para `nice=-19` (máxima prioridade normal). Isso elimina preempção pelo scheduler e migração entre big/little cores, que eram as causas principais de spikes intermitentes em `MaxFluid`/`MaxDspCh`/`MaxMix` sem causa algorítmica.
+
+Ver [audio_performance_tuning.md](./audio_performance_tuning.md) para o código e justificativa detalhada.
+
+### 3.3 APM Per-Phase Instrumentation
+O `renderAudioEngine` é instrumentado com a macro `MEASURE_PHASE` que combina `clock_gettime` + `ATrace_beginSection/endSection`. As fases rastreadas são:
+
+1. **SM.Fluid** — `fluid_synth_nwrite_float`
+2. **SM.DspChan** — loop de 16 canais DSP
+3. **SM.DspMaster** — master rack DSP
+4. **SM.Mix** — scalar mix/interleave/clip detect
+
+As métricas ficam disponíveis via `nativeGetAudioStats` (retorna FloatArray[14]) e são exibidas no APM HUD ([APMHudDialog.kt](../app/src/main/java/com/marceloferlan/stagemobile/ui/components/APMHudDialog.kt)) com colorização (verde <1ms, amarelo >1ms, vermelho >2ms). Os mesmos markers ficam visíveis em traces Perfetto capturados durante sessões de teste.
 
 
 ## 4. Componentes e Papéis Detalhados

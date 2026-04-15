@@ -8,6 +8,7 @@ import com.marceloferlan.stagemobile.audio.engine.AudioEngine
 import com.marceloferlan.stagemobile.audio.engine.DummyAudioEngine
 import com.marceloferlan.stagemobile.audio.engine.FluidSynthEngine
 import com.marceloferlan.stagemobile.audio.AudioDeviceState
+import com.marceloferlan.stagemobile.superpowered.SuperpoweredUSBAudioManager
 import com.marceloferlan.stagemobile.domain.model.InstrumentChannel
 import com.marceloferlan.stagemobile.utils.SystemResourceMonitor
 import com.marceloferlan.stagemobile.midi.MidiConnectionManager
@@ -52,6 +53,7 @@ class MixerViewModel : ViewModel() {
     val fluidEngine: FluidSynthEngine? get() = _audioEngine as? FluidSynthEngine
     private var midiManager: MidiConnectionManager? = null
     private var deviceAudioManager: com.marceloferlan.stagemobile.audio.DeviceAudioManager? = null
+    private var usbAudioManager: SuperpoweredUSBAudioManager? = null
     private var settingsRepo: SettingsRepository? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var appContext: Context? = null
@@ -104,6 +106,17 @@ class MixerViewModel : ViewModel() {
 
     private val _cpuUsagePercent = MutableStateFlow(0f)
     val cpuUsagePercent: StateFlow<Float> = _cpuUsagePercent
+
+    private val _audioStats = MutableStateFlow<com.marceloferlan.stagemobile.domain.model.AudioStats?>(null)
+    val audioStats: StateFlow<com.marceloferlan.stagemobile.domain.model.AudioStats?> = _audioStats
+
+    // Visibilidade do PopUP HUD
+    private val _showApmHud = MutableStateFlow(false)
+    val showApmHud: StateFlow<Boolean> = _showApmHud
+
+    fun toggleApmHud() {
+        _showApmHud.value = !_showApmHud.value
+    }
 
     // --- Settings States ---
     private val _bufferSize = MutableStateFlow(256)
@@ -796,9 +809,9 @@ class MixerViewModel : ViewModel() {
                     // Cache HIT — Skip copy and load
                     Log.i(TAG, "SF2 Cache HIT for '$sf2FileName' → sfId=$cachedSfId")
                     sfId = cachedSfId
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(soundFont = sf2FileName, sfId = sfId) else it
-                    })
+                    updateChannel(channelId) {
+                        it.copy(soundFont = sf2FileName, sfId = sfId)
+                    }
                 } else {
                     // Cache MISS — Full load sequence
                     val inputStream = context.contentResolver.openInputStream(uri)
@@ -806,9 +819,9 @@ class MixerViewModel : ViewModel() {
 
                     val outputFile = File(context.filesDir, "sf2_ch${channelId}_$sf2FileName")
 
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(soundFont = "Carregando $sf2FileName...") else it
-                    })
+                    updateChannel(channelId) {
+                        it.copy(soundFont = "Carregando $sf2FileName...")
+                    }
 
                     inputStream.use { input ->
                         outputFile.outputStream().use { output ->
@@ -819,9 +832,9 @@ class MixerViewModel : ViewModel() {
                     sfId = _audioEngine.loadSoundFont(outputFile.absolutePath)
                     if (sfId < 0) {
                         Log.e(TAG, "Failed to load SF2 for channel $channelId")
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(soundFont = null) else it
-                    })
+                    updateChannel(channelId) {
+                        it.copy(soundFont = null)
+                    }
                         return@launch
                     }
 
@@ -829,9 +842,9 @@ class MixerViewModel : ViewModel() {
                     loadedSf2Cache[sf2FileName] = sfId
                     Log.i(TAG, "SF2 Cache MISS for '$sf2FileName' → loaded as sfId=$sfId (cached)")
 
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(soundFont = "Aquecendo $sf2FileName...") else it
-                    })
+                    updateChannel(channelId) {
+                        it.copy(soundFont = "Aquecendo $sf2FileName...")
+                    }
                     (audioEngine as? FluidSynthEngine)?.warmUpChannel(channelId)
                 }
 
@@ -847,14 +860,14 @@ class MixerViewModel : ViewModel() {
                     val presetName = presets.firstOrNull()?.name
                     val displayName = if (presetName != null) "$sf2FileName [$presetName]" else sf2FileName
 
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(
+                    updateChannel(channelId) {
+                        it.copy(
                             soundFont = displayName,
                             sfId = sfId,
                             bank = defaultBank,
                             program = defaultProgram
-                        ) else it
-                    })
+                        )
+                    }
                     _audioEngine.programSelect(channelId, sfId, defaultBank, defaultProgram)
                     _sf2Loaded.value = true
                     _sf2Name.value = sf2FileName
@@ -865,14 +878,14 @@ class MixerViewModel : ViewModel() {
                     _audioEngine.programSelect(channelId, sfId, defaultBank, defaultProgram)
 
                     // Multiple presets → Open selector dialog
-                    updateChannels(_channels.value.map {
-                        if (it.id == channelId) it.copy(
+                    updateChannel(channelId) {
+                        it.copy(
                             soundFont = sf2FileName, 
                             sfId = sfId,
                             bank = defaultBank,
                             program = defaultProgram
-                        ) else it
-                    })
+                        )
+                    }
                     _sf2Loaded.value = true
                     _sf2Name.value = sf2FileName
 
@@ -990,6 +1003,36 @@ class MixerViewModel : ViewModel() {
                 kotlinx.coroutines.delay(3000) // 3s — info não precisa ser real-time
             }
         }
+        
+        // Loop de Alta Frequência (Para o APM Popup)
+        scope.launch {
+            while (true) {
+                if (_showApmHud.value) {
+                    val raw = _audioEngine.getAudioStats()
+                    if (raw != null && raw.size >= 14) {
+                        _audioStats.value = com.marceloferlan.stagemobile.domain.model.AudioStats(
+                            underruns = raw[0].toInt(),
+                            mutexMisses = raw[1].toInt(),
+                            clips = raw[2].toInt(),
+                            avgCallbackUs = raw[3],
+                            maxCallbackUs = raw[4],
+                            activeVoices = raw[5].toInt(),
+                            avgPhaseFluidUs = raw[6],
+                            maxPhaseFluidUs = raw[7],
+                            avgPhaseDspChanUs = raw[8],
+                            maxPhaseDspChanUs = raw[9],
+                            avgPhaseDspMasterUs = raw[10],
+                            maxPhaseDspMasterUs = raw[11],
+                            avgPhaseMixUs = raw[12],
+                            maxPhaseMixUs = raw[13]
+                        )
+                    }
+                    kotlinx.coroutines.delay(500) // 2 FPS é suficiente e não carrega UI
+                } else {
+                    kotlinx.coroutines.delay(1500)
+                }
+            }
+        }
     }
 
     // --- MIDI ---
@@ -1090,6 +1133,14 @@ class MixerViewModel : ViewModel() {
             
             startResourceMonitor(context)
             
+            // Inicializar Superpowered USB Audio (bypass do Android Audio HAL)
+            if (usbAudioManager == null) {
+                usbAudioManager = SuperpoweredUSBAudioManager(context)
+                usbAudioManager?.initialize()
+                usbAudioManager?.checkConnectedDevices()
+                Log.i(TAG, "Superpowered USB Audio Manager initialized and scanning for devices")
+            }
+            
             // Monitor de Saúde do Stream (Auto-Recovery)
             scope.launch {
                 while (isActive) {
@@ -1098,7 +1149,13 @@ class MixerViewModel : ViewModel() {
                     if (engine is FluidSynthEngine) {
                         val isDead = engine.isStreamDead()
                         val notInit = !engine.isInitialized
-                        if ((isDead || notInit) && !isReinitializing) {
+                        val spActive = usbAudioManager?.isActive() ?: false
+                        
+                        // Se o USB está ativo por hardware, o Oboe pode falhar. Ignoramos e mantemos os canais MIDI vivos.
+                        if (spActive) {
+                            if (notInit) engine.forceInitializedState()
+                            if (isDead) engine.resetStreamDead()
+                        } else if ((isDead || notInit) && !isReinitializing) {
                             Log.w(TAG, "!!! HEALTH MONITOR ALERT: isDead=$isDead, notInit=$notInit !!!")
                             updateSystemEvent("Recuperando conexão de áudio...")
                             if (isDead) engine.resetStreamDead()
@@ -1535,9 +1592,10 @@ class MixerViewModel : ViewModel() {
     }
 
     private fun updateChannel(channelId: Int, update: (com.marceloferlan.stagemobile.domain.model.InstrumentChannel) -> com.marceloferlan.stagemobile.domain.model.InstrumentChannel) {
-        updateChannels(_channels.value.map {
-            if (it.id == channelId) update(it) else it
-        })
+        _channels.update { current ->
+            current.map { if (it.id == channelId) update(it) else it }
+        }
+        rebuildArmedChannelsCache()
     }
 
     fun toggleArm(channelId: Int) {
@@ -2458,59 +2516,95 @@ class MixerViewModel : ViewModel() {
     fun loadSetStage(context: Context, bankId: Int, slotId: Int) {
         scope.launch(Dispatchers.Default) {
             val stage = setStageRepo?.loadSetStage(bankId, slotId) ?: return@launch
-            
+
+            // CRÍTICO: Normalizar canais antes de aplicar — força sfId=-1 para invalidar
+            // referências stale do save. O sfId correto será preenchido conforme cada SF2
+            // for mapeado/carregado abaixo. Isso garante que o armedChannelsCache não use
+            // sfIds inválidos (que fariam fluid_synth tocar em slots fantasmas).
+            val normalizedChannels = stage.channels.map { it.copy(sfId = -1) }
+
             withContext(Dispatchers.Main) {
                 activeBankId = bankId
                 activeSlotId = slotId
                 _activeSetStageName.value = stage.name
                 _activeSetStageId.value = "${bankId}_$slotId"
-                
+
                 _masterVolume.value = stage.masterVolume
                 _globalOctaveShift.value = stage.globalOctaveShift
                 _globalTransposeShift.value = stage.globalTransposeShift
                 _isMasterLimiterEnabled.value = stage.isMasterLimiterEnabled
                 _isDspMasterBypass.value = stage.isDspMasterBypass
+
+                // Usa updateChannels (plural) para garantir rebuild do armedChannelsCache.
+                // Antes estava usando _channels.value = ... direto, o que deixava o cache stale.
+                updateChannels(normalizedChannels)
             }
 
             audioEngine.setMasterLimiter(stage.isMasterLimiterEnabled)
             updateMasterVolume(stage.masterVolume)
 
+            // Processa cada canal sequencialmente (evita fire-and-forget coroutines
+            // que terminam depois do usuário tentar tocar).
             stage.channels.forEach { ch ->
-                val sf2Name = ch.soundFont
-                if (sf2Name != null) {
-                    val currentSfId = loadedSf2Cache[sf2Name]
-                    if (currentSfId != null) {
-                        val presets = audioEngine.getPresets(currentSfId)
-                        val hasPreset = presets.any { it.bank == ch.bank && it.program == ch.program }
-                        if (hasPreset) {
-                            audioEngine.programSelect(ch.id, currentSfId, ch.bank, ch.program)
-                        } else {
-                            presets.firstOrNull()?.let { first ->
-                                audioEngine.programSelect(ch.id, currentSfId, first.bank, first.program)
-                            }
-                        }
+                val sf2FullName = ch.soundFont   // Pode conter suffix "[Preset]"
+                if (sf2FullName != null) {
+                    // CORREÇÃO CRÍTICA: extrair o nome base (sem "[Preset]") para lookup
+                    // no cache e no sistema de arquivos. O soundFont field guarda o nome
+                    // de exibição, mas o cache e o repositório usam o nome limpo.
+                    val sf2BaseName = sf2FullName.substringBefore(" [")
+
+                    val cachedSfId = loadedSf2Cache[sf2BaseName]
+                    val resolvedSfId: Int = if (cachedSfId != null && cachedSfId >= 0) {
+                        cachedSfId
                     } else {
-                        // Tenta carregar do repositório interno primeiro
-                        val internalPath = soundFontRepo?.getFilePath(sf2Name)
+                        // Cache miss — tenta carregar do repositório interno SINCRONAMENTE
+                        // (ainda estamos no Dispatchers.Default, não bloqueia UI).
+                        val internalPath = soundFontRepo?.getFilePath(sf2BaseName)
                         val internalFile = internalPath?.let { File(it) }
-                        
+
                         if (internalFile?.exists() == true) {
-                            // Carregamento direto do arquivo interno (Zero Lag / Portável)
-                            scope.launch(Dispatchers.IO) {
-                                val sfId = _audioEngine.loadSoundFont(internalPath)
-                                if (sfId >= 0) {
-                                    loadedSf2Cache[sf2Name] = sfId
-                                    audioEngine.programSelect(ch.id, sfId, ch.bank, ch.program)
-                                }
+                            Log.i(TAG, "SetStage: loading ${sf2BaseName} for ch=${ch.id}")
+                            val newSfId = _audioEngine.loadSoundFont(internalPath)
+                            if (newSfId >= 0) {
+                                loadedSf2Cache[sf2BaseName] = newSfId
+                                (audioEngine as? FluidSynthEngine)?.warmUpChannel(ch.id)
+                                newSfId
+                            } else {
+                                Log.e(TAG, "SetStage: loadSoundFont FAILED for ${sf2BaseName} (ch=${ch.id})")
+                                -1
                             }
                         } else {
-                            // Fallback para URI legado
-                            sf2UriMap[sf2Name]?.let { uri ->
-                                loadSoundFontForChannel(context, ch.id, uri, targetBank = ch.bank, targetProgram = ch.program)
+                            // Fallback URI legado
+                            val legacyUri = sf2UriMap[sf2BaseName] ?: sf2UriMap[sf2FullName]
+                            if (legacyUri != null) {
+                                Log.i(TAG, "SetStage: loading ${sf2BaseName} via legacy URI for ch=${ch.id}")
+                                loadSoundFontForChannel(context, ch.id, legacyUri,
+                                    targetBank = ch.bank, targetProgram = ch.program)
+                                // loadSoundFontForChannel é async; deixamos ele terminar por conta própria
+                                -1
+                            } else {
+                                Log.w(TAG, "SetStage: SF2 '${sf2BaseName}' not found for ch=${ch.id}")
+                                -1
                             }
                         }
                     }
+
+                    // Se conseguimos resolver um sfId válido, configura o preset e atualiza o canal
+                    if (resolvedSfId >= 0) {
+                        val presets = audioEngine.getPresets(resolvedSfId)
+                        val hasPreset = presets.any { it.bank == ch.bank && it.program == ch.program }
+                        if (hasPreset) {
+                            audioEngine.programSelect(ch.id, resolvedSfId, ch.bank, ch.program)
+                        } else {
+                            presets.firstOrNull()?.let { first ->
+                                audioEngine.programSelect(ch.id, resolvedSfId, first.bank, first.program)
+                                Log.w(TAG, "SetStage: preset ${ch.bank}/${ch.program} not found in ${sf2BaseName}, using first preset ${first.bank}/${first.program}")
+                            }
+                        }
+                        updateChannel(ch.id) { it.copy(sfId = resolvedSfId) }
+                    }
                 }
+
                 updateVolume(ch.id, ch.volume)
                 ch.dspEffects.forEachIndexed { effectIdx, effect ->
                     audioEngine.setEffectEnabled(ch.id, effect.type.id, effect.isEnabled)
@@ -2519,12 +2613,11 @@ class MixerViewModel : ViewModel() {
                     }
                 }
             }
-            
+
             withContext(Dispatchers.Main) {
-                _channels.value = stage.channels
                 _hasUnsavedChanges.value = false
                 rebuildArmedChannelsCache()
-                Log.i(TAG, "Set Stage carregado assincronamente: ${stage.name}")
+                Log.i(TAG, "Set Stage carregado: ${stage.name}")
                 updateSystemEvent("SET STAGE ATIVADO: ${stage.name}")
             }
         }

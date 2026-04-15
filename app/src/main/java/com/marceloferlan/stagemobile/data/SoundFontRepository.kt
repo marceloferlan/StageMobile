@@ -28,6 +28,10 @@ class SoundFontRepository(private val context: Context) {
             .setPersistenceEnabled(true)
             .build()
         db.firestoreSettings = settings
+        
+        // Desabilita a rede por padrão para evitar Death-Loop do GMS em tablets de palco.
+        // O Firestore funcionará 100% em cache local (sem latência ou travamentos).
+        db.disableNetwork()
     }
 
     /**
@@ -70,8 +74,9 @@ class SoundFontRepository(private val context: Context) {
                 addedDate = System.currentTimeMillis()
             )
             
-            // Usamos add() para deixar o Firestore gerar um ID único
-            soundFontsCollection.add(metadata)
+            // Usamos o próprio fileName (ou um hash dele) como DocumentID para garantir UNICIDADE.
+            // Isso previne que double-clicks na interface gerem documentos duplicados no banco local offline.
+            soundFontsCollection.document(fileName).set(metadata)
             
             Result.success(Unit)
         } catch (e: Exception) {
@@ -119,8 +124,11 @@ class SoundFontRepository(private val context: Context) {
             if (newFile.exists()) throw Exception("Arquivo com este nome já existe.")
             
             if (oldFile.renameTo(newFile)) {
-                // Atualiza Firestore
-                soundFontsCollection.document(metadata.id).update("fileName", newName)
+                // Como o ID do Firestore agora é o fileName, devemos migrar o documento para a nova Chave (ID)
+                val newMetadata = metadata.copy(fileName = newName)
+                soundFontsCollection.document(newName).set(newMetadata) // Cria com o novo ID
+                soundFontsCollection.document(metadata.id).delete() // Remove o ID antigo
+                
                 Result.success(Unit)
             } else {
                 throw Exception("Falha ao renomear arquivo físico.")

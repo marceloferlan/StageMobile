@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "StageMobile"
 include(":app")
+include(":superpowered-usb")

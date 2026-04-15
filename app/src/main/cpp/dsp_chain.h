@@ -814,7 +814,9 @@ private:
 class DSPChannel {
 public:
     void process(float* left, float* right, int numSamples) {
-        float dryL[numSamples], dryR[numSamples];
+        if (numSamples > MAX_AUDIO_FRAME_SIZE) return;
+        static thread_local float dryL[MAX_AUDIO_FRAME_SIZE];
+        static thread_local float dryR[MAX_AUDIO_FRAME_SIZE];
         
         for (auto& effect : effects) {
             bool isSmoothing = effect->bypassFade.isSmoothing();

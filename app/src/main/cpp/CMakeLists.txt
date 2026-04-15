@@ -16,6 +16,8 @@ set_target_properties(fluidsynth PROPERTIES
     IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libfluidsynth.so
 )
 
+
+
 # Source files groups
 set(DSP_SOURCES
     externals/DSPFilters/source/Bessel.cpp

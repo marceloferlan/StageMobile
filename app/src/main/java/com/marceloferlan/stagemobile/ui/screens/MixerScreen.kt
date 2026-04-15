@@ -139,7 +139,7 @@ fun MixerScreen(
     var showKeyboard by remember { mutableStateOf(false) }
     var showRangeDialogForChannel by remember { mutableIntStateOf(-1) }
 
-    var showInfoPanel by remember { mutableStateOf(false) }
+    var showInfoPanel by remember { mutableStateOf(true) } // Alterado padrão para True em tablets, mas controlável
     var showExitConfirmation by remember { mutableStateOf(false) }
     
     // Configurações do Set Stage
@@ -557,18 +557,28 @@ fun MixerScreen(
                     }
                 }
 
-                MixerScreenInfoPanel(
-                    ramUsage = ramUsageMb,
-                    cpuUsage = cpuUsagePercent.toInt(),
-                    activeSet = if (activeSetStageName != null) activeSetStageName!! + (if (hasUnsavedChanges) " *" else "") else "Nenhum",
-                    midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
-                    lastEvent = "BUFFER: $bufferSize",
-                    audioInterface = audioInterfaceName,
-                    sampleRate = sampleRate,
-                    isTablet = isTablet,
-                    midiLearnFeedback = midiLearnFeedback,
-                    onActiveSetLongClick = { viewModel.showQuickSelector() }
-                )
+                if (showInfoPanel) {
+                    MixerScreenInfoPanel(
+                        ramUsage = ramUsageMb,
+                        cpuUsage = cpuUsagePercent.toInt(),
+                        activeSet = if (activeSetStageName != null) activeSetStageName!! + (if (hasUnsavedChanges) " *" else "") else "Nenhum",
+                        midiStatus = if (midiConnected) midiDeviceName ?: "CONECTADO" else "NENHUM DISPOSITIVO",
+                        lastEvent = "BUFFER: $bufferSize",
+                        audioInterface = audioInterfaceName,
+                        sampleRate = sampleRate,
+                        isTablet = isTablet,
+                        midiLearnFeedback = midiLearnFeedback,
+                        onActiveSetLongClick = { viewModel.showQuickSelector() }
+                    )
+                }
+
+                val showApmHudDialog by viewModel.showApmHud.collectAsState()
+                if (showApmHudDialog) {
+                    com.marceloferlan.stagemobile.ui.components.APMHudDialog(
+                        viewModel = viewModel,
+                        onDismiss = { viewModel.toggleApmHud() }
+                    )
+                }
 
                 MixerScreenToolBar(
                     viewModel = viewModel,
@@ -601,7 +611,9 @@ fun MixerScreen(
                         viewModel.addChannel("Instrumento $formattedNum")
                     },
                     isMasterVisible = isMasterVisible,
-                    onToggleMaster = { viewModel.toggleMasterVisibility() }
+                    onToggleMaster = { viewModel.toggleMasterVisibility() },
+                    showInfoPanel = showApmHudDialog,
+                    onToggleInfoPanel = { viewModel.toggleApmHud() }
                 )
 
                 BoxWithConstraints(
@@ -802,7 +814,9 @@ fun MixerScreenToolBar(
     channelsCount: Int,
     onAddChannel: () -> Unit,
     isMasterVisible: Boolean,
-    onToggleMaster: () -> Unit
+    onToggleMaster: () -> Unit,
+    showInfoPanel: Boolean,
+    onToggleInfoPanel: () -> Unit
 ) {
     val pulseAlpha = rememberMidiLearnPulse(isMidiLearnActive)
     val barHeight = if (isTablet) 38.dp else 34.dp
@@ -992,6 +1006,24 @@ fun MixerScreenToolBar(
                     modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
                 ) {
                     Text("+CH", fontWeight = FontWeight.Bold, fontSize = if (isTablet) 10.sp else 8.sp)
+                }
+
+                // APM / Info Button
+                Button(
+                    onClick = onToggleInfoPanel,
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (showInfoPanel) Color(0xFF1976D2) else Color(0xFF424242),
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Outlined.Memory,
+                        contentDescription = "APM HUD",
+                        modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
+                    )
                 }
 
                 // Button Master

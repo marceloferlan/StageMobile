@@ -20,8 +20,9 @@ object UiUtils {
      */
     fun isTablet(context: Context): Boolean {
         // Mantemos a lógica baseada em configuração para contextos fora do Compose
-        // que não possuem acesso fácil à Activity ou ao WindowSizeClass reativo.
-        return context.resources.configuration.smallestScreenWidthDp >= 600
+        // Reduzido para 500 + Inclusão do screenWidth (largura absoluta) >= 600
+        // Como o app roda unicamente em paisagem, isso força a UI de tablet e o APM HUD a aparecerem.
+        return context.resources.configuration.screenWidthDp >= 600 || context.resources.configuration.smallestScreenWidthDp >= 500
     }
 
     /**
@@ -32,7 +33,8 @@ object UiUtils {
     @Composable
     fun rememberIsTablet(): Boolean {
         val configuration = LocalConfiguration.current
-        return configuration.smallestScreenWidthDp >= 600
+        // Reduzido para 500 + Inclusão do screenWidth (largura absoluta) >= 600
+        return configuration.screenWidthDp >= 600 || configuration.smallestScreenWidthDp >= 500
     }
 
     /**

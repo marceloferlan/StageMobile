@@ -23,3 +23,10 @@ local.properties
 **/google-services.json
 **/fabric.properties
 **/secrets.properties
+
+# Firebase CLI (local project binding — não versionado)
+.firebaserc
+firebase.json
+
+# Claude Code MCP config (dev-específico, não versionado)
+.mcp.json

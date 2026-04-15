@@ -68,8 +68,9 @@ class SystemResourceMonitor(private val context: Context) {
 
         if (uptimeDelta <= 0L) return 0f
 
-        // Convert delta to percentage. (CPU time used / real time passed) * 100
-        val percent = (cpuTimeDelta.toFloat() / uptimeDelta.toFloat()) * 100f
+        // Convert delta to percentage globally (CPU time used / real time passed / Total Cores) * 100
+        val numCores = Runtime.getRuntime().availableProcessors()
+        val percent = (cpuTimeDelta.toFloat() / uptimeDelta.toFloat() / numCores) * 100f
         
         // Coerce max to 100% just in case of anomaly spikes and round to 1 decimal place
         val coercedPercent = percent.coerceIn(0f, 100f)

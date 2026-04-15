@@ -50,10 +50,30 @@ Para inserir um novo efeito no Rack Nativo:
   `adb shell rm -rf /data/data/com.example.stagemobile/cache/*`
 
 ## 5. Regras de Estabilidade "Stage-Ready"
-- **NUNCA** use `println` ou `Log.d` dentro do loop de áudio nativo (`onAudioReady`).
+- **NUNCA** use `println` ou `Log.d` dentro do loop de áudio nativo (`onAudioReady`, `renderAudioEngine`, `synthRenderLoop`).
 - **NUNCA** aloque memória (`new` / `malloc`) dentro do loop de áudio. Use pré-alocação no `prepare()`.
 - **SEMPRE** use `lock-free queues` para comunicação entre a UI e o Motor de Áudio.
 - **SEMPRE** valide a integridade estrutural (chaves e imports) após refatorações.
+- **SEMPRE** normalize o nome do SF2 extraindo o nome base antes de lookup no cache ou no filesystem. O campo `InstrumentChannel.soundFont` guarda o nome de exibição com suffix de preset entre colchetes (ex: `"piano1.sf2 [Grand Piano]"`), mas `loadedSf2Cache` e `SoundFontRepository.getFilePath()` esperam o nome base. Use o padrão:
+  ```kotlin
+  val sf2BaseName = ch.soundFont?.substringBefore(" [") ?: "SoundFont"
+  ```
+  Esquecer isso é a causa de bugs "canal exibe nome mas não toca som" (ver `loadSetStage` pre-fix em `MixerViewModel.kt`).
+
+## 5.1 FluidSynth Settings Types (Pegadinha)
+Os parâmetros de `synth.overflow.*` são **NUMERIC (double)**, não `integer`, mesmo os valores parecendo inteiros (1000, 4000, etc). Usar `fluid_settings_setint` silenciosamente falha com `Unknown integer parameter 'synth.overflow.age'` no logcat e a configuração é ignorada.
+
+❌ Errado:
+```cpp
+fluid_settings_setint(settings, "synth.overflow.age", 1000);
+```
+
+✅ Correto:
+```cpp
+fluid_settings_setnum(settings, "synth.overflow.age", 1000.0);
+```
+
+Sempre verificar os logs do `fluidsynth` no startup para detectar parâmetros ignorados.
 
 ## 6. Protocolo de Integridade de Código (Prevenção de Erros)
 

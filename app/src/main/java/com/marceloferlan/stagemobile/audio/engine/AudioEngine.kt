@@ -33,4 +33,5 @@ interface AudioEngine {
     fun getEffectMeters(channel: Int, index: Int, output: FloatArray): Boolean
     
     fun destroy()
+    fun getAudioStats(): FloatArray?
 }

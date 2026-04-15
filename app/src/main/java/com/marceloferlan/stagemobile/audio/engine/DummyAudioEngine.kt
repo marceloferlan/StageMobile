@@ -103,4 +103,8 @@ class DummyAudioEngine : AudioEngine {
     override fun destroy() {
         Log.d("DummyEngine", "Audio Engine Destroyed")
     }
+
+    override fun getAudioStats(): FloatArray? {
+        return null
+    }
 }

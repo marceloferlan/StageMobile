@@ -30,6 +30,19 @@ O sinal sintetizado passa por um rack de efeitos estruturado em `dsp_chain.h` an
 5.  **Espaço/Tempo:** Delay e Reverb (Efeitos de profundidade).
 6.  **Proteção:** Limiter final para evitar clipping digital.
 
+## 3. Saída de Áudio Físico (Render Output)
+O estágio final da interligação do motor de áudio. Trabalhamos primariamente baseando-nos no paradigma de Bypass por Hardware (Zero-Latency):
+
+### 3.1. Oboe / OpenSL ES (Stand-Alone)
+Na ausência de interfaces externas, o StageMobile usa a biblioteca Oboe (`libsynthmodule.so`) preenchendo os callbacks ativados pelo Android Mixer Internamente.
+
+### 3.2. Superpowered USB Bypassing (Interfaces de Áudio)
+Quando Placas de Áudio USB dedicadas são anexadas:
+- O sistema desvia logicamente o roteamento para a `libspbridge.so` (Submódulo compilado com `c++_static`).
+- Uma arquitetura paralela nativa do Superpowered SDK abre um **hardware FD (File Descriptor)** de interface para a DAC da placa, ultrapassando os mixers e os gargalos do kernel do Android.
+- A função JNI em C++ nativo cedeu uma CallBack em C Puro (`extern "C"`) via `dlsym` para solicitar ao DSPChain a renderização estanque enviada direto pro dispositivo sem atrasos.
+
+
 ## 3. Requisitos Funcionais
 - **Múltiplos SoundFonts:** Carregamento simultâneo e isolado de arquivos SF2.
 - **Preset Management:** Seleção dinâmica de bancos e programas por canal.
