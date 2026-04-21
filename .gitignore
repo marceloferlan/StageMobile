@@ -25,6 +25,7 @@ local.properties
 **/google-services.json
 **/fabric.properties
 **/secrets.properties
+**/*-firebase-adminsdk-*.json
 
 # Firebase CLI (local project binding — não versionado)
 .firebaserc
