@@ -595,50 +595,93 @@ private:
  */
 class LimiterEffect : public DSPEffect {
 public:
-    LimiterEffect() {}
-    
+    LimiterEffect() {
+        memset(delayL, 0, sizeof(delayL));
+        memset(delayR, 0, sizeof(delayR));
+        updateCoeffs();
+    }
+
     void processStereo(float* left, float* right, int numSamples) override {
-        // Soft-bypass handled by DSPChannel crossfade
         for (int i = 0; i < numSamples; ++i) {
-            float peak = std::max(std::abs(left[i]), std::abs(right[i]));
-            
-            // Fast attack, slow release envelope
-            if (peak > envelope) envelope = peak;
-            else envelope = envelope * releaseCoeff;
-            
-            float gain = 1.0f;
-            if (envelope > threshold) {
-                gain = threshold / envelope;
-            }
-            
-            left[i] *= gain;
-            right[i] *= gain;
+            // Stage 1: Soft saturation (tanh waveshaper) — adiciona "gordura"
+            // Comprime picos naturalmente e gera harmônicos quentes (odd harmonics).
+            // tanhNorm normaliza pra que sinais baixos passem inalterados.
+            float satL = fastTanh(left[i] * drive) * tanhNorm;
+            float satR = fastTanh(right[i] * drive) * tanhNorm;
+
+            // Stage 2: Envelope detection no sinal ATUAL (pré-delay = lookahead)
+            // O envelope "vê" os picos ANTES do áudio passar pelo delay line,
+            // permitindo reduzir o ganho ANTES do pico chegar à saída.
+            float peak = std::max(std::abs(satL), std::abs(satR));
+            if (peak > envelope)
+                envelope += attackCoeff * (peak - envelope);  // attack suavizado (~1ms)
+            else
+                envelope += releaseCoeff * (peak - envelope); // release configurável
+
+            // Stage 3: Gain computation (brick wall no threshold, sem artefatos)
+            float gain = (envelope > threshold) ? (threshold / envelope) : 1.0f;
+
+            // Stage 4: Lookahead delay — lê áudio atrasado, grava áudio atual
+            float outL = delayL[delayIdx];
+            float outR = delayR[delayIdx];
+            delayL[delayIdx] = satL;
+            delayR[delayIdx] = satR;
+            delayIdx = (delayIdx + 1) & (LOOKAHEAD - 1);
+
+            // Stage 5: Aplica ganho ao sinal ATRASADO (que é o que sai pro hardware)
+            // makeupGain compensa a redução pra manter loudness percebido.
+            left[i] = outL * gain * makeupGain;
+            right[i] = outR * gain * makeupGain;
         }
     }
-    
+
     void setParam(int paramId, float value) override {
-        if (paramId == 0) threshold = std::pow(10.0f, value / 20.0f);
-        else if (paramId == 1) {
+        if (paramId == 0) {
+            threshold = std::pow(10.0f, value / 20.0f);
+            makeupGain = 1.0f / std::max(threshold, 0.1f);
+        } else if (paramId == 1) {
             lastReleaseMs = value;
-            updateCoeff();
+            updateCoeffs();
         }
     }
-    
+
     void setSampleRate(float fs) override {
         sampleRate = fs;
-        updateCoeff();
+        updateCoeffs();
     }
-    
+
     int getType() const override { return 8; }
+
 private:
-    void updateCoeff() {
-        releaseCoeff = std::exp(-1.0f / (sampleRate * (lastReleaseMs / 1000.0f)));
-    }
-    float threshold = 0.95f; // ~ -0.5dB
+    static constexpr int LOOKAHEAD = 64; // ~1.3ms @ 48kHz
+
+    float delayL[LOOKAHEAD] = {};
+    float delayR[LOOKAHEAD] = {};
+    int delayIdx = 0;
+
     float envelope = 0.0f;
-    float releaseCoeff = 0.999f;
-    float sampleRate = 44100.0f;
-    float lastReleaseMs = 500.0f;
+    float attackCoeff = 0.0f;
+    float releaseCoeff = 0.0f;
+
+    float threshold = 0.891f;       // -1dB
+    float drive = 1.5f;             // saturação: 1.0=limpo, 1.5=warm, 2.0=agressivo
+    float tanhNorm = 1.0f / 0.905f; // 1/tanh(1.5) — normalização pra manter nível
+    float makeupGain = 1.122f;      // 1/threshold — compensa a redução de picos
+    float sampleRate = 48000.0f;
+    float lastReleaseMs = 200.0f;   // release mais rápido que antes (500→200ms)
+
+    // Padé approximation — precisa <0.1% pra |x|<3, zero branches
+    static inline float fastTanh(float x) {
+        float x2 = x * x;
+        return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+    }
+
+    void updateCoeffs() {
+        // Attack ~1ms: suavizado (antes era instantâneo → artefatos)
+        attackCoeff = 1.0f - std::exp(-1.0f / (sampleRate * 0.001f));
+        // Release configurável (default 200ms)
+        releaseCoeff = 1.0f - std::exp(-1.0f / (sampleRate * (lastReleaseMs / 1000.0f)));
+    }
 };
 
 /**

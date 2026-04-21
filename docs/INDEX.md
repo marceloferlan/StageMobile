@@ -1,6 +1,6 @@
 # StageMobile — Índice de Documentação
 
-*Última atualização: 2026-04-14*
+*Última atualização: 2026-04-21*
 
 ---
 
@@ -37,6 +37,12 @@
 |---|---|---|
 | [audio_performance_tuning.md](./audio_performance_tuning.md) | Per-phase APM, thread affinity, FluidSynth settings, voice overflow, fluxo de diagnóstico de clicks | Investigar glitches, otimizar latência, entender o APM HUD |
 | [diagnostico_cpu.md](./diagnostico_cpu.md) | Análise de consumo de CPU por subsistema | Problemas de performance (CPU alta) |
+
+### Backlog e Planejamento
+
+| Documento | Cobre | Quando usar |
+|---|---|---|
+| [TODO.md](./TODO.md) | Backlog técnico: itens pendentes por prioridade (urgente, alta, média, baixa) + concluídos | Antes de cada sprint/sessão de trabalho |
 
 ### Funcionalidades
 

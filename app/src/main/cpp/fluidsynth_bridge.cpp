@@ -92,8 +92,7 @@ struct MidiEvent {
 static std::deque<MidiEvent> midiQueue;
 static std::mutex queueMutex;
 static std::condition_variable queueCv;
-static std::atomic<bool> midiThreadRunning{false};
-static std::thread midiThread;
+// midiThread removida — MIDI agora é drenado dentro de renderAudioEngine (drainMidiQueue)
 
 // --- Asynchronous Audio Ring Buffer ---
 #define RING_BUFFER_SIZE 16384
@@ -111,18 +110,57 @@ static float spChannelBuffersR[16][MAX_AUDIO_FRAME_SIZE];
 static float spFinalL[MAX_AUDIO_FRAME_SIZE];
 static float spFinalR[MAX_AUDIO_FRAME_SIZE];
 
+// Drena eventos MIDI da queue. Chamada com engine_mutex JÁ travado.
+// Substitui a thread midiProcessingLoop — processamento atômico com a síntese.
+static void drainMidiQueue() {
+    std::lock_guard<std::mutex> qLock(queueMutex);
+    while (!midiQueue.empty()) {
+        MidiEvent ev = midiQueue.front();
+        midiQueue.pop_front();
+        if (synth) {
+            switch(ev.type) {
+                case MidiEvent::NoteOn:
+                    fluid_synth_noteon(synth, ev.channel, ev.data1, ev.data2);
+                    if (ev.data2 > 0) {
+                        activeNotesCountPerChannel[ev.channel]++;
+                        activeChannelsMask.fetch_or(1 << ev.channel);
+                    } else {
+                        if (--activeNotesCountPerChannel[ev.channel] <= 0)
+                            activeNotesCountPerChannel[ev.channel] = 0;
+                    }
+                    break;
+                case MidiEvent::NoteOff:
+                    fluid_synth_noteoff(synth, ev.channel, ev.data1);
+                    if (--activeNotesCountPerChannel[ev.channel] <= 0)
+                        activeNotesCountPerChannel[ev.channel] = 0;
+                    break;
+                case MidiEvent::CC:
+                    fluid_synth_cc(synth, ev.channel, ev.data1, ev.data2);
+                    break;
+                case MidiEvent::PitchBend:
+                    fluid_synth_pitch_bend(synth, ev.channel, ev.data1);
+                    break;
+                case MidiEvent::ProgramChange:
+                    fluid_synth_program_change(synth, ev.channel, ev.data2);
+                    break;
+                case MidiEvent::BankSelect:
+                    fluid_synth_bank_select(synth, ev.channel, ev.data1);
+                    break;
+            }
+        }
+    }
+}
+
 static void renderAudioEngine(float* outputBuffer, int numFrames) {
     if (numFrames > MAX_AUDIO_FRAME_SIZE) numFrames = MAX_AUDIO_FRAME_SIZE;
     for (int i = 0; i < 16; ++i) {
         spLeftPtrs[i] = spChannelBuffersL[i];
         spRightPtrs[i] = spChannelBuffersR[i];
     }
-    
+
     std::unique_lock<std::recursive_mutex> lock(engine_mutex, std::try_to_lock);
     if (!lock.owns_lock()) {
         apmMutexMiss.fetch_add(1);
-        // NÃO logar aqui — este path roda no thread de áudio realtime do Superpowered.
-        // __android_log_print tem locks internos e pode causar priority inversion.
         lock.lock();
     }
     lastLockHolderTid.store(gettid(), std::memory_order_relaxed);
@@ -131,6 +169,9 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
         memset(outputBuffer, 0, numFrames * 2 * sizeof(float));
         return;
     }
+
+    // Drena MIDI antes da síntese — atômico com o render, zero contenção
+    drainMidiQueue();
 
     MEASURE_PHASE(apmPhaseFluidNs, apmMaxPhaseFluidNs, "SM.Fluid", {
         fluid_synth_nwrite_float(synth, numFrames, spLeftPtrs, spRightPtrs, nullptr, nullptr);
@@ -142,6 +183,7 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
     MEASURE_PHASE(apmPhaseDspChanNs, apmMaxPhaseDspChanNs, "SM.DspChan", {
         dspChain->prepare(numFrames);
         uint32_t currentMask = activeChannelsMask.load();
+        uint32_t newMask = currentMask;
         for (int ch = 0; ch < 16; ++ch) {
             bool isBitSet = (currentMask & (1 << ch));
             if (!isBitSet && activeNotesCountPerChannel[ch] <= 0) {
@@ -155,14 +197,25 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
                 dspChain->processChannel(ch, outL, outR, numFrames);
             }
 
-            float maxVal = 0.0f;
-            for (int i = 0; i < numFrames; ++i) {
-                maxVal = std::max(maxVal, std::max(std::abs(outL[i]), std::abs(outR[i])));
-                spFinalL[i] += outL[i];
-                spFinalR[i] += outR[i];
+            // NEON: Channel mix + peak tracking (4 floats por iteração)
+            float32x4_t vMax = vdupq_n_f32(0.0f);
+            for (int i = 0; i < numFrames; i += 4) {
+                float32x4_t vL = vld1q_f32(outL + i);
+                float32x4_t vR = vld1q_f32(outR + i);
+                vst1q_f32(spFinalL + i, vaddq_f32(vld1q_f32(spFinalL + i), vL));
+                vst1q_f32(spFinalR + i, vaddq_f32(vld1q_f32(spFinalR + i), vR));
+                vMax = vmaxq_f32(vMax, vmaxq_f32(vabsq_f32(vL), vabsq_f32(vR)));
             }
+            float maxVal = vmaxvq_f32(vMax);
             channelPeaks[ch].store(maxVal);
+
+            // Culling: se saída é silêncio E não há notas ativas, desliga o canal
+            // Isso evita que o DSP chain processe canais silenciosos indefinidamente
+            if (maxVal < 0.001f && activeNotesCountPerChannel[ch] <= 0) {
+                newMask &= ~(1 << ch);
+            }
         }
+        activeChannelsMask.store(newMask);
     });
 
     MEASURE_PHASE(apmPhaseDspMasterNs, apmMaxPhaseDspMasterNs, "SM.DspMaster", {
@@ -173,11 +226,17 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
 
     float spMasterPeak = 0.0f;
     MEASURE_PHASE(apmPhaseMixNs, apmMaxPhaseMixNs, "SM.Mix", {
-        for (int i = 0; i < numFrames; ++i) {
-            spMasterPeak = std::max(spMasterPeak, std::max(std::abs(spFinalL[i]), std::abs(spFinalR[i])));
-            outputBuffer[i*2] = spFinalL[i];
-            outputBuffer[i*2 + 1] = spFinalR[i];
+        // NEON: Master interleave + peak tracking
+        float32x4_t vMasterMax = vdupq_n_f32(0.0f);
+        for (int i = 0; i < numFrames; i += 4) {
+            float32x4_t vL = vld1q_f32(spFinalL + i);
+            float32x4_t vR = vld1q_f32(spFinalR + i);
+            vMasterMax = vmaxq_f32(vMasterMax, vmaxq_f32(vabsq_f32(vL), vabsq_f32(vR)));
+            float32x4x2_t interleaved = vzipq_f32(vL, vR);
+            vst1q_f32(outputBuffer + i * 2, interleaved.val[0]);
+            vst1q_f32(outputBuffer + i * 2 + 4, interleaved.val[1]);
         }
+        spMasterPeak = vmaxvq_f32(vMasterMax);
     });
 
     if (spMasterPeak >= 1.0f) {
@@ -304,48 +363,9 @@ static void synthRenderLoop() {
     }
 }
 
-static void midiProcessingLoop() {
-    while (midiThreadRunning.load()) {
-        std::unique_lock<std::mutex> lock(queueMutex);
-        queueCv.wait(lock, [] { return !midiQueue.empty() || !midiThreadRunning.load(); });
-        while (!midiQueue.empty()) {
-            MidiEvent ev = midiQueue.front();
-            midiQueue.pop_front();
-            lock.unlock();
-            {
-                std::lock_guard<std::recursive_mutex> synthLock(engine_mutex);
-                if (synth) {
-                    switch(ev.type) {
-                        case MidiEvent::NoteOn: 
-                            LOGI("JNI: fluid_synth_noteon ch=%d note=%d vel=%d", ev.channel, ev.data1, ev.data2);
-                            fluid_synth_noteon(synth, ev.channel, ev.data1, ev.data2); 
-                            if (ev.data2 > 0) {
-                                activeNotesCountPerChannel[ev.channel]++;
-                                activeChannelsMask.fetch_or(1 << ev.channel);
-                            } else {
-                                if (--activeNotesCountPerChannel[ev.channel] <= 0) {
-                                    activeNotesCountPerChannel[ev.channel] = 0;
-                                    // Don't clear mask yet, wait for release trail
-                                }
-                            }
-                            break;
-                        case MidiEvent::NoteOff: 
-                            fluid_synth_noteoff(synth, ev.channel, ev.data1); 
-                            if (--activeNotesCountPerChannel[ev.channel] <= 0) {
-                                activeNotesCountPerChannel[ev.channel] = 0;
-                            }
-                            break;
-                        case MidiEvent::CC: fluid_synth_cc(synth, ev.channel, ev.data1, ev.data2); break;
-                        case MidiEvent::PitchBend: fluid_synth_pitch_bend(synth, ev.channel, ev.data1); break;
-                        case MidiEvent::ProgramChange: fluid_synth_program_change(synth, ev.channel, ev.data2); break;
-                        case MidiEvent::BankSelect: fluid_synth_bank_select(synth, ev.channel, ev.data1); break;
-                    }
-                }
-            }
-            lock.lock();
-        }
-    }
-}
+// midiProcessingLoop REMOVIDA — substituída por drainMidiQueue() inline no renderAudioEngine.
+// Pattern anterior (thread separada + engine_mutex per-event) causava contenção com synthRenderLoop.
+// Pattern atual (drain inline) elimina a contenção e processa MIDI atomicamente com a síntese.
 
 /**
  * Custom Oboe Audio Engine
@@ -519,11 +539,8 @@ Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
     audioEngine = std::make_unique<StageAudioEngine>();
     oboe::Result result = audioEngine->start(sampleRate, bufferSize, deviceId);
     
-    if (!midiThreadRunning.load()) { 
-        midiThreadRunning.store(true); 
-        midiThread = std::thread(midiProcessingLoop); 
-    }
-    
+    // midiThread removida — MIDI drenado inline em renderAudioEngine
+
     if (!synthRenderThreadRunning.load()) {
         synthRenderThreadRunning.store(true);
         synthRenderThread = std::thread(synthRenderLoop);
@@ -575,6 +592,25 @@ Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeGetAudioS
         env->SetFloatArrayRegion(result, 0, 14, stats);
     }
     return result;
+}
+
+JNIEXPORT void JNICALL
+Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeResetApmCounters(JNIEnv* env, jobject thiz) {
+    apmUnderruns.store(0);
+    apmMutexMiss.store(0);
+    apmClips.store(0);
+    apmMaxCallbackNs.store(0);
+    apmTotalCallbackNs.store(0);
+    apmCallbackCount.store(0);
+    apmPhaseFluidNs.store(0);
+    apmPhaseDspChanNs.store(0);
+    apmPhaseDspMasterNs.store(0);
+    apmPhaseMixNs.store(0);
+    apmMaxPhaseFluidNs.store(0);
+    apmMaxPhaseDspChanNs.store(0);
+    apmMaxPhaseDspMasterNs.store(0);
+    apmMaxPhaseMixNs.store(0);
+    LOGI("APM counters reset");
 }
 
 // Registra o render callback do synthmodule no libspbridge.so via dlopen
@@ -629,7 +665,11 @@ JNIEXPORT jboolean JNICALL
 Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeUnloadSf2(JNIEnv* env, jobject thiz, jint sfId) {
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     if (!synth) return JNI_FALSE;
-    return (fluid_synth_sfunload(synth, sfId, 1) == FLUID_OK) ? JNI_TRUE : JNI_FALSE;
+    // update=0: NÃO iterar canais para reassociar presets após o unload.
+    // Com update=1, FluidSynth chama fluid_synth_update_presets() que reatribui
+    // canais órfãos ao próximo SF2 na stack — corrompendo o mapeamento dos demais canais.
+    // O Kotlin gerencia as associações canal→SF2 via programSelect explícito.
+    return (fluid_synth_sfunload(synth, sfId, 0) == FLUID_OK) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL
@@ -694,9 +734,8 @@ Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativePanic(JNI
 
 JNIEXPORT void JNICALL
 Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(JNIEnv* env, jobject thiz) {
-    midiThreadRunning.store(false); queueCv.notify_all();
-    if (midiThread.joinable()) midiThread.join();
-    
+    // midiThread removida — nada pra jointar
+
     synthRenderThreadRunning.store(false);
     if (synthRenderThread.joinable()) synthRenderThread.join();
     

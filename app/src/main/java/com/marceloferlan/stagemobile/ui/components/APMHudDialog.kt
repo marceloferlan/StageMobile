@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -129,6 +130,20 @@ fun APMHudDialog(
                     Icon(Icons.Default.Share, contentDescription = "Export CSV", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Exportar CSV (Clipboard)")
+                }
+
+                Button(
+                    onClick = {
+                        viewModel.resetApmCounters()
+                        statsHistory.clear()
+                        Toast.makeText(context, "Contadores zerados!", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242))
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reset", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Zerar Contadores")
                 }
             }
         }

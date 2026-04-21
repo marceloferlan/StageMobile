@@ -1,64 +1,54 @@
 ---
-name: Estado da investigação de clicks de áudio
-description: Contexto, fixes aplicados e testes pendentes da sessão de tuning do motor nativo (abril/2026)
+name: Estado da investigação de clicks de áudio + melhorias
+description: Fixes aplicados, resultados validados, features implementadas na branch Superpowered (abril/2026)
 type: project
 ---
 
-Investigação de clicks/estalos no Tab S9 FE (Exynos 1380) e, em menor grau, S24 Ultra (Snapdragon 8 Gen 3), usando SF2 de piano grandes (~500MB cada).
+Branch: `feature/Stage-Mobile-DSP-Superpowered`
 
-## Causas raiz identificadas
+## Resultados validados por APM HUD (21/abril/2026)
 
-1. **Disk I/O em hot path** — FluidSynth com `dynamic-sample-loading=1` (default) causava page faults durante render (spikes de 1-9ms no `MaxFluid`). Resolvido com preload (`synth.dynamic-sample-loading=0`).
+- **MutexMiss: 0** — MIDI drain inline eliminou contenção entre threads
+- **Underruns: 0** — ring buffer + preload + thread affinity funcionam
+- **Channel culling**: canais silenciosos removidos do activeChannelsMask → ~700µs/render economizados em idle
 
-2. **Thread migration entre big/little cores** — scheduler Android migrava `synthRenderLoop` entre A78 e A55. Resolvido com `sched_setaffinity` para o big cluster (detecção runtime via sysfs `cpuinfo_max_freq`).
+## Fixes aplicados (ordem cronológica)
 
-3. **Prioridade default** — thread de render tinha `SCHED_OTHER` nice 0. Android nega `SCHED_FIFO` (`EPERM`), fallback automático para `nice=-19` funciona bem.
+1. Per-phase APM instrumentation (MEASURE_PHASE + ATrace + FloatArray[14])
+2. FluidSynth critical settings (preload, cpu-cores=1, reverb/chorus off, overflow setnum)
+3. Runtime CPU detection via sysfs → pin ao big cluster
+4. Stage Set load fix (SF2 name normalization + sfId=-1 + armed cache rebuild)
+5. MIDI drain inline (midiProcessingLoop removida, drainMidiQueue em renderAudioEngine)
+6. SIMD NEON nos loops de mix (channel mix+peak, master interleave+peak)
+7. Punch redesenhado (LimiterEffect: tanh saturation + lookahead 64 + auto makeup)
+8. SF2 unload fix (update=0 + programSelect reaffirm nos canais ativos)
+9. Channel culling (mask bit limpo quando peak<0.001 + 0 notas)
+10. APM HUD reset button (nativeResetApmCounters)
+11. Seletor de Driver de Áudio ("Android Nativo" vs "Otimizado USB")
+12. PAD sustain tracking (sustainPedalState no ViewModel)
+13. CC MIDI label fix ("Filtros MIDI" → "CC MIDI Habilitados")
 
-4. **FluidSynth overflow settings ignorados** — inicialmente usei `fluid_settings_setint` mas os params `synth.overflow.*` são NUMERIC (double). `fluid_settings_setnum` é o correto. Antes do fix o voice stealing usava defaults.
+## Features implementadas
 
-5. **Bug no Stage Set load** — `loadSetStage` fazia lookup no cache/filesystem usando `ch.soundFont` direto (que inclui suffix `[Preset]`), sempre dando miss. Resolvido com `sf2BaseName = sf2FullName.substringBefore(" [")`.
-
-6. **DSP interno do FluidSynth rodando em paralelo com DSPChain externo** — `synth.reverb.active` e `synth.chorus.active` precisam ser 0 **nos settings** antes de `new_fluid_synth`, não só depois via `fluid_synth_set_reverb_on(0)`.
-
-## Fixes aplicados (ordem)
-
-1. Per-phase APM instrumentation (`MEASURE_PHASE` macro + ATrace markers + FloatArray[14])
-2. FluidSynth critical settings (preload, cpu-cores=1, reverb/chorus disabled, overflow tuning)
-3. Thread affinity para core 6 (hardcoded) — **DEGRADOU o baseline** (provavelmente migrava pra little core antes e a gente não sabia, ou o kernel tinha liberdade que core 6 não tem)
-4. Runtime CPU detection via sysfs — pinna ao conjunto de cores com freq máxima (funciona no Exynos 1380 → 4 cores, no SD8G3 → prime core)
-5. Stage Set load fix (substringBefore + normalização de sfId + rebuild do armed cache)
-6. Voice overflow params corrigidos de `setint` para `setnum`
-
-## Testes pendentes (esperando próximo CSV do APM HUD)
-
-- [ ] Baseline pós runtime-detect volta a ~110µs AvgFluid @ 64 voices (antes do hardcode core 6 que degradou para 515µs)
-- [ ] Logcat confirma `synthRenderLoop: pinned to 4 fastest core(s) [4,5,6,7]` no Tab S9 FE
-- [ ] Logcat confirma `SCHED_FIFO denied (errno=1), using nice=-19 fallback`
-- [ ] Logcat NÃO mostra mais `Unknown integer parameter 'synth.overflow.*'`
-- [ ] Stage Set load toca imediatamente sem precisar limpar+recarregar SF2
-- [ ] Disaster window no switch piano 1 → piano 2 continua eliminada
-
-## Estado do usuário
-
-Estava prestes a reiniciar o Antigravity IDE quando solicitou salvar contexto. A sessão havia terminado com:
-- Firebase MCP sendo configurado (erro `env: node: No such file or directory` — Claude Code não herda PATH do nvm)
-- MCP config em `.mcp.json` project scope precisando de path absoluto para `npx` do nvm
-- Node em `/Users/macbookpro/.nvm/versions/node/v20.19.4/bin/`
+- **Seletor de Driver de Áudio** em Parâmetros Globais — permite usuário escolher entre Oboe (Nativo) e Superpowered (Otimizado USB). Persiste em SharedPreferences. Default=Nativo. Superpowered só inicializa se modo=1.
+- **APM HUD per-phase** com breakdown Fluid/DspChan/DspMaster/Mix + CSV export 16 colunas + botão Reset
 
 ## Armadilhas conhecidas
 
-- **Parâmetros FluidSynth**: verificar sempre se são INT ou NUMERIC na documentação. `overflow.*` são numeric. `reverb.active`, `chorus.active`, `cpu-cores`, `polyphony` são int. Erro silencioso: FluidSynth loga "Unknown integer parameter" mas não falha.
-- **CPU numbering**: Nunca assumir que core 4+ são big. Sempre usar runtime detection via sysfs.
-- **SF2 name normalization**: ver `feedback_workflow.md` e `developer_guide.md` seção 5.
-- **Logs em hot path**: não adicionar `LOGW` no `renderAudioEngine` nem em qualquer thread de áudio realtime — causa priority inversion com os locks internos do logging.
+- FluidSynth overflow.* são NUMERIC (setnum), não INT (setint). Erro silencioso.
+- CPU numbering: nunca hardcodar core. Usar runtime detection via sysfs cpuinfo_max_freq.
+- SF2 name normalization: substringBefore(" [") antes de lookup em cache/filesystem.
+- Nunca logar (LOGW/LOGI) em renderAudioEngine/synthRenderLoop — priority inversion.
+- fluid_synth_sfunload com update=1 corrompe mapeamentos de canais. Sempre usar update=0 + reaffirm programSelect.
 
-## Arquivos modificados nesta investigação
+## Arquivos-chave modificados
 
-- `app/src/main/cpp/fluidsynth_bridge.cpp` (grande parte)
-- `app/src/main/java/com/marceloferlan/stagemobile/domain/model/AudioStats.kt` (+8 campos)
-- `app/src/main/java/com/marceloferlan/stagemobile/viewmodel/MixerViewModel.kt` (parsing + `loadSetStage` rewrite)
-- `app/src/main/java/com/marceloferlan/stagemobile/ui/components/APMHudDialog.kt` (PhaseRow + CSV export)
-- `docs/audio_performance_tuning.md` (novo)
-- `docs/INDEX.md` (novo)
-- `docs/architecture.md` (seções 3.2 e 3.3 adicionadas)
-- `docs/developer_guide.md` (regra de sf2 name + FluidSynth types)
+- `app/src/main/cpp/fluidsynth_bridge.cpp` — render engine, MIDI drain, SIMD, APM, thread affinity
+- `app/src/main/cpp/dsp_chain.h` — LimiterEffect redesenhado (Punch)
+- `app/src/main/java/.../viewmodel/MixerViewModel.kt` — loadSetStage, driver mode, sustain tracking, APM parsing
+- `app/src/main/java/.../data/SettingsRepository.kt` — KEY_AUDIO_DRIVER_MODE
+- `app/src/main/java/.../ui/screens/SystemGlobalSettings.kt` — AudioDriverSection
+- `app/src/main/java/.../ui/components/APMHudDialog.kt` — per-phase + reset + CSV
+- `app/src/main/java/.../ui/mixer/InstrumentChannelSettingsPanel.kt` — CC label fix
+- `superpowered-usb/.../SuperpoweredUSBAudioManager.kt` — disconnectAll + device tracking
+- `docs/` — TODO.md, INDEX.md, audio_performance_tuning.md, architecture.md, developer_guide.md

@@ -60,6 +60,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_MASTER_LIMITER, false)
         set(value) = prefs.edit().putBoolean(KEY_MASTER_LIMITER, value).apply()
 
+    // 0 = Driver Android Nativo (Oboe/AAudio), 1 = Driver Otimizado (Superpowered USB)
+    var audioDriverMode: Int
+        get() = prefs.getInt(KEY_AUDIO_DRIVER_MODE, 0)
+        set(value) = prefs.edit().putInt(KEY_AUDIO_DRIVER_MODE, value).apply()
+
     // --- MIDI Learn Mappings ---
     
     fun saveMidiMappings(mappings: List<MidiLearnMapping>) {
@@ -107,5 +112,6 @@ class SettingsRepository(context: Context) {
         private const val KEY_VELOCITY_CURVE = "velocity_curve"
         private const val KEY_SUSTAIN_INVERTED = "sustain_inverted"
         private const val KEY_MASTER_LIMITER = "master_limiter_enabled"
+        private const val KEY_AUDIO_DRIVER_MODE = "audio_driver_mode"
     }
 }

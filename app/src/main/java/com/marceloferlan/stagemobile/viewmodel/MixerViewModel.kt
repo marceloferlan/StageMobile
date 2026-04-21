@@ -118,6 +118,11 @@ class MixerViewModel : ViewModel() {
         _showApmHud.value = !_showApmHud.value
     }
 
+    fun resetApmCounters() {
+        (audioEngine as? FluidSynthEngine)?.resetApmCounters()
+        _audioStats.value = null
+    }
+
     // --- Settings States ---
     private val _bufferSize = MutableStateFlow(256)
     val bufferSize: StateFlow<Int> = _bufferSize
@@ -146,6 +151,10 @@ class MixerViewModel : ViewModel() {
     private val _isDspMasterBypass = MutableStateFlow(false)
     val isDspMasterBypass: StateFlow<Boolean> = _isDspMasterBypass.asStateFlow()
 
+    // 0 = Driver Android Nativo (Oboe/AAudio), 1 = Driver Otimizado (Superpowered USB)
+    private val _audioDriverMode = MutableStateFlow(0)
+    val audioDriverMode: StateFlow<Int> = _audioDriverMode.asStateFlow()
+
     // --- Global Performance States ---
     private val _globalOctaveShift = MutableStateFlow(0)
     val globalOctaveShift: StateFlow<Int> = _globalOctaveShift.asStateFlow()
@@ -170,6 +179,7 @@ class MixerViewModel : ViewModel() {
     val masterLevel: StateFlow<Float> = _masterLevel
 
     private val activeNotesCount = ConcurrentHashMap<Int, Int>()
+    private val sustainPedalState = ConcurrentHashMap<Int, Boolean>() // channelId → isPedalDown
     private val channelInternalLevels = ConcurrentHashMap<Int, Float>()
     private val channelLastNoteTime = ConcurrentHashMap<Int, Long>()
     private var isPeakPollingSuspended = false
@@ -612,6 +622,7 @@ class MixerViewModel : ViewModel() {
             _velocityCurve.value = repo.velocityCurve
             _isSustainInverted.value = repo.isSustainInverted
             _isMasterLimiterEnabled.value = repo.masterLimiterEnabled
+            _audioDriverMode.value = repo.audioDriverMode
             // Load saved MIDI Learn mappings
             _midiLearnMappings.value = repo.loadMidiMappings()
             Log.i(TAG, "Loaded ${_midiLearnMappings.value.size} MIDI Learn mappings")
@@ -1133,12 +1144,14 @@ class MixerViewModel : ViewModel() {
             
             startResourceMonitor(context)
             
-            // Inicializar Superpowered USB Audio (bypass do Android Audio HAL)
-            if (usbAudioManager == null) {
+            // Inicializar Superpowered USB Audio apenas se o modo "Otimizado" estiver ativo
+            if (_audioDriverMode.value == 1 && usbAudioManager == null) {
                 usbAudioManager = SuperpoweredUSBAudioManager(context)
                 usbAudioManager?.initialize()
                 usbAudioManager?.checkConnectedDevices()
-                Log.i(TAG, "Superpowered USB Audio Manager initialized and scanning for devices")
+                Log.i(TAG, "Superpowered USB Audio Manager initialized (Driver Otimizado)")
+            } else if (_audioDriverMode.value == 0) {
+                Log.i(TAG, "Audio Driver Mode: Android Nativo (Superpowered não inicializado)")
             }
             
             // Monitor de Saúde do Stream (Auto-Recovery)
@@ -1149,8 +1162,11 @@ class MixerViewModel : ViewModel() {
                     if (engine is FluidSynthEngine) {
                         val isDead = engine.isStreamDead()
                         val notInit = !engine.isInitialized
-                        val spActive = usbAudioManager?.isActive() ?: false
-                        
+                        // Superpowered só é considerado ativo se o modo for "Otimizado"
+                        val spActive = if (_audioDriverMode.value == 1) {
+                            usbAudioManager?.isActive() ?: false
+                        } else false
+
                         // Se o USB está ativo por hardware, o Oboe pode falhar. Ignoramos e mantemos os canais MIDI vivos.
                         if (spActive) {
                             if (notInit) engine.forceInitializedState()
@@ -1363,6 +1379,9 @@ class MixerViewModel : ViewModel() {
                                 
                                 if (shouldSend) {
                                     _audioEngine.controlChange(chId, controller, sendValue)
+                                    if (controller == 64) {
+                                        sustainPedalState[chId] = (sendValue > 63)
+                                    }
                                 }
                             }
                         }
@@ -1608,6 +1627,7 @@ class MixerViewModel : ViewModel() {
             audioEngine.controlChange(channelId, 123, 0) // All notes off
             audioEngine.controlChange(channelId, 64, 0) // Sustain off
             activeNotesCount[channelId] = 0 // Reseta contagem visual de notas
+            sustainPedalState[channelId] = false // Reset tracking do pedal
         }
     }
 
@@ -1615,8 +1635,9 @@ class MixerViewModel : ViewModel() {
         Log.i(TAG, "Executing Global Panic")
         audioEngine.panic()
         activeNotesCount.clear()
-        _channels.value.forEach { 
-            channelInternalLevels[it.id] = 0f 
+        sustainPedalState.clear()
+        _channels.value.forEach {
+            channelInternalLevels[it.id] = 0f
         }
         _lastSystemEvent.tryEmit("Todas as notas OFF")
     }
@@ -1982,6 +2003,10 @@ class MixerViewModel : ViewModel() {
                 }
             }
         } finally {
+            // Silencia o canal limpo (All Sound Off + All Notes Off)
+            _audioEngine.controlChange(channelId, 120, 0)
+            _audioEngine.controlChange(channelId, 123, 0)
+
             // Reset channel state in UI
             updateChannels(_channels.value.map {
                 if (it.id == channelId) it.copy(
@@ -1994,9 +2019,15 @@ class MixerViewModel : ViewModel() {
                 ) else it
             })
 
-            // Trigger GC to free memory
+            // Reafirma programSelect dos canais ativos — garante que o mapeamento
+            // interno do FluidSynth está correto após o sfunload(update=0).
+            // Sem isso, o FluidSynth pode manter mapeamentos stale na stack interna.
+            _channels.value.filter { it.id != channelId && it.sfId >= 0 }.forEach { ch ->
+                _audioEngine.programSelect(ch.id, ch.sfId, ch.bank, ch.program)
+            }
+
             System.gc()
-            Log.i(TAG, "SF2 removed for channel $channelId. RAM cleanup triggered.")
+            Log.i(TAG, "SF2 removed for channel $channelId. Remaining channels re-mapped.")
 
             isPeakPollingSuspended = false
         }
@@ -2043,6 +2074,30 @@ class MixerViewModel : ViewModel() {
 
     // --- Settings Updates ---
     
+    fun updateAudioDriverMode(context: Context, mode: Int) {
+        if (_audioDriverMode.value == mode) return
+        _audioDriverMode.value = mode
+        settingsRepo?.audioDriverMode = mode
+
+        when (mode) {
+            0 -> {
+                // NATIVO — desativar Superpowered, Oboe retoma
+                Log.i(TAG, "Switching to Driver Android Nativo")
+                usbAudioManager?.disconnectAll()
+                reinitAudioEngine(context)
+            }
+            1 -> {
+                // OTIMIZADO — ativar Superpowered
+                Log.i(TAG, "Switching to Driver Otimizado (Superpowered USB)")
+                if (usbAudioManager == null) {
+                    usbAudioManager = SuperpoweredUSBAudioManager(context)
+                }
+                usbAudioManager?.initialize()
+                usbAudioManager?.checkConnectedDevices()
+            }
+        }
+    }
+
     fun updateBufferSize(context: Context, size: Int) {
         if (_bufferSize.value == size) return
         _bufferSize.value = size

@@ -468,7 +468,7 @@ fun InstrumentChannelSettingsPanel(
                         .padding(12.dp)
                 ) {
                     Text(
-                        text = "Filtros MIDI & Avançado",
+                        text = "CC MIDI Habilitados",
                         color = Color(0xFFAAAAAA),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,

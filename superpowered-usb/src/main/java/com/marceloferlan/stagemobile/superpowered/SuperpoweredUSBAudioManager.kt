@@ -39,6 +39,7 @@ class SuperpoweredUSBAudioManager(
     )
 
     private var isInitialized = false
+    private val activeDeviceIds = mutableSetOf<Int>()
 
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
@@ -65,6 +66,7 @@ class SuperpoweredUSBAudioManager(
                     if (device != null) {
                         val id = device.deviceId
                         nativeOnDisconnect(id)
+                        activeDeviceIds.remove(id)
                         handler?.onUSBDeviceDetached(id)
                         Log.i(TAG, "USB DETACHED: ${device.productName} (id=$id)")
                     }
@@ -109,6 +111,15 @@ class SuperpoweredUSBAudioManager(
 
     fun isActive(): Boolean = nativeIsActive()
     fun getSampleRate(): Int = nativeGetSampleRate()
+
+    fun disconnectAll() {
+        val ids = activeDeviceIds.toList()
+        ids.forEach { id ->
+            nativeOnDisconnect(id)
+            Log.i(TAG, "Disconnected device $id (user switched to Driver Nativo)")
+        }
+        activeDeviceIds.clear()
+    }
 
     private fun addUSBDevice(device: UsbDevice) {
         val manager = context.getSystemService(Context.USB_SERVICE) as? UsbManager ?: return
@@ -156,10 +167,11 @@ class SuperpoweredUSBAudioManager(
 
         when (result) {
             0 -> {
+                activeDeviceIds.add(id)
                 handler?.onUSBAudioDeviceAttached(id)
-                // O Superpowered assumiu (fd locked). MidiManager do Android pode não conseguir ver a porta MIDI se fizer parte da mesma interface.
             }
             1 -> {
+                activeDeviceIds.add(id)
                 handler?.onUSBAudioDeviceAttached(id)
             }
             2, 3 -> {

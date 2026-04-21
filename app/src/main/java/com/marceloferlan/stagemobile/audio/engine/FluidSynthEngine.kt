@@ -39,6 +39,11 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
     private external fun nativeSetPolyphony(maxVoices: Int)
     private external fun nativeWarmUpChannel(channel: Int)
     private external fun nativeGetAudioStats(): FloatArray?
+    private external fun nativeResetApmCounters()
+
+    fun resetApmCounters() {
+        if (isInitialized) nativeResetApmCounters()
+    }
 
     // --- DSP Effects ---
     private external fun nativeSetChannelEqCutoff(channel: Int, cutoff: Float)

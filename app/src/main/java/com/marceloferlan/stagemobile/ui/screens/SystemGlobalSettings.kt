@@ -48,6 +48,7 @@ fun SystemGlobalSettings(
     val maxPolyphony by viewModel.maxPolyphony.collectAsState()
     val velocityCurve by viewModel.velocityCurve.collectAsState()
     val isSustainInverted by viewModel.isSustainInverted.collectAsState()
+    val audioDriverMode by viewModel.audioDriverMode.collectAsState()
 
     Scaffold(
         topBar = {
@@ -104,6 +105,9 @@ fun SystemGlobalSettings(
                     }
                 }
                 
+                // Driver de Áudio (full width)
+                item { AudioDriverSection(audioDriverMode, context, viewModel) }
+
                 // Par 2: Latência e Motor de Áudio
                 item {
                     Row(
@@ -139,6 +143,7 @@ fun SystemGlobalSettings(
                 // Layout Vertical padrão para Celulares
                 item { MidiSection(availableMidiDevices, activeMidiDevices, viewModel) }
                 item { AudioSection(availableAudioDevices, selectedAudioDeviceId, context, viewModel) }
+                item { AudioDriverSection(audioDriverMode, context, viewModel) }
                 item { LatencySection(bufferSize.toString(), sampleRate.toString(), context, viewModel) }
                 item { AudioEngineSection(interpolationMethod, maxPolyphony, viewModel) }
                 item { VelocityCurveSection(velocityCurve, viewModel) }
@@ -233,6 +238,43 @@ fun AudioSection(
                 val id = availableAudioDevices.find { it.name == name }?.id ?: -1
                 viewModel.updateAudioDevice(context, id)
             }
+        )
+    }
+}
+
+@Composable
+fun AudioDriverSection(
+    audioDriverMode: Int,
+    context: android.content.Context,
+    viewModel: MixerViewModel,
+    modifier: Modifier = Modifier
+) {
+    SettingsSection(title = "Driver de Áudio", modifier = modifier) {
+        val driverLabels = mapOf(
+            "0" to "Android Nativo",
+            "1" to "Otimizado (USB)"
+        )
+        val selectedLabel = driverLabels[audioDriverMode.toString()] ?: "Android Nativo"
+
+        SettingsSelector(
+            title = "Modo de Saída",
+            options = driverLabels.values.toList(),
+            selectedOption = selectedLabel,
+            onOptionSelected = { selectedValue ->
+                val mode = driverLabels.entries.find { it.value == selectedValue }?.key?.toInt() ?: 0
+                viewModel.updateAudioDriverMode(context, mode)
+            }
+        )
+
+        Text(
+            text = when (audioDriverMode) {
+                0 -> "Usa o driver de áudio padrão do Android (AAudio/OpenSLES). Compatível com todos os dispositivos."
+                1 -> "Driver otimizado para interfaces USB profissionais. Menor latência e jitter em dispositivos compatíveis."
+                else -> ""
+            },
+            color = Color.Gray,
+            fontSize = 11.sp,
+            modifier = Modifier.padding(top = 8.dp)
         )
     }
 }
