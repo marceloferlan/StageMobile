@@ -10,6 +10,8 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 - [ ] **Firebase Firestore Security Rules** — Regras de Test Mode expiram em ~2 dias. Colar regras com validação de estrutura no Firebase Console → Firestore → Rules. Regras prontas documentadas na conversa Claude (abril/2026).
 
+- [ ] **Rotacionar chave Firebase Admin SDK** — Credencial `stagemobileapp-31ad1-firebase-adminsdk-*.json` foi exposta no histórico git (já removida com git-filter-repo). Ir em Firebase Console → Project Settings → Service Accounts → Generate New Private Key. Salvar fora do repo.
+
 ---
 
 ## Alta prioridade (performance / qualidade de áudio)
