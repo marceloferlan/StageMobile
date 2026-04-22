@@ -116,6 +116,8 @@ As métricas ficam disponíveis via `nativeGetAudioStats` (retorna FloatArray[14
 2.  **Order-Preserving DSP:** O rack nativo (`DSPChain`) processa efeitos em uma lista linear. A ordem (HPF -> LPF -> Dynamics -> EQ -> Mod -> Time -> Limiter) é fixa no nível de motor para garantir a fase e o timbre.
 3.  **Lock-Free DSP Parameters:** Decisão de não usar mutex para `setEffectParam` e `setEffectEnabled`, priorizando a continuidade do áudio sobre a atomicidade estrutural (que permanece protegida por mutex apenas em `add/removeEffect`).
 4.  **Merged Voice Rendering:** O FluidSynth renderiza todas as vozes de um canal em um buffer stereo comum (`fluid_synth_nwrite_float`). Isso impede o processamento DSP individual por voz (ex: aplicar efeito apenas em notas novas), pois o sinal chega ao DSPChain já mesclado.
+5.  **Auth Guard no Compose (não na Activity):** O roteamento de autenticação é feito dentro do `setContent` do `MainActivity`, verificando `Firebase.auth.currentUser` via `remember`. Isso evita múltiplas Activities e mantém todo o estado Compose no mesmo escopo. O guard usa `return@Surface` para interromper a composição da árvore do Mixer enquanto o usuário não está autenticado.
+6.  **Feature Gating via Firebase Custom Claims:** Funcionalidades premium (add-ons) são controladas por Custom Claims no token JWT do Firebase Auth, não por flags locais ou documentos Firestore. Motivo: Custom Claims são assinadas pelo Firebase e não podem ser adulteradas pelo app. O fluxo de validação passa obrigatoriamente por uma Cloud Function server-side que verifica o recibo de compra com a API do Google Play Developer antes de setar a claim.
 
 ## 6. Diretrizes de Desenvolvimento (Best Practices)
 1.  **Componentização Obrigatória:** Qualquer funcionalidade, elemento de interface ou lógica de estado que seja utilizada em mais de uma tela do sistema **deve** ser extraída para um componente reutilizável (ex: `StageToast`, `StageToastHost`). Isso garante consistência visual, evita duplicidade de lógica e facilita a manutenção.
@@ -124,3 +126,27 @@ As métricas ficam disponíveis via `nativeGetAudioStats` (retorna FloatArray[14
 4.  **Integridade de Código:** Antes de concluir qualquer refatoração, siga rigorosamente o [Protocolo de Prevenção de Erros](file:///Users/macbookpro/AndroidStudioProjects/StageMobile/docs/developer_guide.md#6-protocolo-de-integridade-de-código-prevenção-de-erros).
 5.  **Carregamento Assíncrono:** Operações pesadas (Banco de Dados, JNI, I/O) de troca de presets **devem** ocorrer em `Dispatchers.Default` ou `IO`, mantendo a fluidez da navegação para o usuário.
 6.  **Consistência de MIDI Learn:** O ícone `AutoFixHigh` (Varinha Mágica) em amarelo é o padrão global para entrar no modo de mapeamento.
+
+## 7. Modelo de Autenticação e Monetização
+
+### 7.1 Firebase Auth — Camada de Identidade
+Todos os usuários do app possuem uma identidade Firebase Auth (`uid`) criada no primeiro acesso. O SDK persiste o token localmente (SharedPreferences internas) — o login é solicitado apenas na primeira instalação ou após "Limpar Dados".
+
+```
+Provedores ativos: Email/Senha | Google Sign-In
+Arquivo central: data/AuthRepository.kt
+Guard de acesso: MainActivity.kt → return@Surface se currentUser == null
+```
+
+### 7.2 Firebase Custom Claims — Feature Gating
+Add-ons futuros usam Custom Claims no JWT do usuário. Claims planejadas:
+
+| Claim | Tipo | Feature |
+|---|---|---|
+| `audioDriverAddon` | `Boolean` | Seletor de Driver de Áudio USB |
+
+**Regra de ouro:** Nunca verificar permissões de add-on via Firestore ou SharedPreferences locais. Sempre usar `FirebaseUser.getIdToken()` para ler claims atualizadas.
+
+### 7.3 Google Play Billing — Fluxo de Compra
+Ver especificação completa em `docs/features.md` seção 12.
+

@@ -8,9 +8,16 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 ## Urgente (prazo externo)
 
-- [ ] **Firebase Firestore Security Rules** — Regras de Test Mode expiram em ~2 dias. Colar regras com validação de estrutura no Firebase Console → Firestore → Rules. Regras prontas documentadas na conversa Claude (abril/2026).
+- [x] **Firebase Firestore Security Rules** — Regras atualizadas com `request.auth != null`. Publicadas em abril/2026.
 
 - [ ] **Rotacionar chave Firebase Admin SDK** — Credencial `stagemobileapp-31ad1-firebase-adminsdk-*.json` foi exposta no histórico git (já removida com git-filter-repo). Ir em Firebase Console → Project Settings → Service Accounts → Generate New Private Key. Salvar fora do repo.
+
+---
+
+## Alta prioridade (auth / segurança)
+
+- [x] **Firebase Auth (primeira instalação)** — Login com E-mail/Senha e Google Sign-In implementado em abril/2026. `AuthRepository.kt` + `LoginScreen.kt` + roteamento em `MainActivity.kt`.
+
 
 ---
 
@@ -24,11 +31,17 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 ## Média prioridade (segurança / infraestrutura)
 
-- [ ] **Firebase Anonymous Auth** — Adicionar `Firebase.auth.signInAnonymously()` no startup + regras `if request.auth != null`. Mais seguro que validação de dados apenas.
+- [x] **Firebase Anonymous Auth** — Substituído por autenticação real (E-mail/Senha + Google). Concluído abril/2026.
 
 ---
 
 ## Baixa prioridade (otimizações futuras)
+
+- [ ] **Add-on: Seletor de Driver de Áudio (IAP)** — Tornar a funcionalidade "Driver Otimizado USB" exclusiva para usuários que adquirirem o add-on via Google Play In-App Purchase.
+  - Arquitetura definida: Google Play Billing Library → Firebase Cloud Function valida compra → seta Custom Claim `audioDriverAddon: true` no token Firebase Auth → app verifica claim para liberar o seletor em `SystemGlobalSettings.kt`.
+  - Pré-requisito: Firebase Blaze Plan (pay-as-you-go) para Cloud Functions.
+  - Produto a criar no Google Play Console como *Non-consumable* (compra única permanente).
+  - Ver `docs/features.md` seção "Add-ons e Monetização" para a especificação completa.
 
 - [ ] **Reduzir `synth.audio-channels` de 16 para 8** — FluidSynth itera todos os groups mesmo sem som. 8 grupos estéreo = 16 canais mono, suficiente, com ~40% menos overhead interno.
 

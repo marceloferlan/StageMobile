@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // COLEÇÃO: soundfonts
+    // Armazena metadados de arquivos SF2 importados pelo app StageMobile.
+    // Estrutura do documento:
+    //   fileName : String  — nome do arquivo .sf2 (também é o Document ID)
+    //   tags     : Array   — lista de tags textuais (ex: ["piano", "acústico"])
+    //   isSystem : Boolean — se é um SF2 padrão do sistema
+    //   addedDate: Number  — timestamp UNIX em ms
+    //
+    // AUTENTICAÇÃO: Firebase Auth obrigatório (Email/Senha ou Google Sign-In).
+    // O app exige login na primeira instalação — request.auth.uid sempre existirá
+    // quando o SDK fizer chamadas ao Firestore.
+    // ─────────────────────────────────────────────────────────────────────────
+    match /soundfonts/{documentId} {
+
+      // LEITURA: apenas usuários autenticados
+      allow read: if request.auth != null;
+
+      // ESCRITA: autenticado + estrutura válida do documento
+      allow create: if request.auth != null && isValidSoundFont(request.resource.data);
+      allow update: if request.auth != null && isValidSoundFont(request.resource.data);
+
+      // DELEÇÃO: apenas usuários autenticados
+      allow delete: if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Negar tudo o que não for declarado explicitamente acima.
+    // ─────────────────────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FUNÇÃO: valida a estrutura de um documento soundfont
+    // ─────────────────────────────────────────────────────────────────────────
+    function isValidSoundFont(data) {
+      return data.keys().hasAll(['fileName', 'tags', 'addedDate'])
+        && data.fileName is string
+        && data.fileName.size() > 0
+        && data.fileName.size() <= 256
+        && data.tags is list
+        && data.addedDate is number
+        && data.addedDate > 0;
+    }
+  }
+}

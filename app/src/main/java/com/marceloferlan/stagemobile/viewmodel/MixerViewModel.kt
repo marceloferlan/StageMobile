@@ -260,6 +260,9 @@ class MixerViewModel : ViewModel() {
     private val _showSf2DeleteConfirmation = MutableStateFlow<SoundFontMetadata?>(null)
     val showSf2DeleteConfirmation = _showSf2DeleteConfirmation.asStateFlow()
 
+    private val _importProgress = MutableStateFlow<Float?>(null)
+    val importProgress = _importProgress.asStateFlow()
+
     fun showSoundFontSelector(channelId: Int) {
         _showSoundFontSelectorForChannel.value = channelId
     }
@@ -643,6 +646,17 @@ class MixerViewModel : ViewModel() {
         _isReady.value = true
         startPeakMeterUpdate()
         Log.i(TAG, "System initialization COMPLETE (isReady=true)")
+    }
+
+    fun importSoundFontToLibrary(uri: android.net.Uri, fileName: String, tags: List<String>) {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _importProgress.value = 0f
+            soundFontRepo?.importSoundFont(uri, fileName, tags) { progress ->
+                _importProgress.value = progress
+            }
+            _importProgress.value = null
+            dismissSf2Import()
+        }
     }
 
     fun isSoundFontInUse(fileName: String): Boolean {

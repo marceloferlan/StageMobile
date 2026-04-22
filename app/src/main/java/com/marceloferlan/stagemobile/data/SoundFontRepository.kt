@@ -56,16 +56,35 @@ class SoundFontRepository(private val context: Context) {
     /**
      * Importa um arquivo SF2 do sistema de arquivos para o diretório interno e salva metadados no Firestore.
      */
-    suspend fun importSoundFont(uri: Uri, fileName: String, tags: List<String>): Result<Unit> {
-        return try {
-            val destinationFile = File(soundfontsDir, fileName)
-            
-            // Copia o arquivo para o armazenamento interno
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(destinationFile).use { output ->
-                    input.copyTo(output)
+    suspend fun importSoundFont(uri: Uri, fileName: String, tags: List<String>, onProgress: ((Float) -> Unit)? = null): Result<Unit> {
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val destinationFile = File(soundfontsDir, fileName)
+                
+                var totalSize = 0L
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        if (sizeIndex != -1) totalSize = cursor.getLong(sizeIndex)
+                    }
                 }
-            } ?: throw Exception("Não foi possível abrir o arquivo original.")
+
+                // Copia o arquivo para o armazenamento interno reportando progresso
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(destinationFile).use { output ->
+                        val buffer = ByteArray(32 * 1024) // Buffer ajustado para 32KB para performance em arquivos grandes
+                        var bytesCopied = 0L
+                        var bytes = input.read(buffer)
+                        while (bytes >= 0) {
+                            output.write(buffer, 0, bytes)
+                            bytesCopied += bytes
+                            if (totalSize > 0) {
+                                onProgress?.invoke(bytesCopied.toFloat() / totalSize.toFloat())
+                            }
+                            bytes = input.read(buffer)
+                        }
+                    }
+                } ?: throw Exception("Não foi possível abrir o arquivo original.")
 
             // Salva metadados no Firestore
             val metadata = SoundFontMetadata(
@@ -83,6 +102,7 @@ class SoundFontRepository(private val context: Context) {
             Log.e("SoundFontRepository", "Erro ao importar SF2: ${e.message}")
             Result.failure(e)
         }
+        } // Fim de withContext
     }
 
     /**

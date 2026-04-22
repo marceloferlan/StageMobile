@@ -130,3 +130,54 @@ Durante o processo de importação de novos patches pela tela de manutenção:
 - **Destaque Visual:** Arquivos com extensão `.sf2` (MIMEs `audio/x-soundfont`, `application/x-executable`, etc.) são exibidos em **High Light** (Branco brilhante/Verde).
 - **Esmaecimento Contextual:** Arquivos de sistema ou formatos não suportados na mesma pasta são exibidos com opacidade reduzida (Disabled appearance), orientando visualmente o músico para a seleção correta.
 - **Densidade para Smartphones:** A lista de arquivos em dispositivos móveis possui uma redução de **35%** na altura das linhas para maximizar a quantidade de itens visíveis sem scroll excessivo.
+
+---
+
+## 11. Sistema de Autenticação (Implementado abril/2026)
+
+### 11.1 Fluxo de Primeira Instalação
+- **Regra:** Na primeira abertura após instalação (ou após "Limpar Dados" nas configurações do Android), o app exibe a `LoginScreen` antes da `SplashScreen`.
+- **Provedores habilitados:** E-mail + Senha e Google Sign-In (via Credential Manager API).
+- **Persistência:** O Firebase SDK persiste o token localmente. Nas próximas aberturas, `Firebase.auth.currentUser != null` → o app vai direto para o Mixer.
+- **Reset de sessão:** Limpar os dados do app via Android (Configurações → App → Armazenamento → Limpar Dados) equivale a uma nova instalação — o login é exigido novamente.
+
+### 11.2 Fluxo Onboarding Multi-Step (Pager UI)
+- **Interface Otimizada:** Para mitigar *clipping* em formatos panorâmicos (Tablets horizontais), o layout de cadastro (`selectedTab == 1`) atua num bloco `AnimatedContent` de máquina de estados.
+- **Transições:** O Passo 1 solicita Nome e E-mail. O Passo 2 desliza horizontalmente solicitando Senha e Confirmação. Oculta o Google Provider durante cadastro para salvar verticalidade.
+- **Componentes:** `data/AuthRepository.kt` (interface com Firebase Auth), `ui/screens/LoginScreen.kt` (UI Responsiva), `MainActivity.kt` (Guard Auth State e AuthStateListener Global).
+
+### 11.3 Strict-Mode de Segurança e Verificação
+- **Bloqueio Incondicional (E-mail Verification):** Contas novas criadas ou contas Google não verificadas que não acusem `user.isEmailVerified == true` ficam travadas na camada `LoginScreen`.
+- **Validação em Tempo Real:** Uma modal de bloqueio é exibida orientando o acesso na caixa de entrada. O botão "JÁ CONFIRMEI" injeta um request assíncrono à API (`user.reload().await()`) conferindo diretamente na infraestrutura do Provedor sem necessidade de re-login, promovendo acesso automatizado instantâneo.
+- **Sincronia Firebase AuthStateListener:** O State global de "Logado" (`isAuthenticated = true`) no `MainActivity` escuta atentamente ao evento do Provider impedindo que eventuais sign-ins do SDK no evento de Creation da conta esvaziem a UI antes de checar a flag de e-mail.
+
+### 11.4 Security & Infra
+- Firestore Rules exige `request.auth != null` em todas as operações da coleção `soundfonts`.
+- Erros de autenticação são mapeados para mensagens em português no `AuthRepository`.
+
+---
+
+## 12. Add-ons e Monetização (Planejado)
+
+### 12.1 Add-on: Seletor de Driver de Áudio (USB Otimizado)
+**Descrição:** A funcionalidade de selecionar o driver "Otimizado (USB)" (Superpowered SDK) será disponibilizada apenas para usuários que adquirirem o add-on via Google Play In-App Purchase.
+
+**Fluxo de compra:**
+1. Usuário toca em "Driver Otimizado USB" sem a licença → exibe paywall nativo do Play Store.
+2. Google Play Billing processa o pagamento.
+3. **Firebase Cloud Function** valida o `purchaseToken` com a API do Google Play Developer.
+4. Após validação, a Cloud Function usa o Firebase Admin SDK para setar o Custom Claim: `audioDriverAddon: true` no token Firebase Auth do usuário.
+5. O app força refresh do token (`getIdToken(forceRefresh = true)`).
+6. O seletor em `SystemGlobalSettings.kt` lê a claim e libera a UI.
+
+**Tipo de produto:** Non-consumable (compra única e permanente). A licença persiste no token Firebase Auth e pode ser restaurada em qualquer dispositivo onde o usuário estiver logado.
+
+**Arquivos a modificar quando implementar:**
+- `ui/screens/SystemGlobalSettings.kt` — `AudioDriverSection` com verificação da claim + paywall.
+- `data/AuthRepository.kt` — Método `refreshToken()` + `hasAudioDriverAddon(): Boolean`.
+- `functions/index.js` (novo) — Cloud Function de validação de compra e set de claim.
+- `gradle/libs.versions.toml` + `app/build.gradle.kts` — Google Play Billing Library.
+
+**Pré-requisitos:**
+- Firebase Blaze Plan (pay-as-you-go) — necessário para Cloud Functions.
+- Produto criado no Google Play Console como *in-app product* antes de qualquer teste.

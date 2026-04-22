@@ -28,8 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Info
@@ -71,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -84,6 +89,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
+import com.google.firebase.auth.FirebaseAuth
 import com.marceloferlan.stagemobile.R
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.marceloferlan.stagemobile.viewmodel.MixerViewModel
@@ -331,25 +337,47 @@ fun MixerScreen(
                 modifier = Modifier
                     .width(if (isTablet) 320.dp else 280.dp)
                     .fillMaxHeight()
+                    .alpha(if (drawerState.targetValue == DrawerValue.Closed && drawerState.currentValue == DrawerValue.Closed) 0f else 1f)
                     .verticalScroll(rememberScrollState())
             ) {
                 Spacer(Modifier.height(if (isTablet) 24.dp else 12.dp))
+                val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val userName = currentUser?.displayName?.split(" ")?.firstOrNull() ?: "Musico"
+                val userEmail = currentUser?.email ?: ""
+
                 Row(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = if (isTablet) 16.dp else 8.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = if (isTablet) 16.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_topbar),
-                        contentDescription = null,
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "User Profile",
+                        tint = Color(0xFF26C6DA), // Usar o ciano da nova identidade visual
                         modifier = Modifier.size(if (isTablet) 44.dp else 36.dp)
                     )
                     Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "Stage Mobile ®",
-                        color = Color.White,
-                        fontSize = if (isTablet) 24.sp else 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Bem-vindo, $userName",
+                            color = Color.White,
+                            fontSize = if (isTablet) 18.sp else 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                        if (userEmail.isNotEmpty()) {
+                            Text(
+                                text = userEmail,
+                                color = Color.Gray,
+                                fontSize = if (isTablet) 12.sp else 11.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
                 
                 val drawerItemHeight = if (isTablet) 48.dp else 28.dp
@@ -541,14 +569,26 @@ fun MixerScreen(
                                 }
 
                                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                                    Button(
-                                        onClick = { showExitConfirmation = true },
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
-                                        contentPadding = PaddingValues(0.dp),
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Sair", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
+                                    Row(horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                                        Button(
+                                            onClick = { com.google.firebase.auth.FirebaseAuth.getInstance().signOut() },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Default.ExitToApp, contentDescription = "Sair da Conta (Logout)", modifier = Modifier.size(18.dp), tint = Color.LightGray)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = { showExitConfirmation = true },
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Encerrar App", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
+                                        }
                                     }
                                 }
                             }

@@ -47,6 +47,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
+import com.marceloferlan.stagemobile.data.AuthRepository
 
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
@@ -110,6 +113,38 @@ class MainActivity : ComponentActivity() {
                     var showSplashScreen by remember { mutableStateOf(true) }
                     var currentScreen by remember { mutableStateOf("mixer") }
                     val scope = rememberCoroutineScope()
+
+                    // ── Roteamento de Autenticação ──────────────────────────
+                    val authRepository = remember { AuthRepository() }
+                    // currentUser é null se não logado ou se o usuário limpou os dados do app
+                    var isAuthenticated by remember { 
+                        mutableStateOf(Firebase.auth.currentUser != null && Firebase.auth.currentUser?.isEmailVerified == true) 
+                    }
+
+                    DisposableEffect(Unit) {
+                        val authListener = com.google.firebase.auth.FirebaseAuth.AuthStateListener { auth ->
+                            val user = auth.currentUser
+                            if (user == null) {
+                                isAuthenticated = false
+                            } else if (user.isEmailVerified) {
+                                isAuthenticated = true
+                            }
+                            // Se o user existir mas isEmailVerified for false (como logo após um cadastro automático), 
+                            // a autenticação não é forçada para true. 
+                            // O LoginScreen ficará responsável por mostrar a Dialog e ditar onAuthSuccess().
+                        }
+                        Firebase.auth.addAuthStateListener(authListener)
+                        onDispose { Firebase.auth.removeAuthStateListener(authListener) }
+                    }
+
+                    if (!isAuthenticated) {
+                        LoginScreen(
+                            authRepository = authRepository,
+                            onAuthSuccess = { isAuthenticated = true }
+                        )
+                        return@Surface
+                    }
+                    // ────────────────────────────────────────────────────────
 
                     LaunchedEffect(Unit) {
                         viewModel.initMidi(context)
@@ -377,12 +412,38 @@ class MainActivity : ComponentActivity() {
                                 uri = uri,
                                 categories = categories,
                                 onConfirm = { fileName, tags ->
-                                    scope.launch { viewModel.soundFontRepo?.importSoundFont(uri, fileName, tags) }
-                                    viewModel.dismissSf2Import()
+                                    viewModel.importSoundFontToLibrary(uri, fileName, tags)
                                 },
                                 onDismiss = { viewModel.dismissSf2Import() },
                                 exists = { name -> viewModel.soundFontRepo?.exists(name) ?: false }
                             )
+                        }
+
+                        val importProgress by viewModel.importProgress.collectAsState()
+                        if (importProgress != null) {
+                            androidx.compose.ui.window.Dialog(onDismissRequest = {}) { // Impede fechar a modal clicando fora
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFF2C2C2C),
+                                    modifier = Modifier.padding(16.dp).fillMaxWidth(0.9f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Importando SoundFont...", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        androidx.compose.material3.LinearProgressIndicator(
+                                            progress = importProgress ?: 0f,
+                                            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                            color = Color(0xFF26C6DA), // Usando ciano da nova identidade visual
+                                            trackColor = Color(0xFF424242)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("${((importProgress ?: 0f) * 100).toInt()}%", color = Color.LightGray, fontSize = 12.sp)
+                                    }
+                                }
+                            }
                         }
 
                         val showSf2Rename by viewModel.showSf2RenameDialog.collectAsState()
