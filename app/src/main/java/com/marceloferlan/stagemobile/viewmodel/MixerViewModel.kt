@@ -648,6 +648,10 @@ class MixerViewModel : ViewModel() {
         Log.i(TAG, "System initialization COMPLETE (isReady=true)")
     }
 
+    fun isSoundFontInLibrary(fileName: String): Boolean {
+        return _availableSoundFonts.value.any { it.fileName == fileName }
+    }
+
     fun importSoundFontToLibrary(uri: android.net.Uri, fileName: String, tags: List<String>) {
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             _importProgress.value = 0f

@@ -1,6 +1,6 @@
 # StageMobile — Índice de Documentação
 
-*Última atualização: 2026-04-21*
+*Última atualização: 2026-04-23*
 
 ---
 
@@ -36,7 +36,14 @@
 | Documento | Cobre | Quando usar |
 |---|---|---|
 | [audio_performance_tuning.md](./audio_performance_tuning.md) | Per-phase APM, thread affinity, FluidSynth settings, voice overflow, fluxo de diagnóstico de clicks | Investigar glitches, otimizar latência, entender o APM HUD |
+| [plan_dsp_benchmark_superpowered.md](./plan_dsp_benchmark_superpowered.md) | Plano de benchmark: efeitos STK vs Superpowered SDK (reverb, delay, compressor) | Avaliar se vale migrar efeitos DSP pro Superpowered |
 | [diagnostico_cpu.md](./diagnostico_cpu.md) | Análise de consumo de CPU por subsistema | Problemas de performance (CPU alta) |
+
+### Comercial / Licenciamento
+
+| Documento | Cobre | Quando usar |
+|---|---|---|
+| [superpowered_licensing_briefing.md](./superpowered_licensing_briefing.md) | Briefing pra call com Superpowered Sales: specs, uso do SDK, modelo de add-on, 12 perguntas | Reunião comercial com Superpowered |
 
 ### Backlog e Planejamento
 

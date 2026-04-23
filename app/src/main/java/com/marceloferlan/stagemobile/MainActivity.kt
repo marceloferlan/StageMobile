@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.marceloferlan.stagemobile.midi.MidiLearnTarget
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.launch
@@ -415,7 +416,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel.importSoundFontToLibrary(uri, fileName, tags)
                                 },
                                 onDismiss = { viewModel.dismissSf2Import() },
-                                exists = { name -> viewModel.soundFontRepo?.exists(name) ?: false }
+                                exists = { name -> viewModel.isSoundFontInLibrary(name) }
                             )
                         }
 
@@ -688,14 +689,25 @@ fun TagSelectionOverlay(
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.9f).testTag("import_conflict_dialog").clickable(enabled=false){},
+                modifier = Modifier
+                    .fillMaxWidth(if (com.marceloferlan.stagemobile.utils.UiUtils.isTablet(LocalContext.current)) 0.35f else 0.55f)
+                    .wrapContentHeight()
+                    .testTag("import_conflict_dialog")
+                    .clickable(enabled = false) {},
                 shape = RoundedCornerShape(20.dp),
                 color = Color(0xFF2C2C2C)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
                     Text("Arquivo Já Existe", color = Color.White, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("O arquivo '$fileName' já está na biblioteca. Deseja substituir?", color = Color.Gray, textAlign = TextAlign.Center)
+                    Text(
+                        "O arquivo '$fileName' já está na biblioteca. Deseja substituir?",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        fontSize = 13.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                         TextButton(onClick = { showConflictDialog = false }) { Text("Cancelar") }

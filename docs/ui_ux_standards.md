@@ -17,6 +17,8 @@ graph LR
 ## 2. Adaptabilidade e Layout (`isTablet`)
 O layout se reorganiza drasticamente com base no tamanho da tela.
 
+**Detecção:** `UiUtils.isTablet()` usa `smallestScreenWidthDp >= 600` (padrão Android sw600dp). Importante: **não** usar `screenWidthDp` que causa falsos positivos em phones landscape (Galaxy S24 Ultra em landscape: screenWidthDp ≈ 890dp mas smallestScreenWidthDp ≈ 452dp → phone).
+
 ```mermaid
 graph TD
     subgraph "Modo Celular (Single-Channel Focus)"
@@ -31,6 +33,18 @@ graph TD
         H[Teclado Extendido]
     end
 ```
+
+### Dimensões adaptativas (phone vs tablet)
+
+| Componente | Phone | Tablet |
+|---|---|---|
+| TopBar padding vertical | 2dp | 6dp |
+| TopBar botões | 26dp | 36dp |
+| TopBar logo | 36×20dp | 52×28dp |
+| TopBar título | 14sp | 20sp |
+| Indicadores DSP (quadrinhos) | 16×16dp, 8sp, gap 2dp | 26×28dp, 10sp, gap 10dp |
+| LoginScreen | Layout horizontal (Row: logo 30% + form 70%) | Layout vertical (Column: logo + card 480dp) |
+| LoginScreen botões | 40dp | 52dp |
 
 ## 3. Semântica de Cores DSP
 Para facilitar o reconhecimento rápido, as cores dos componentes seguem a categoria do algoritmo DSP:

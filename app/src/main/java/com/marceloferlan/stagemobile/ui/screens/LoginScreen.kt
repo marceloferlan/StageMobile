@@ -195,332 +195,147 @@ fun LoginScreen(
             ),
         contentAlignment = Alignment.Center
     ) {
-        val contentModifier = if (isTablet) {
-            Modifier
-                .width(480.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 48.dp)
-        } else {
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 40.dp)
-        }
-
-        Column(
-            modifier = contentModifier,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            // ── Logo / Header ──────────────────────────────────────────────
-            Spacer(modifier = Modifier.height(if (isTablet) 0.dp else 16.dp))
-
-            Image(
-                painter = painterResource(id = R.drawable.logo_topbar),
-                contentDescription = "App Logo",
+        if (isTablet) {
+            // ── TABLET: layout vertical (original) ──────────────────────
+            Column(
                 modifier = Modifier
-                    .width(180.dp)
-                    .height(98.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Seu Stage onde você estiver!",
-                color = ColorTextSecondary, // Mantendo a cor consistente do tema para o texto secundário
-                fontSize = if (isTablet) 18.sp else 16.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // ── Card de Login ──────────────────────────────────────────────
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = ColorSurface,
-                modifier = Modifier.fillMaxWidth()
+                    .width(480.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo_topbar),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.width(180.dp).height(98.dp)
+                )
+                Text(
+                    text = "Seu Stage onde você estiver!",
+                    color = ColorTextSecondary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                TabletLoginCard(
+                    isTablet = true,
+                    selectedTab = selectedTab,
+                    onTabChange = { selectedTab = it; signUpStep = 0; errorMessage = null },
+                    signUpStep = signUpStep,
+                    firstName = firstName,
+                    onFirstNameChange = { firstName = it; errorMessage = null },
+                    email = email,
+                    onEmailChange = { email = it.trim(); errorMessage = null },
+                    password = password,
+                    onPasswordChange = { password = it; errorMessage = null },
+                    confirmPassword = confirmPassword,
+                    onConfirmPasswordChange = { confirmPassword = it; errorMessage = null },
+                    passwordVisible = passwordVisible,
+                    onPasswordVisibleToggle = { passwordVisible = !passwordVisible },
+                    confirmPasswordVisible = confirmPasswordVisible,
+                    onConfirmPasswordVisibleToggle = { confirmPasswordVisible = !confirmPasswordVisible },
+                    emailError = emailError,
+                    passwordError = passwordError,
+                    firstNameError = firstNameError,
+                    confirmPasswordError = confirmPasswordError,
+                    errorMessage = errorMessage,
+                    canSubmit = canSubmit,
+                    isLoading = isLoading,
+                    onSubmit = { if (selectedTab == 1 && signUpStep == 0) signUpStep = 1 else handleEmailAuth() },
+                    onBack = { signUpStep = 0 },
+                    onCreateAccount = { handleEmailAuth() },
+                    onGoogleSignIn = { handleGoogleSignIn() },
+                    focusManager = focusManager
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "Suas configurações ficam salvas na nuvem\ne sincronizadas entre seus dispositivos.",
+                    color = ColorTextSecondary,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 16.sp
+                )
+            }
+        } else {
+            // ── PHONE LANDSCAPE: layout horizontal (logo esquerda, form direita) ──
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                // Coluna esquerda: branding
                 Column(
-                    modifier = Modifier.padding(
-                        horizontal = if (isTablet) 32.dp else 24.dp,
-                        vertical = 24.dp
-                    )
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .padding(end = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    // Tab Entrar / Cadastrar
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = ColorSurfaceElevated,
-                        contentColor = ColorPrimary,
-                        modifier = Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                color = ColorPrimary
-                            )
-                        }
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = {
-                                selectedTab = 0
-                                signUpStep = 0
-                                errorMessage = null
-                            },
-                            text = {
-                                Text(
-                                    "ENTRAR",
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (selectedTab == 0) ColorPrimary else ColorTextSecondary,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = {
-                                selectedTab = 1
-                                signUpStep = 0
-                                errorMessage = null
-                            },
-                            text = {
-                                Text(
-                                    "CADASTRAR",
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (selectedTab == 1) ColorPrimary else ColorTextSecondary,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        )
-                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_topbar),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.width(100.dp).height(54.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Seu Stage\nonde você estiver!",
+                        color = ColorTextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 16.sp
+                    )
+                }
 
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Mensagem de erro global
-                    AnimatedVisibility(
-                        visible = errorMessage != null,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = ColorError.copy(alpha = 0.12f),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 16.dp)
-                        ) {
-                            Text(
-                                text = errorMessage ?: "",
-                                color = ColorError,
-                                fontSize = 13.sp,
-                                modifier = Modifier.padding(12.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    AnimatedContent(
-                        targetState = if (selectedTab == 0) "LOGIN" else if (signUpStep == 0) "SIGNUP_1" else "SIGNUP_2",
-                        transitionSpec = {
-                            if (targetState == "SIGNUP_2" && initialState == "SIGNUP_1") {
-                                slideInHorizontally { width -> width } + fadeIn() togetherWith slideOutHorizontally { width -> -width } + fadeOut()
-                            } else if (targetState == "SIGNUP_1" && initialState == "SIGNUP_2") {
-                                slideInHorizontally { width -> -width } + fadeIn() togetherWith slideOutHorizontally { width -> width } + fadeOut()
-                            } else {
-                                fadeIn() togetherWith fadeOut()
-                            }
-                        },
-                        label = "form_animation"
-                    ) { state ->
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            // Campo Primeiro Nome
-                            if (state == "SIGNUP_1") {
-                                OutlinedTextField(
-                                    value = firstName,
-                                    onValueChange = { firstName = it; errorMessage = null },
-                                    label = { Text("Primeiro Nome") },
-                                    leadingIcon = { Icon(Icons.Default.Person, null, tint = ColorTextSecondary) },
-                                    isError = firstNameError != null,
-                                    supportingText = firstNameError?.let { { Text(it, color = ColorError) } },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
-                                    keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = authTextFieldColors()
-                                )
-                            }
-                            
-                            // Campo E-mail
-                            if (state == "LOGIN" || state == "SIGNUP_1") {
-                                OutlinedTextField(
-                                    value = email,
-                                    onValueChange = { email = it.trim(); errorMessage = null },
-                                    label = { Text("E-mail") },
-                                    leadingIcon = { Icon(Icons.Default.Email, null, tint = ColorTextSecondary) },
-                                    isError = emailError != null,
-                                    supportingText = emailError?.let { { Text(it, color = ColorError) } },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = if (state == "SIGNUP_1") ImeAction.Done else ImeAction.Next),
-                                    keyboardActions = KeyboardActions(
-                                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                                        onDone = { if (state == "SIGNUP_1") focusManager.clearFocus() }
-                                    ),
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = authTextFieldColors()
-                                )
-                            }
-                            
-                            // Campo Senhas
-                            if (state == "LOGIN" || state == "SIGNUP_2") {
-                                OutlinedTextField(
-                                    value = password,
-                                    onValueChange = { password = it; errorMessage = null },
-                                    label = { Text("Senha") },
-                                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = ColorTextSecondary) },
-                                    trailingIcon = {
-                                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                            Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = ColorTextSecondary)
-                                        }
-                                    },
-                                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                    isError = passwordError != null,
-                                    supportingText = passwordError?.let { { Text(it, color = ColorError) } },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (state == "SIGNUP_2") ImeAction.Next else ImeAction.Done),
-                                    keyboardActions = KeyboardActions(
-                                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                                        onDone = { handleEmailAuth() }
-                                    ),
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = authTextFieldColors()
-                                )
-
-                                if (state == "SIGNUP_2") {
-                                    OutlinedTextField(
-                                        value = confirmPassword,
-                                        onValueChange = { confirmPassword = it; errorMessage = null },
-                                        label = { Text("Confirmar Senha") },
-                                        leadingIcon = { Icon(Icons.Default.Lock, null, tint = ColorTextSecondary) },
-                                        trailingIcon = {
-                                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                                Icon(if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = ColorTextSecondary)
-                                            }
-                                        },
-                                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                                        isError = confirmPasswordError != null,
-                                        supportingText = confirmPasswordError?.let { { Text(it, color = ColorError) } },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                                        keyboardActions = KeyboardActions(onDone = { handleEmailAuth() }),
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = authTextFieldColors()
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Botão principal Dinâmico
-                    if (selectedTab == 1 && signUpStep == 1) {
-                        // ROW COM VOLTAR E CRIAR CONTA NO FINAL DO ONBOARDING
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            OutlinedButton(
-                                onClick = { signUpStep = 0 },
-                                modifier = Modifier.weight(0.4f).height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorTextPrimary),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, ColorDivider)
-                            ) {
-                                Text("VOLTAR", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-                            Button(
-                                onClick = { handleEmailAuth() },
-                                enabled = canSubmit,
-                                modifier = Modifier.weight(0.6f).height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, disabledContainerColor = ColorPrimary.copy(alpha = 0.3f))
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                                } else {
-                                    Text("CRIAR CONTA", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                                }
-                            }
-                        }
-                    } else {
-                        // BOTÃO PADRÃO FULL WIDTH (ENTRAR ou AVANÇAR)
-                        Button(
-                            onClick = { 
-                                if (selectedTab == 1 && signUpStep == 0) {
-                                    signUpStep = 1 // Avança para senhas
-                                } else {
-                                    handleEmailAuth() // Login comum
-                                }
-                            },
-                            enabled = canSubmit,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, disabledContainerColor = ColorPrimary.copy(alpha = 0.3f))
-                        ) {
-                            if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
-                            } else {
-                                Text(
-                                    text = if (selectedTab == 0) "ENTRAR" else "AVANÇAR",
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 15.sp,
-                                    letterSpacing = 1.sp
-                                )
-                            }
-                        }
-                    }
-
-                    // Botão Google e Visibilidade Dinâmica
-                    AnimatedVisibility(visible = selectedTab == 0) {
-                        Column {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            // Divisor "— OU —"
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                HorizontalDivider(modifier = Modifier.weight(1f), color = ColorDivider)
-                                Text("  OU  ", color = ColorTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                                HorizontalDivider(modifier = Modifier.weight(1f), color = ColorDivider)
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Botão Google Sign-In
-                            OutlinedButton(
-                                onClick = { handleGoogleSignIn() },
-                                enabled = !isLoading,
-                                modifier = Modifier.fillMaxWidth().height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorTextPrimary),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (!isLoading) ColorDivider else ColorDivider.copy(alpha = 0.4f))
-                            ) {
-                                Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Continuar com Google", fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                            }
-                        }
-                    }
+                // Coluna direita: formulário (scrollável)
+                Column(
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    TabletLoginCard(
+                        isTablet = false,
+                        selectedTab = selectedTab,
+                        onTabChange = { selectedTab = it; signUpStep = 0; errorMessage = null },
+                        signUpStep = signUpStep,
+                        firstName = firstName,
+                        onFirstNameChange = { firstName = it; errorMessage = null },
+                        email = email,
+                        onEmailChange = { email = it.trim(); errorMessage = null },
+                        password = password,
+                        onPasswordChange = { password = it; errorMessage = null },
+                        confirmPassword = confirmPassword,
+                        onConfirmPasswordChange = { confirmPassword = it; errorMessage = null },
+                        passwordVisible = passwordVisible,
+                        onPasswordVisibleToggle = { passwordVisible = !passwordVisible },
+                        confirmPasswordVisible = confirmPasswordVisible,
+                        onConfirmPasswordVisibleToggle = { confirmPasswordVisible = !confirmPasswordVisible },
+                        emailError = emailError,
+                        passwordError = passwordError,
+                        firstNameError = firstNameError,
+                        confirmPasswordError = confirmPasswordError,
+                        errorMessage = errorMessage,
+                        canSubmit = canSubmit,
+                        isLoading = isLoading,
+                        onSubmit = { if (selectedTab == 1 && signUpStep == 0) signUpStep = 1 else handleEmailAuth() },
+                        onBack = { signUpStep = 0 },
+                        onCreateAccount = { handleEmailAuth() },
+                        onGoogleSignIn = { handleGoogleSignIn() },
+                        focusManager = focusManager
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Rodapé de informação de privacidade
-            Text(
-                text = "Suas configurações ficam salvas na nuvem\ne sincronizadas entre seus dispositivos.",
-                color = ColorTextSecondary,
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 16.sp
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
+
+        // Card de login é renderizado via TabletLoginCard dentro dos layouts acima
 
         // ── Dialog de Verificação de E-mail (Strict Route) ────────────────
         if (showVerificationDialog) {
@@ -590,6 +405,224 @@ fun LoginScreen(
                         ) {
                             Text("Sair", color = ColorTextSecondary)
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TabletLoginCard(
+    isTablet: Boolean,
+    selectedTab: Int,
+    onTabChange: (Int) -> Unit,
+    signUpStep: Int,
+    firstName: String,
+    onFirstNameChange: (String) -> Unit,
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    confirmPassword: String,
+    onConfirmPasswordChange: (String) -> Unit,
+    passwordVisible: Boolean,
+    onPasswordVisibleToggle: () -> Unit,
+    confirmPasswordVisible: Boolean,
+    onConfirmPasswordVisibleToggle: () -> Unit,
+    emailError: String?,
+    passwordError: String?,
+    firstNameError: String?,
+    confirmPasswordError: String?,
+    errorMessage: String?,
+    canSubmit: Boolean,
+    isLoading: Boolean,
+    onSubmit: () -> Unit,
+    onBack: () -> Unit,
+    onCreateAccount: () -> Unit,
+    onGoogleSignIn: () -> Unit,
+    focusManager: androidx.compose.ui.focus.FocusManager
+) {
+    val buttonHeight = if (isTablet) 52.dp else 40.dp
+    val fieldSpacing = if (isTablet) 12.dp else 4.dp
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = ColorSurface,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = if (isTablet) 32.dp else 16.dp,
+                vertical = if (isTablet) 24.dp else 10.dp
+            )
+        ) {
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = ColorSurfaceElevated,
+                contentColor = ColorPrimary,
+                modifier = Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = ColorPrimary
+                    )
+                }
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { onTabChange(0) },
+                    text = { Text("ENTRAR", fontWeight = FontWeight.Bold, color = if (selectedTab == 0) ColorPrimary else ColorTextSecondary, fontSize = 13.sp) }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { onTabChange(1) },
+                    text = { Text("CADASTRAR", fontWeight = FontWeight.Bold, color = if (selectedTab == 1) ColorPrimary else ColorTextSecondary, fontSize = 13.sp) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(if (isTablet) 24.dp else 8.dp))
+
+            AnimatedVisibility(visible = errorMessage != null, enter = fadeIn(), exit = fadeOut()) {
+                Surface(shape = RoundedCornerShape(8.dp), color = ColorError.copy(alpha = 0.12f), modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    Text(text = errorMessage ?: "", color = ColorError, fontSize = 13.sp, modifier = Modifier.padding(10.dp), textAlign = TextAlign.Center)
+                }
+            }
+
+            AnimatedContent(
+                targetState = if (selectedTab == 0) "LOGIN" else if (signUpStep == 0) "SIGNUP_1" else "SIGNUP_2",
+                transitionSpec = {
+                    if (targetState == "SIGNUP_2" && initialState == "SIGNUP_1") {
+                        slideInHorizontally { w -> w } + fadeIn() togetherWith slideOutHorizontally { w -> -w } + fadeOut()
+                    } else if (targetState == "SIGNUP_1" && initialState == "SIGNUP_2") {
+                        slideInHorizontally { w -> -w } + fadeIn() togetherWith slideOutHorizontally { w -> w } + fadeOut()
+                    } else { fadeIn() togetherWith fadeOut() }
+                },
+                label = "form_animation"
+            ) { state ->
+                Column(verticalArrangement = Arrangement.spacedBy(fieldSpacing)) {
+                    if (state == "SIGNUP_1") {
+                        OutlinedTextField(
+                            value = firstName, onValueChange = onFirstNameChange,
+                            label = { Text("Primeiro Nome") },
+                            leadingIcon = { Icon(Icons.Default.Person, null, tint = ColorTextSecondary) },
+                            isError = firstNameError != null,
+                            supportingText = firstNameError?.let { { Text(it, color = ColorError) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
+                            singleLine = true, modifier = Modifier.fillMaxWidth(), colors = authTextFieldColors()
+                        )
+                    }
+                    if (state == "LOGIN" || state == "SIGNUP_1") {
+                        OutlinedTextField(
+                            value = email, onValueChange = onEmailChange,
+                            label = { Text("E-mail") },
+                            leadingIcon = { Icon(Icons.Default.Email, null, tint = ColorTextSecondary) },
+                            isError = emailError != null,
+                            supportingText = emailError?.let { { Text(it, color = ColorError) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = if (state == "SIGNUP_1") ImeAction.Done else ImeAction.Next),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                                onDone = { if (state == "SIGNUP_1") focusManager.clearFocus() }
+                            ),
+                            singleLine = true, modifier = Modifier.fillMaxWidth(), colors = authTextFieldColors()
+                        )
+                    }
+                    if (state == "LOGIN" || state == "SIGNUP_2") {
+                        OutlinedTextField(
+                            value = password, onValueChange = onPasswordChange,
+                            label = { Text("Senha") },
+                            leadingIcon = { Icon(Icons.Default.Lock, null, tint = ColorTextSecondary) },
+                            trailingIcon = {
+                                IconButton(onClick = onPasswordVisibleToggle) {
+                                    Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = ColorTextSecondary)
+                                }
+                            },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            isError = passwordError != null,
+                            supportingText = passwordError?.let { { Text(it, color = ColorError) } },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = if (state == "SIGNUP_2") ImeAction.Next else ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                                onDone = { onSubmit() }
+                            ),
+                            singleLine = true, modifier = Modifier.fillMaxWidth(), colors = authTextFieldColors()
+                        )
+                        if (state == "SIGNUP_2") {
+                            OutlinedTextField(
+                                value = confirmPassword, onValueChange = onConfirmPasswordChange,
+                                label = { Text("Confirmar Senha") },
+                                leadingIcon = { Icon(Icons.Default.Lock, null, tint = ColorTextSecondary) },
+                                trailingIcon = {
+                                    IconButton(onClick = onConfirmPasswordVisibleToggle) {
+                                        Icon(if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, null, tint = ColorTextSecondary)
+                                    }
+                                },
+                                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                isError = confirmPasswordError != null,
+                                supportingText = confirmPasswordError?.let { { Text(it, color = ColorError) } },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                                keyboardActions = KeyboardActions(onDone = { onCreateAccount() }),
+                                singleLine = true, modifier = Modifier.fillMaxWidth(), colors = authTextFieldColors()
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(if (isTablet) 24.dp else 8.dp))
+
+            if (selectedTab == 1 && signUpStep == 1) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onBack,
+                        modifier = Modifier.weight(0.4f).height(buttonHeight),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorTextPrimary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ColorDivider)
+                    ) { Text("VOLTAR", fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    Button(
+                        onClick = onCreateAccount, enabled = canSubmit,
+                        modifier = Modifier.weight(0.6f).height(buttonHeight),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, disabledContainerColor = ColorPrimary.copy(alpha = 0.3f))
+                    ) {
+                        if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        else Text("CRIAR CONTA", fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                    }
+                }
+            } else {
+                Button(
+                    onClick = onSubmit, enabled = canSubmit,
+                    modifier = Modifier.fillMaxWidth().height(buttonHeight),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorPrimary, disabledContainerColor = ColorPrimary.copy(alpha = 0.3f))
+                ) {
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                    else Text(if (selectedTab == 0) "ENTRAR" else "AVANÇAR", fontWeight = FontWeight.ExtraBold, fontSize = if (isTablet) 15.sp else 13.sp, letterSpacing = 1.sp)
+                }
+            }
+
+            AnimatedVisibility(visible = selectedTab == 0) {
+                Column {
+                    Spacer(modifier = Modifier.height(if (isTablet) 20.dp else 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = ColorDivider)
+                        Text("  OU  ", color = ColorTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = ColorDivider)
+                    }
+                    Spacer(modifier = Modifier.height(if (isTablet) 16.dp else 8.dp))
+                    OutlinedButton(
+                        onClick = onGoogleSignIn, enabled = !isLoading,
+                        modifier = Modifier.fillMaxWidth().height(buttonHeight),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ColorTextPrimary),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (!isLoading) ColorDivider else ColorDivider.copy(alpha = 0.4f))
+                    ) {
+                        Text("G", color = Color(0xFF4285F4), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Continuar com Google", fontWeight = FontWeight.Medium, fontSize = if (isTablet) 15.sp else 13.sp)
                     }
                 }
             }

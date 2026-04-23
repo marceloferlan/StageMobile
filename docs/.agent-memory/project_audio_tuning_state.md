@@ -27,11 +27,21 @@ Branch: `feature/Stage-Mobile-DSP-Superpowered`
 11. Seletor de Driver de Áudio ("Android Nativo" vs "Otimizado USB")
 12. PAD sustain tracking (sustainPedalState no ViewModel)
 13. CC MIDI label fix ("Filtros MIDI" → "CC MIDI Habilitados")
+14. Indicadores DSP visuais nos channel strips (HP/LP/CP/EQ/CH/TR/DL/RV/LM) — phone e tablet adaptativo
+15. SF2 import dialog fix (tamanho + verificação Firestore em vez de filesystem)
+16. isTablet fix global (smallestScreenWidthDp >= 600 em vez de screenWidthDp >= 600)
+17. TopBar compacta phone (botões 26dp, logo 36×20dp, título 14sp)
+18. LoginScreen layout horizontal pra phone (Row: logo 30% + form 70%)
+19. Briefing Superpowered licensing (docs/superpowered_licensing_briefing.md + .html)
+20. Plano de benchmark DSP STK vs Superpowered (docs/plan_dsp_benchmark_superpowered.md)
 
 ## Features implementadas
 
-- **Seletor de Driver de Áudio** em Parâmetros Globais — permite usuário escolher entre Oboe (Nativo) e Superpowered (Otimizado USB). Persiste em SharedPreferences. Default=Nativo. Superpowered só inicializa se modo=1.
-- **APM HUD per-phase** com breakdown Fluid/DspChan/DspMaster/Mix + CSV export 16 colunas + botão Reset
+- **Seletor de Driver de Áudio** em Parâmetros Globais
+- **APM HUD per-phase** com breakdown + CSV export 16 colunas + botão Reset
+- **Indicadores DSP visuais** nos channel strips e master — quadrinhos com abreviação 2 letras, verde/escuro
+- **LoginScreen responsiva** — layout horizontal pra phone landscape, vertical pra tablet
+- **TopBar adaptativa** — dimensões compactas em phone, normais em tablet
 
 ## Armadilhas conhecidas
 

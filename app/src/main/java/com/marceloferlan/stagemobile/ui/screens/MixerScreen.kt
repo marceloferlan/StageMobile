@@ -536,16 +536,19 @@ fun MixerScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 12.dp, end = 12.dp, top = if (isTablet) 6.dp else 4.dp, bottom = if (isTablet) 6.dp else 4.dp),
+                                    .padding(start = 12.dp, end = 12.dp, top = if (isTablet) 6.dp else 2.dp, bottom = if (isTablet) 6.dp else 2.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val topBarBtnSize = if (isTablet) 36.dp else 26.dp
+                                val topBarIconSize = if (isTablet) 18.dp else 14.dp
+
                                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                                     IconButton(
                                         onClick = { scope.launch { drawerState.open() } },
-                                        modifier = Modifier.size(36.dp)
+                                        modifier = Modifier.size(topBarBtnSize)
                                     ) {
-                                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                                        Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White, modifier = Modifier.size(topBarIconSize + 2.dp))
                                     }
                                 }
 
@@ -554,14 +557,14 @@ fun MixerScreen(
                                         Image(
                                             painter = painterResource(id = R.drawable.logo_topbar),
                                             contentDescription = null,
-                                            modifier = Modifier.width(52.dp).height(28.dp)
+                                            modifier = Modifier.width(if (isTablet) 52.dp else 36.dp).height(if (isTablet) 28.dp else 20.dp)
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(if (isTablet) 8.dp else 4.dp))
                                         Text(
                                             text = "Stage Mobile",
                                             color = Color.White,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 20.sp,
+                                            fontSize = if (isTablet) 20.sp else 14.sp,
                                             maxLines = 1,
                                             textAlign = TextAlign.Center
                                         )
@@ -572,22 +575,22 @@ fun MixerScreen(
                                     Row(horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                                         Button(
                                             onClick = { com.google.firebase.auth.FirebaseAuth.getInstance().signOut() },
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = RoundedCornerShape(6.dp),
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                                             contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(topBarBtnSize)
                                         ) {
-                                            Icon(Icons.Default.ExitToApp, contentDescription = "Sair da Conta (Logout)", modifier = Modifier.size(18.dp), tint = Color.LightGray)
+                                            Icon(Icons.Default.ExitToApp, contentDescription = "Sair da Conta (Logout)", modifier = Modifier.size(topBarIconSize), tint = Color.LightGray)
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(if (isTablet) 8.dp else 4.dp))
                                         Button(
                                             onClick = { showExitConfirmation = true },
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = RoundedCornerShape(6.dp),
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
                                             contentPadding = PaddingValues(0.dp),
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(topBarBtnSize)
                                         ) {
-                                            Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Encerrar App", modifier = Modifier.size(18.dp), tint = Color(0xFFEF5350))
+                                            Icon(Icons.Outlined.PowerSettingsNew, contentDescription = "Encerrar App", modifier = Modifier.size(topBarIconSize), tint = Color(0xFFEF5350))
                                         }
                                     }
                                 }
@@ -741,6 +744,7 @@ fun MixerScreen(
                                 onMasterLimiterToggle = { viewModel.updateMasterLimiter(it) },
                                 onVolumeChange = { viewModel.updateMasterVolume(it) },
                                 onFxClick = { viewModel.showEffectsRack(MixerViewModel.MASTER_CHANNEL_ID) },
+                                masterDspEffects = viewModel.masterDspEffects.collectAsState().value,
                                 isMidiLearnActive = isMidiLearnActive,
                                 isLearnTargetFader = midiLearnTarget?.target == MidiLearnTarget.FADER && midiLearnTarget?.channelId == MixerViewModel.MASTER_CHANNEL_ID,
                                 hasFaderMapping = midiLearnMappings.any { it.target == MidiLearnTarget.FADER && it.channelId == MixerViewModel.MASTER_CHANNEL_ID },

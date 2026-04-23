@@ -19,22 +19,23 @@ object UiUtils {
      * Útil para contextos não-composables (como ViewModels).
      */
     fun isTablet(context: Context): Boolean {
-        // Mantemos a lógica baseada em configuração para contextos fora do Compose
-        // Reduzido para 500 + Inclusão do screenWidth (largura absoluta) >= 600
-        // Como o app roda unicamente em paisagem, isso força a UI de tablet e o APM HUD a aparecerem.
-        return context.resources.configuration.screenWidthDp >= 600 || context.resources.configuration.smallestScreenWidthDp >= 500
+        // Usa APENAS smallestScreenWidthDp (menor dimensão física da tela).
+        // Isso garante que phones em landscape (ex: S24 Ultra, smallestWidth ≈ 411dp)
+        // NÃO sejam detectados como tablet. Apenas dispositivos com largura mínima
+        // >= 600dp são tablets (padrão Android sw600dp qualifier).
+        // S24 Ultra: ~452dp → phone. Tab S9 FE: ~1067dp → tablet.
+        return context.resources.configuration.smallestScreenWidthDp >= 600
     }
 
     /**
      * Versão Composable para detecção reativa de Tablet.
-     * Usa smallestScreenWidthDp para garantir que celulares em modo paisagem 
-     * não sejam detectados erroneamente como tablets.
+     * Usa smallestScreenWidthDp para distinguir phone de tablet
+     * independente da orientação (landscape/portrait).
      */
     @Composable
     fun rememberIsTablet(): Boolean {
         val configuration = LocalConfiguration.current
-        // Reduzido para 500 + Inclusão do screenWidth (largura absoluta) >= 600
-        return configuration.screenWidthDp >= 600 || configuration.smallestScreenWidthDp >= 500
+        return configuration.smallestScreenWidthDp >= 600
     }
 
     /**

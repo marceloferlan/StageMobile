@@ -45,6 +45,40 @@ graph LR
     F8 --> Out[Master Out]
 ```
 
+## 3.1 Indicadores DSP Visuais (Channel Strip)
+
+Cada canal de instrumento e o canal master exibem indicadores visuais dos efeitos DSP à direita do peak meter. Quadrinhos coloridos com abreviação de 2 letras:
+
+| Efeito | Abreviação | Cor ativo | Cor inativo |
+|---|---|---|---|
+| High Pass | HP | Verde (#4CAF50) | Cinza escuro (#2A2A2A) |
+| Low Pass | LP | Verde | Cinza escuro |
+| Compressor | CP | Verde | Cinza escuro |
+| EQ Paramétrico | EQ | Verde | Cinza escuro |
+| Chorus | CH | Verde | Cinza escuro |
+| Tremolo | TR | Verde | Cinza escuro |
+| Delay | DL | Verde | Cinza escuro |
+| Reverb | RV | Verde | Cinza escuro |
+| Limiter | LM | Verde | Cinza escuro |
+
+Dimensões adaptativas: tablet 26×28dp (10sp), phone 16×16dp (8sp). Sempre visíveis quando há efeitos configurados no canal.
+
+## 3.2 Seletor de Driver de Áudio
+
+Em Parâmetros Globais → "Driver de Áudio", o usuário pode escolher:
+- **Android Nativo** (default): usa Oboe/AAudio. Gratuito, compatível com todos os dispositivos.
+- **Otimizado (USB)**: usa Superpowered SDK para bypass direto do driver USB do Android. Menor latência e jitter em interfaces USB profissionais. Será vendido como add-on pago via IAP.
+
+A configuração persiste em SharedPreferences. O Superpowered só é inicializado quando o modo "Otimizado" está ativo.
+
+## 3.3 APM HUD (Audio Performance Monitor)
+
+O APM HUD exibe métricas de performance do motor nativo em tempo real:
+- Underruns, Mutex Misses, Clips, Active Voices
+- Breakdown por fase: Fluid Synth, DSP Canais, DSP Master, Mix/Out (avg + max µs)
+- Exportação CSV com 16 colunas para análise offline
+- Botão "Zerar Contadores" para resetar todos os contadores nativos
+
 ## 4. Regras de Negócio por Componente
 
 ### 4.1 Armamento de Canal (Armed State)

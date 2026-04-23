@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.marceloferlan.stagemobile.R
 import com.marceloferlan.stagemobile.utils.UiUtils
+import com.marceloferlan.stagemobile.domain.model.DSPEffectType
 import com.marceloferlan.stagemobile.domain.model.InstrumentChannel
 import com.marceloferlan.stagemobile.midi.MidiDeviceState
 import com.marceloferlan.stagemobile.ui.components.MidiLearnState
@@ -272,7 +273,7 @@ fun InstrumentChannelStrip(
                 .fillMaxWidth()
         ) {
             Row(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(start = if (isTablet) 12.dp else 6.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.Center
             ) {
@@ -342,6 +343,55 @@ fun InstrumentChannelStrip(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.FillBounds
                 )
+            }
+            // DSP Effect Indicators (à direita do peak meter)
+            if (channel.dspEffects.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(if (isTablet) 10.dp else 5.dp))
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val effectLabels = mapOf(
+                        DSPEffectType.HPF to "HP",
+                        DSPEffectType.LPF to "LP",
+                        DSPEffectType.COMPRESSOR to "CP",
+                        DSPEffectType.EQ_PARAMETRIC to "EQ",
+                        DSPEffectType.CHORUS to "CH",
+                        DSPEffectType.TREMOLO to "TR",
+                        DSPEffectType.DELAY to "DL",
+                        DSPEffectType.REVERB to "RV",
+                        DSPEffectType.LIMITER to "LM"
+                    )
+                    channel.dspEffects
+                        .filter { it.type != DSPEffectType.REVERB_SEND }
+                        .forEach { effect ->
+                            val label = effectLabels[effect.type] ?: return@forEach
+                            val isOn = effect.isEnabled
+                            Box(
+                                modifier = Modifier
+                                    .width(if (isTablet) 26.dp else 16.dp)
+                                    .height(if (isTablet) 28.dp else 16.dp)
+                                    .padding(bottom = if (isTablet) 10.dp else 2.dp)
+                                    .clip(RoundedCornerShape(if (isTablet) 3.dp else 2.dp))
+                                    .background(if (isOn) Color(0xFF4CAF50).copy(alpha = 0.85f) else Color(0xFF2A2A2A))
+                                    .padding(0.5.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isOn) Color.White else Color(0xFF555555),
+                                    fontSize = if (isTablet) 10.sp else 8.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    maxLines = 1,
+                                    style = LocalTextStyle.current.copy(
+                                        lineHeight = if (isTablet) 11.sp else 9.sp,
+                                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                                    )
+                                )
+                            }
+                        }
+                }
             }
             } // Row
         } // Box (FADER + METER)

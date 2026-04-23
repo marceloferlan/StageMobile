@@ -1,6 +1,6 @@
 # StageMobile — TODO (Backlog Técnico)
 
-*Última atualização: 2026-04-21*
+*Última atualização: 2026-04-23*
 
 Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
@@ -51,10 +51,17 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 - [ ] **Contenção de mutex durante SF2 load** — `nativeLoadSf2` segura `engine_mutex` durante todo o parsing. Para SF2 grandes (500MB+), isso causa underruns.
 
+- [ ] **Benchmark DSP: STK vs Superpowered** — Testar se efeitos Superpowered (NEON-optimized) são significativamente mais rápidos que STK/custom (escalar). Plano detalhado em `docs/plan_dsp_benchmark_superpowered.md`. Fazer se AvgDspCh > 800µs com efeitos ativados.
+
 ---
 
 ## Concluídos (referência)
 
+- [x] **Indicadores DSP nos channel strips** — Quadrinhos (HP, LP, CP, EQ, CH, TR, DL, RV, LM) à direita do peak meter. Verde=ativo, escuro=inativo. Dimensões adaptativas phone/tablet. Concluído abril/2026.
+- [x] **SF2 import dialog fix** — Dialog de conflito redimensionado (era 90% da tela) + verificação de duplicata agora consulta Firestore (lista visível) em vez do filesystem (falso positivo com órfãos). Concluído abril/2026.
+- [x] **isTablet fix global** — `UiUtils.isTablet()` corrigido: `smallestScreenWidthDp >= 600` em vez de `screenWidthDp >= 600`. S24 Ultra em landscape não é mais detectado como tablet. Concluído abril/2026.
+- [x] **TopBar compacta phone** — Botões 26dp, logo 36×20dp, título 14sp, paddings reduzidos pra phone landscape. Concluído abril/2026.
+- [x] **LoginScreen layout horizontal phone** — Layout em Row (logo esquerda 30%, form direita 70%) pra caber em landscape de celular. TabletLoginCard extraído como composable compartilhado. Concluído abril/2026.
 - [x] **Seletor de Driver de Áudio** — "Android Nativo" vs "Otimizado (USB)" em Parâmetros Globais. Persiste em SharedPreferences. Superpowered só inicia se modo=1. Concluído abril/2026.
 - [x] **Channel culling** — Canais silenciosos (peak<0.001 + 0 notas) são removidos do `activeChannelsMask`. Economia de ~700µs/render idle. Concluído abril/2026.
 - [x] **SF2 unload fix (update=0 + programSelect reaffirm)** — `fluid_synth_sfunload` com update=0 + reafirmação de programSelect nos canais ativos. Concluído abril/2026.
