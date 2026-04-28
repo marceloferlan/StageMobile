@@ -1,5 +1,7 @@
 # Gradle
 .gradle/
+.gradle-home/
+.gradle_home/
 build/
 app/build/
 
@@ -23,3 +25,11 @@ local.properties
 **/google-services.json
 **/fabric.properties
 **/secrets.properties
+**/*-firebase-adminsdk-*.json
+
+# Firebase CLI (local project binding — não versionado)
+.firebaserc
+firebase.json
+
+# Claude Code MCP config (dev-específico, não versionado)
+.mcp.json
