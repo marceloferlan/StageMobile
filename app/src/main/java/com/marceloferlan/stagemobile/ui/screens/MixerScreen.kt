@@ -98,6 +98,8 @@ import com.marceloferlan.stagemobile.ui.mixer.MasterChannelStrip
 import com.marceloferlan.stagemobile.ui.mixer.VirtualKeyboard
 import com.marceloferlan.stagemobile.ui.mixer.InstrumentChannelSettingsPanel
 import com.marceloferlan.stagemobile.ui.components.MixerScreenInfoPanel
+import com.marceloferlan.stagemobile.viewmodel.FeedbackViewModel
+import com.marceloferlan.stagemobile.data.SettingsRepository
 import com.marceloferlan.stagemobile.ui.components.SF2PresetSelectorDialog
 import com.marceloferlan.stagemobile.ui.components.SetStageQuickSelectorDialog
 import com.marceloferlan.stagemobile.ui.components.InstrumentChannelOptionsMenu
@@ -153,6 +155,7 @@ fun MixerScreen(
     var showSaveAsDialog by remember { mutableStateOf(false) }
     // showQuickSelector and other visibility states are now in ViewModel (Phase 5)
     var showSaveCurrentConfirmation by remember { mutableStateOf(false) }
+    var showFeedbackScreen by remember { mutableStateOf(false) }
     
     // Obter canais e informações extras do ViewModel
     val activeMidiDevices by viewModel.activeMidiDevices.collectAsState()
@@ -191,6 +194,16 @@ fun MixerScreen(
 
     // Range selector is now handled in Advanced Settings Overlay or here if needed
     // Assuming for now it's not needed as local Dialog here.
+
+    if (showFeedbackScreen) {
+        val fbContext = LocalContext.current
+        val fbViewModel = remember { FeedbackViewModel(settingsRepository = SettingsRepository(fbContext)) }
+        FeedbackScreen(
+            viewModel = fbViewModel,
+            connectedMidiDevices = activeMidiDevices.toList(),
+            onDismiss = { showFeedbackScreen = false }
+        )
+    }
 
     // === Exit System Confirmation Dialog ===
     if (showExitConfirmation) {
@@ -427,6 +440,24 @@ fun MixerScreen(
                         onNavigateToDrumpads() 
                     },
                     icon = { Icon(Icons.Outlined.Apps, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Suporte / Feedback", fontSize = 16.sp) },
+                    selected = false,
+                    onClick = { 
+                        scope.launch { drawerState.close() }
+                        showFeedbackScreen = true
+                    },
+                    icon = { Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,
