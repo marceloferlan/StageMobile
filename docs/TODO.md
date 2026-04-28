@@ -35,23 +35,33 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 ---
 
+## Alta prioridade (nova branch `Stage-Mobile-DSP-USBDriver`)
+
+- [ ] **Driver USB próprio com libusb** — Substituir Superpowered por driver open-source (LGPL-2.1). Transferências isócronas diretas via libusb, sem depender do Android HAL. Plano detalhado em `docs/plan_usb_driver_and_neon_dsp.md`.
+
+- [ ] **NEON DSP: Delay** — Vetorizar delay line + feedback com NEON intrinsics (4 samples/iteração).
+
+- [ ] **NEON DSP: Reverb (FDN)** — Substituir STK FreeVerb por Feedback Delay Network vetorizado. Melhor qualidade + ~2-3× mais rápido.
+
+- [ ] **NEON DSP: Compressor gain stage** — Vetorizar a fase de aplicação de ganho do compressor.
+
+- [ ] **Remover módulo `:superpowered-usb`** — Após driver USB próprio funcional, remover Superpowered inteiro (lib, bridge, módulo Gradle).
+
+---
+
 ## Baixa prioridade (otimizações futuras)
 
-- [ ] **Add-on: Seletor de Driver de Áudio (IAP)** — Tornar a funcionalidade "Driver Otimizado USB" exclusiva para usuários que adquirirem o add-on via Google Play In-App Purchase.
-  - Arquitetura definida: Google Play Billing Library → Firebase Cloud Function valida compra → seta Custom Claim `audioDriverAddon: true` no token Firebase Auth → app verifica claim para liberar o seletor em `SystemGlobalSettings.kt`.
-  - Pré-requisito: Firebase Blaze Plan (pay-as-you-go) para Cloud Functions.
-  - Produto a criar no Google Play Console como *Non-consumable* (compra única permanente).
-  - Ver `docs/features.md` seção "Add-ons e Monetização" para a especificação completa.
+- [ ] **Add-on: Seletor de Driver de Áudio (IAP)** — Tornar o driver USB premium exclusivo via Google Play In-App Purchase. Ver `docs/features.md` seção "Add-ons e Monetização".
 
-- [ ] **Reduzir `synth.audio-channels` de 16 para 8** — FluidSynth itera todos os groups mesmo sem som. 8 grupos estéreo = 16 canais mono, suficiente, com ~40% menos overhead interno.
+- [ ] **Reduzir `synth.audio-channels` de 16 para 8** — FluidSynth itera todos os groups mesmo sem som. ~40% menos overhead interno.
 
-- [ ] **Pre-fill ring buffer antes de SF2 load** — Quando `nativeLoadSf2` segura `engine_mutex` por segundos, o ring buffer drena e causa underruns.
+- [ ] **Pre-fill ring buffer antes de SF2 load** — Temporariamente subir o target fill pra capacidade máxima antes do load.
 
-- [ ] **SIMD no LimiterEffect (Punch)** — O loop de saturação + envelope + gain é escalar. Pode ser vetorizado com NEON pra ~2× speedup.
+- [ ] **SIMD no LimiterEffect (Punch)** — Vetorizar saturação + envelope + gain com NEON.
 
-- [ ] **Contenção de mutex durante SF2 load** — `nativeLoadSf2` segura `engine_mutex` durante todo o parsing. Para SF2 grandes (500MB+), isso causa underruns.
+- [ ] **Contenção de mutex durante SF2 load** — Avaliar carga em 2 fases ou double-buffer com swap atômico.
 
-- [ ] **Benchmark DSP: STK vs Superpowered** — Testar se efeitos Superpowered (NEON-optimized) são significativamente mais rápidos que STK/custom (escalar). Plano detalhado em `docs/plan_dsp_benchmark_superpowered.md`. Fazer se AvgDspCh > 800µs com efeitos ativados.
+- [x] ~~**Benchmark DSP: STK vs Superpowered**~~ — Cancelado. Superpowered descartado por custo de licença. Substituído pelo plano de NEON próprio.
 
 ---
 

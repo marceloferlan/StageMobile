@@ -36,7 +36,8 @@
 | Documento | Cobre | Quando usar |
 |---|---|---|
 | [audio_performance_tuning.md](./audio_performance_tuning.md) | Per-phase APM, thread affinity, FluidSynth settings, voice overflow, fluxo de diagnóstico de clicks | Investigar glitches, otimizar latência, entender o APM HUD |
-| [plan_dsp_benchmark_superpowered.md](./plan_dsp_benchmark_superpowered.md) | Plano de benchmark: efeitos STK vs Superpowered SDK (reverb, delay, compressor) | Avaliar se vale migrar efeitos DSP pro Superpowered |
+| [plan_dsp_benchmark_superpowered.md](./plan_dsp_benchmark_superpowered.md) | Plano de benchmark: efeitos STK vs Superpowered SDK (cancelado — licença inviável) | Referência histórica |
+| [plan_usb_driver_and_neon_dsp.md](./plan_usb_driver_and_neon_dsp.md) | Plano ativo: driver USB próprio com libusb + otimização NEON dos efeitos DSP | Substituir Superpowered, otimizar efeitos |
 | [diagnostico_cpu.md](./diagnostico_cpu.md) | Análise de consumo de CPU por subsistema | Problemas de performance (CPU alta) |
 
 ### Comercial / Licenciamento
