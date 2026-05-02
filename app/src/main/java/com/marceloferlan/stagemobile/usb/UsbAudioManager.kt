@@ -13,8 +13,6 @@ import android.util.Log
 /**
  * UsbAudioManager — Gerenciador de hotplug USB e bridge JNI para o Driver USB Nativo.
  *
- * Substitui o SuperpoweredUSBAudioManager do módulo :superpowered-usb.
- *
  * Responsabilidades:
  *  - Registrar BroadcastReceiver para ação USB_DEVICE_ATTACHED / DETACHED
  *  - Solicitar permissão de acesso ao device Android UsbManager

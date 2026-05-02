@@ -36,11 +36,12 @@ O estágio final da interligação do motor de áudio. Trabalhamos primariamente
 ### 3.1. Oboe / OpenSL ES (Stand-Alone)
 Na ausência de interfaces externas, o StageMobile usa a biblioteca Oboe (`libsynthmodule.so`) preenchendo os callbacks ativados pelo Android Mixer Internamente.
 
-### 3.2. Superpowered USB Bypassing (Interfaces de Áudio)
+### 3.2. Driver USB Nativo com libusb (Interfaces de Áudio)
 Quando Placas de Áudio USB dedicadas são anexadas:
-- O sistema desvia logicamente o roteamento para a `libspbridge.so` (Submódulo compilado com `c++_static`).
-- Uma arquitetura paralela nativa do Superpowered SDK abre um **hardware FD (File Descriptor)** de interface para a DAC da placa, ultrapassando os mixers e os gargalos do kernel do Android.
-- A função JNI em C++ nativo cedeu uma CallBack em C Puro (`extern "C"`) via `dlsym` para solicitar ao DSPChain a renderização estanque enviada direto pro dispositivo sem atrasos.
+- O `UsbAudioManager.kt` detecta o hotplug e passa o file descriptor USB via JNI para o `usb_audio_driver.cpp`.
+- O driver nativo usa **libusb** (LGPL-2.1) para abrir o device via `libusb_wrap_sys_device(fd)` e realizar transferências isócronas diretas, bypassing o Android Audio HAL.
+- O driver lê do ring buffer compartilhado com `synthRenderLoop` e envia os frames de áudio diretamente pro DAC da interface USB.
+- Inclui polling de feedback UAC2 assíncrono com URBs contíguos de 16 pacotes para sincronização de clock.
 
 
 ## 3. Requisitos Funcionais

@@ -25,10 +25,9 @@ graph TD
         F --> G[FluidSynth Instance]
         G --> H[DSPChain Rack]
         H --> I[Google Oboe Render]
-        H --> N[sp_bridge C Render Callback]
-        N --> O[Superpowered USB Engine]
+        H --> N[USB Audio Driver libusb]
         I --> J[Saída de Áudio Interna/P2]
-        O --> P[Saída de Áudio Físca USB]
+        N --> P[Saída de Áudio USB Direta]
     end
 ```
 
@@ -38,7 +37,7 @@ graph TD
 - **Motor de Áudio (Nativo):**
     - **FluidSynth:** Síntese de áudio baseada em Wavetables (SoundFonts).
     - **Oboe:** API de áudio C++ da Google para latência ultra-baixa (Dispositivos Internos).
-    - **Superpowered SDK:** (Isolado no módulo `:superpowered-usb`) via Áudio USB direto em Hardware Bypass. Comunicação inter-bibliotecas feita por ponte C (`extern "C"` / `dlopen`).
+    - **libusb:** Driver USB próprio para transferências isócronas diretas (bypassa Android HAL). Open-source LGPL-2.1, integrado em `libsynthmodule.so`.
     - **STK (Synthesis Toolkit):** Algoritmos de efeitos DSP (Chorus, Reverb, EQ, etc.).
     - **SoundTouch:** Manipulação de Pitch e Time-stretch.
 - **Gerenciamento MIDI:** Android MidiManager API.

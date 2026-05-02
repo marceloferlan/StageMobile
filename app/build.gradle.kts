@@ -66,7 +66,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":superpowered-usb"))
     implementation("com.google.oboe:oboe:1.9.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
