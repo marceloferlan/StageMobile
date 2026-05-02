@@ -22,7 +22,6 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
     }
 
     private external fun nativeInit(sampleRate: Int, bufferSize: Int, deviceId: Int): Int
-    private external fun nativeRegisterSpBridge(): Boolean
     private external fun nativeLoadSf2(path: String): Int
     private external fun nativeUnloadSf2(sfId: Int): Boolean
     private external fun nativeNoteOn(channel: Int, key: Int, velocity: Int)
@@ -99,8 +98,6 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
             isInitialized = (result == 0) // 0 is oboe::Result::OK
             if (isInitialized) {
                 Log.i(TAG, "FluidSynth initialized @ $sampleRate Hz (Oboe OK)")
-                val bridgeRegistered = nativeRegisterSpBridge()
-                Log.i(TAG, "Superpowered Bridge registered: $bridgeRegistered")
             } else {
                 Log.e(TAG, "FluidSynth initialization FAILED with Oboe result: $result")
             }
@@ -110,7 +107,7 @@ class FluidSynthEngine(private val context: Context) : AudioEngine {
     fun forceInitializedState() {
         if (!isInitialized) {
             isInitialized = true
-            Log.i(TAG, "FluidSynthEngine forced to initialized state (Superpowered Bypass Mode)")
+            Log.i(TAG, "FluidSynthEngine forced to initialized state (USB Bypass Mode)")
         }
     }
 

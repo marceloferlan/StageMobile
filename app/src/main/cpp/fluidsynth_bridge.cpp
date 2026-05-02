@@ -15,8 +15,6 @@
 #include <condition_variable>
 #include <atomic>
 #include <math.h>
-#include <dlfcn.h>
-
 #include <oboe/Oboe.h>
 #include "include/fluidsynth.h"
 #include "include/fluidsynth/voice.h"
@@ -24,6 +22,7 @@
 #include <arm_neon.h>
 #include "Stk.h"
 #include "dsp_chain.h"
+#include "usb_audio_driver.h"
 
 #define LOG_TAG "StageAudioEngine"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -32,16 +31,15 @@
 
 using namespace stage_audio;
 
-// --- Globals (compartilhados com superpowered_usb_bridge.cpp via extern) ---
+// --- Globals ---
 std::recursive_mutex engine_mutex;
 static fluid_settings_t* settings = nullptr;
 fluid_synth_t* synth = nullptr;
 std::unique_ptr<DSPChain> dspChain = nullptr;
 std::atomic<bool> dspMasterBypass{false};
 
-// Ponteiro para verificar se o USB do Superpowered tomou o controle (via libspbridge.so)
-typedef int (*SpIsActiveFn)();
-static SpIsActiveFn spIsActiveFn = nullptr;
+// Driver USB Nativo (substitui Superpowered USB)
+static UsbAudioDriver usbDriver;
 
 // --- Performance Tracking (compartilhado) ---
 std::atomic<uint32_t> activeChannelsMask{0};
@@ -95,6 +93,14 @@ static std::condition_variable queueCv;
 // midiThread removida — MIDI agora é drenado dentro de renderAudioEngine (drainMidiQueue)
 
 // --- Asynchronous Audio Ring Buffer ---
+// Ring buffer de áudio para desacoplar o FluidSynth (produtor) do USB driver (consumidor).
+// Tamanho: 65536 floats = 32768 frames estéreo ≈ 682ms @ 48kHz.
+// MOTIVO DO AUMENTO (de 16384 para 65536):
+//   fluid_synth_nwrite_float(512 frames) leva ≈5-10ms de CPU.
+//   O USB drena 96 floats/ms (48kHz × 2ch). Em 10ms, drena 960 floats.
+//   Com FRAMES_PER_RENDER=512 → 1024 floats produzidos por bloco.
+//   Razão produção/consumo: 1024/960 ≈ 1.07 (margem muito estreita com buffer pequeno).
+//   Com buffer de 682ms, temos headroom suficiente para absorver jitter de CPU.
 #define RING_BUFFER_SIZE 16384
 #define RING_BUFFER_MASK (RING_BUFFER_SIZE - 1)
 static float synthRingBuffer[RING_BUFFER_SIZE];
@@ -151,7 +157,10 @@ static void drainMidiQueue() {
     }
 }
 
-static void renderAudioEngine(float* outputBuffer, int numFrames) {
+// Retorna true se renderizou dados válidos, false se o mutex não estava disponível.
+// IMPORTANTE: em caso de false, outputBuffer NÃO é modificado — o chamador não deve
+// usar seu conteúdo nem gravá-lo no ring buffer.
+static bool renderAudioEngine(float* outputBuffer, int numFrames) {
     if (numFrames > MAX_AUDIO_FRAME_SIZE) numFrames = MAX_AUDIO_FRAME_SIZE;
     for (int i = 0; i < 16; ++i) {
         spLeftPtrs[i] = spChannelBuffersL[i];
@@ -160,14 +169,19 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
 
     std::unique_lock<std::recursive_mutex> lock(engine_mutex, std::try_to_lock);
     if (!lock.owns_lock()) {
+        // ── MUTEX MISS: NÃO BLOQUEAR, NÃO GRAVAR ZEROS ──────────────────────
+        // Sinaliza ao chamador que não há dados válidos. O burst loop irá fazer
+        // yield e tentar novamente sem avançar o ring buffer write index.
+        // NUNCA escrever zeros em outputBuffer aqui — isso envenenaria o buffer.
+        // ─────────────────────────────────────────────────────────────────────
         apmMutexMiss.fetch_add(1);
-        lock.lock();
+        return false;
     }
     lastLockHolderTid.store(gettid(), std::memory_order_relaxed);
 
     if (!synth || !dspChain) {
         memset(outputBuffer, 0, numFrames * 2 * sizeof(float));
-        return;
+        return true; // dados válidos (silêncio intencional — engine não pronta)
     }
 
     // Drena MIDI antes da síntese — atômico com o render, zero contenção
@@ -242,6 +256,7 @@ static void renderAudioEngine(float* outputBuffer, int numFrames) {
     if (spMasterPeak >= 1.0f) {
         apmClips.fetch_add(1);
     }
+    return true; // dados válidos renderizados com sucesso
 }
 
 static void synthRenderLoop() {
@@ -331,37 +346,74 @@ static void synthRenderLoop() {
         
         size_t w = rbWriteIndex.load(std::memory_order_relaxed);
         size_t r = rbReadIndex.load(std::memory_order_acquire);
-        size_t bufferedFloats = w - r;
         
-        // Mantém cerca de 2048 floats (1024 frames) pré-renderizados
-        if (bufferedFloats < 2048) {
-            int framesToRender = 128; // Bloco leve em cálculo constante
-            int floatsToRender = framesToRender * 2;
-            
-            struct timespec start_ts, end_ts;
-            clock_gettime(CLOCK_MONOTONIC, &start_ts);
-
-            ATrace_beginSection("SM.RenderTotal");
-            renderAudioEngine(tempBuffer, framesToRender);
-            ATrace_endSection();
-
-            clock_gettime(CLOCK_MONOTONIC, &end_ts);
-            uint64_t ns = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000ULL + (end_ts.tv_nsec - start_ts.tv_nsec);
-            apmTotalCallbackNs.fetch_add(ns);
-            apmCallbackCount.fetch_add(1);
-            uint64_t currentMax = apmMaxCallbackNs.load();
-            while (ns > currentMax && !apmMaxCallbackNs.compare_exchange_weak(currentMax, ns)) {}
-            
-            // Grava no RingBuffer
-            for (int i = 0; i < floatsToRender; ++i) {
-                synthRingBuffer[(w + i) & RING_BUFFER_MASK] = tempBuffer[i];
-            }
-            rbWriteIndex.store(w + floatsToRender, std::memory_order_release);
-        } else {
+        // Em caso de reset assíncrono, aguarda o produtor alinhar
+        if (r > w) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+        size_t bufferedFloats = w - r;
+
+        // ── BURST MODE ────────────────────────────────────────────────────────
+        // FILL_TARGET = 4096 floats (~42ms @ 48kHz stereo).
+        // Dá margem o suficiente para que o thread de USB (que drena 12 floats/125us)
+        // não engasgue sem introduzir uma latência de toque indesejada.
+        static const size_t FILL_TARGET      = 4096;
+        // FRAMES_PER_RENDER=128: blocos curtos reduzem tempo de lock e garantem agilidade.
+        static const int    FRAMES_PER_RENDER = 128;
+        static const int    FLOATS_PER_RENDER  = FRAMES_PER_RENDER * 2; // 256
+
+        if (bufferedFloats < FILL_TARGET) {
+            // Renderiza blocos consecutivos até atingir o FILL_TARGET
+            // ou até o RING_BUFFER ficar sem espaço (proteção contra overflow)
+            while (true) {
+                w = rbWriteIndex.load(std::memory_order_relaxed);
+                r = rbReadIndex.load(std::memory_order_acquire);
+                bufferedFloats = w - r;
+
+                if (bufferedFloats >= FILL_TARGET) break; // buffer cheio o suficiente
+                if (bufferedFloats > RING_BUFFER_SIZE - FLOATS_PER_RENDER) break; // sem espaço
+
+                struct timespec start_ts, end_ts;
+                clock_gettime(CLOCK_MONOTONIC, &start_ts);
+
+                ATrace_beginSection("SM.RenderTotal");
+                bool rendered = renderAudioEngine(tempBuffer, FRAMES_PER_RENDER);
+                ATrace_endSection();
+
+                clock_gettime(CLOCK_MONOTONIC, &end_ts);
+                uint64_t ns = (end_ts.tv_sec - start_ts.tv_sec) * 1000000000ULL
+                            + (end_ts.tv_nsec - start_ts.tv_nsec);
+                apmTotalCallbackNs.fetch_add(ns);
+                apmCallbackCount.fetch_add(1);
+                uint64_t currentMax = apmMaxCallbackNs.load();
+                while (ns > currentMax && !apmMaxCallbackNs.compare_exchange_weak(currentMax, ns)) {}
+
+                if (!rendered) {
+                    // Mutex miss: não gravar zeros no ring buffer.
+                    // IMPORTANTE: yield() em SCHED_FIFO só cede para threads de igual/maior
+                    // prioridade. A thread de carregamento do SF2 (prioridade normal) nunca
+                    // conseguiria CPU para terminar e liberar o mutex → deadlock.
+                    // sleep_for() bloqueia genuinamente a thread RT, permitindo que o
+                    // scheduler execute threads de prioridade mais baixa (SF2 load, etc.).
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    continue;
+                }
+
+                // Grava no RingBuffer apenas dados válidos (thread-safe: único produtor)
+                for (int i = 0; i < FLOATS_PER_RENDER; ++i) {
+                    synthRingBuffer[(w + i) & RING_BUFFER_MASK] = tempBuffer[i];
+                }
+                rbWriteIndex.store(w + FLOATS_PER_RENDER, std::memory_order_release);
+            }
+        } else {
+            // Buffer cheio — aguarda o USB drená-lo um pouco antes de renderizar novamente.
+            // 500μs é suficiente para o USB drenar ~24 floats sem causar underrun.
+            std::this_thread::sleep_for(std::chrono::microseconds(500));
         }
     }
 }
+
 
 // midiProcessingLoop REMOVIDA — substituída por drainMidiQueue() inline no renderAudioEngine.
 // Pattern anterior (thread separada + engine_mutex per-event) causava contenção com synthRenderLoop.
@@ -376,13 +428,23 @@ public:
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream *audioStream, void *audioData, int32_t numFrames) override {
         float *outputBuffer = static_cast<float *>(audioData);
-        if (spIsActiveFn && spIsActiveFn() == 1) {
+        // Se o Driver USB Nativo estiver em STREAMING ativo, ele é o mestre.
+        // O Oboe gera silêncio para evitar dupla saída ou conflito de leitura no ring buffer.
+        // Usamos isStreaming() em vez de isActive() para permitir que o Oboe retome
+        // o speaker interno imediatamente se o streaming USB para a interface externa for parado.
+        if (usbDriver.isStreaming()) {
             memset(audioData, 0, numFrames * 2 * sizeof(float));
             return oboe::DataCallbackResult::Continue;
         }
 
         size_t w = rbWriteIndex.load(std::memory_order_acquire);
         size_t r = rbReadIndex.load(std::memory_order_relaxed);
+        
+        if (r > w) {
+            // Em caso de reset asíncrono, aguarde o produtor alinhar
+            memset(outputBuffer, 0, numFrames * 2 * sizeof(float));
+            return oboe::DataCallbackResult::Continue;
+        }
         size_t availableFloats = w - r;
         size_t requestedFloats = numFrames * 2;
         
@@ -443,26 +505,44 @@ private:
 static std::unique_ptr<StageAudioEngine> audioEngine = nullptr;
 
 // =====================================================================
-// Render callback para o Superpowered USB bridge (C puro)
-// Chamado pelo libspbridge.so quando Superpowered precisa de áudio
-static bool sp_render_audio(float* audioIO, int numFrames, int numChannels) {
+// usb_fill_audio() — chamado pelo UsbAudioDriver (Fase 3) para obter
+// áudio do ring buffer e alimentar a interface USB via isochronous OUT.
+// Por enquanto exposto como função estática; na Fase 3 será passado
+// como ponteiro de callback para UsbAudioDriver::startStreaming().
+extern "C" bool usb_fill_audio(float* audioIO, int numFrames, int numChannels) {
     if (numChannels != 2) return false;
-    
+
     size_t w = rbWriteIndex.load(std::memory_order_acquire);
     size_t r = rbReadIndex.load(std::memory_order_relaxed);
-    size_t availableFloats = w - r;
-    size_t requestedFloats = numFrames * 2;
     
-    if (availableFloats >= requestedFloats) {
-        for (size_t i = 0; i < requestedFloats; ++i) {
-            audioIO[i] = synthRingBuffer[(r + i) & RING_BUFFER_MASK];
-        }
-        rbReadIndex.store(r + requestedFloats, std::memory_order_release);
-    } else {
-        apmUnderruns.fetch_add(1);
-        memset(audioIO, 0, requestedFloats * sizeof(float));
+    size_t requestedFloats = (size_t)(numFrames * 2);
+
+    // Aritmética unsigned: w - r wraps corretamente para ring buffer circular.
+    // Isso evita falsos underruns quando o índice linear faz wrap-around.
+    size_t availableFloats = w - r;
+
+    // Guarda contra overflow: se o produtor estiver mais de RING_BUFFER_SIZE samples
+    // à frente, o consumidor está muito atrasado. Sincroniza o read para evitar
+    // leitura de dados velhos que causariam artefatos (eco, chorus).
+    if (availableFloats > RING_BUFFER_SIZE) {
+        rbReadIndex.store(w - requestedFloats, std::memory_order_release);
+        r = w - requestedFloats;
+        availableFloats = requestedFloats;
     }
-    return true;
+
+    if (availableFloats >= requestedFloats) {
+        for (size_t i = 0; i < requestedFloats; ++i)
+            audioIO[i] = synthRingBuffer[(r + i) & RING_BUFFER_MASK];
+        rbReadIndex.store(r + requestedFloats, std::memory_order_release);
+        return true;
+    } else {
+        // Underrun: ring buffer vazio. Retorna false para que fillPacketFromAudio
+        // faça early-return sem executar a conversão float→USB em dados zerados.
+        // Isso também evita o false-positive no DIAG "floats OK mas bytes USB = 00".
+        apmUnderruns.fetch_add(1, std::memory_order_relaxed);
+        memset(audioIO, 0, requestedFloats * sizeof(float));
+        return false; // ← sinaliza underrun ao driver
+    }
 }
 
 extern "C" {
@@ -474,12 +554,18 @@ Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeInit(
     if (audioEngine) {
         audioEngine->stop();
     }
+
+    // O Ring Buffer flui de forma assíncrona infinita e NUNCA deve
+    // ter seus apontadores r/w zerados no meio do caminho, pois isso
+    // corrompe permanentemente a lógica local das threads consumidora/produtora
+    // causando deadlock permanente (r > w ad aeternum).
+    // Deixe os índices rolarem circularmente sem destruir os dados da stream anterior (evitando gaps nulos).
     
     // 2. Agora sim trava o motor para reconstruir o FluidSynth e os Pointers
     std::lock_guard<std::recursive_mutex> lock(engine_mutex);
     ::stk::Stk::setSampleRate((float)sampleRate);
     
-    if (synth) { 
+    if (synth) {
         delete_fluid_synth(synth); 
         delete_fluid_settings(settings); 
     }
@@ -613,38 +699,74 @@ Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeResetApmC
     LOGI("APM counters reset");
 }
 
-// Registra o render callback do synthmodule no libspbridge.so via dlopen
+// ─────────────────────────────────────────────────────────────────────────────
+// JNI — Driver USB Nativo (libusb) — Fase 2+3
+// Chamado por UsbAudioManager.kt no app module.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * nativeUsbStart (Fase 2+3)
+ *   1. Probe de descritores (Fase 1)
+ *   2. Parse class-specific descriptors — detecta nrChannels, subframeSize
+ *   3. Claim interface + set alternate setting
+ *   4. Inicia isochronous OUT transfers conectados ao ring buffer
+ *
+ * @param fd         File descriptor USB do Android UsbManager
+ * @param sampleRate Sample rate solicitado (ex: 48000)
+ * @param channels   Canais de saída (ex: 2)
+ * @param testOnly   Se true: usa sine wave em vez do ring buffer (smoke test)
+ * @return JNI_TRUE se streaming iniciado
+ */
 JNIEXPORT jboolean JNICALL
-Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeRegisterSpBridge(
+Java_com_marceloferlan_stagemobile_usb_UsbAudioManager_nativeUsbStart(
+    JNIEnv* env, jobject thiz, jint fd, jint sampleRate, jint channels
+) {
+    LOGI("nativeUsbStart: fd=%d sr=%d ch=%d", (int)fd, (int)sampleRate, (int)channels);
+
+    // Fase 1: probe
+    bool ok = usbDriver.start((int)fd, (int)sampleRate, (int)channels);
+    if (!ok) {
+        LOGE("nativeUsbStart: probe falhou — sem endpoint ISO OUT");
+        return JNI_FALSE;
+    }
+    LOGI("nativeUsbStart: probe OK — iniciando streaming (Fase 3)");
+
+    // Fase 3: inicia streaming com o ring buffer como fonte de áudio
+    // usb_fill_audio é definido abaixo e lê do synthRingBuffer (lock-free)
+    bool streamed = usbDriver.startStreaming(usb_fill_audio);
+    if (!streamed) {
+        LOGE("nativeUsbStart: startStreaming falhou");
+        usbDriver.stop();
+        return JNI_FALSE;
+    }
+
+    const AudioFormat& fmt = usbDriver.audioFormat();
+    LOGI("USB Streaming ACTIVE: nrCh=%d subframe=%d bits=%d framesPerPkt=%d bytesPerPkt=%d",
+         fmt.nrChannels, fmt.subframeSize, fmt.bitResolution,
+         fmt.framesPerPacket, fmt.bytesPerPacket);
+    return JNI_TRUE;
+}
+
+/**
+ * nativeUsbStop — Para o streaming e fecha o device USB.
+ */
+JNIEXPORT void JNICALL
+Java_com_marceloferlan_stagemobile_usb_UsbAudioManager_nativeUsbStop(
     JNIEnv* env, jobject thiz
 ) {
-    // dlopen libspbridge.so (já carregada pelo SuperpoweredUSBAudioManager)
-    void* handle = dlopen("libspbridge.so", RTLD_NOW | RTLD_NOLOAD);
-    if (!handle) {
-        // Não carregada ainda — tentar carregar
-        handle = dlopen("libspbridge.so", RTLD_NOW);
-    }
-    if (!handle) {
-        LOGW("sp_bridge: libspbridge.so not available (USB module not loaded): %s", dlerror());
-        return JNI_FALSE;
-    }
-    
-    // Buscar a função de registro
-    typedef void (*RegisterFn)(bool (*)(float*, int, int));
-    RegisterFn registerFn = (RegisterFn)dlsym(handle, "sp_register_render_callback");
-    
-    // Buscar a função de check ativo
-    spIsActiveFn = (SpIsActiveFn)dlsym(handle, "sp_is_active");
-    
-    if (!registerFn) {
-        LOGE("sp_bridge: sp_register_render_callback not found in libspbridge.so: %s", dlerror());
-        return JNI_FALSE;
-    }
-    
-    // Registrar nosso render callback
-    registerFn(sp_render_audio);
-    LOGI("sp_bridge: Render callback registered in libspbridge.so — USB audio ready");
-    return JNI_TRUE;
+    LOGI("nativeUsbStop called");
+    usbDriver.stopStreaming();
+    usbDriver.stop();
+}
+
+/**
+ * nativeUsbIsActive — Retorna true se tanto a detecção quanto o streaming estão ativos.
+ */
+JNIEXPORT jboolean JNICALL
+Java_com_marceloferlan_stagemobile_usb_UsbAudioManager_nativeUsbIsActive(
+    JNIEnv* env, jobject thiz
+) {
+    return (usbDriver.isActive() && usbDriver.isStreaming()) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -736,6 +858,10 @@ JNIEXPORT void JNICALL
 Java_com_marceloferlan_stagemobile_audio_engine_FluidSynthEngine_nativeDestroy(JNIEnv* env, jobject thiz) {
     // midiThread removida — nada pra jointar
 
+    // Parar o driver USB se ele estiver rodando, para não ficar 'vampirizando' o ring buffer
+    // da instância que vamos destruir agora.
+    usbDriver.stopStreaming();
+    
     synthRenderThreadRunning.store(false);
     if (synthRenderThread.joinable()) synthRenderThread.join();
     

@@ -10,13 +10,41 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/externals/DSPFilters/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/externals/STK/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/externals/SoundTouch/include)
 
+# ─── libusb (LGPL-2.1) — compilada como parte do synthmodule ─────────────────
+# Sources e config.h oficiais do diretório android/ do repositório libusb.
+# Ref: externals/libusb/android/jni/libusb.mk
+set(LIBUSB_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/externals/libusb)
+
+include_directories(
+    ${LIBUSB_ROOT}/android          # config.h oficial para Android
+    ${LIBUSB_ROOT}/libusb           # libusb.h, libusbi.h
+    ${LIBUSB_ROOT}/libusb/os        # linux_usbfs.h, threads_posix.h, events_posix.h
+)
+
+set(LIBUSB_SOURCES
+    ${LIBUSB_ROOT}/libusb/core.c
+    ${LIBUSB_ROOT}/libusb/descriptor.c
+    ${LIBUSB_ROOT}/libusb/hotplug.c
+    ${LIBUSB_ROOT}/libusb/io.c
+    ${LIBUSB_ROOT}/libusb/sync.c
+    ${LIBUSB_ROOT}/libusb/strerror.c
+    ${LIBUSB_ROOT}/libusb/os/linux_usbfs.c
+    ${LIBUSB_ROOT}/libusb/os/events_posix.c
+    ${LIBUSB_ROOT}/libusb/os/threads_posix.c
+    ${LIBUSB_ROOT}/libusb/os/linux_netlink.c
+)
+
+# Flags idênticas ao Android.mk oficial da libusb
+set_source_files_properties(${LIBUSB_SOURCES} PROPERTIES
+    COMPILE_FLAGS "-fvisibility=hidden -Wno-sign-compare -Wno-unused-parameter"
+)
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Import pre-built FluidSynth shared library
 add_library(fluidsynth SHARED IMPORTED)
 set_target_properties(fluidsynth PROPERTIES
     IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libfluidsynth.so
 )
-
-
 
 # Source files groups
 set(DSP_SOURCES
@@ -69,11 +97,13 @@ set(SOUNDTOUCH_SOURCES
 )
 
 # Build our JNI bridge library
-add_library(synthmodule SHARED 
+add_library(synthmodule SHARED
     fluidsynth_bridge.cpp
+    usb_audio_driver.cpp
     ${DSP_SOURCES}
     ${STK_SOURCES}
     ${SOUNDTOUCH_SOURCES}
+    ${LIBUSB_SOURCES}
 )
 
 find_package(oboe REQUIRED CONFIG)

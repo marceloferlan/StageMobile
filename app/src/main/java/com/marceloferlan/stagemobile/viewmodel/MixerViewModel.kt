@@ -8,7 +8,7 @@ import com.marceloferlan.stagemobile.audio.engine.AudioEngine
 import com.marceloferlan.stagemobile.audio.engine.DummyAudioEngine
 import com.marceloferlan.stagemobile.audio.engine.FluidSynthEngine
 import com.marceloferlan.stagemobile.audio.AudioDeviceState
-import com.marceloferlan.stagemobile.superpowered.SuperpoweredUSBAudioManager
+import com.marceloferlan.stagemobile.usb.UsbAudioManager
 import com.marceloferlan.stagemobile.domain.model.InstrumentChannel
 import com.marceloferlan.stagemobile.utils.SystemResourceMonitor
 import com.marceloferlan.stagemobile.midi.MidiConnectionManager
@@ -53,7 +53,7 @@ class MixerViewModel : ViewModel() {
     val fluidEngine: FluidSynthEngine? get() = _audioEngine as? FluidSynthEngine
     private var midiManager: MidiConnectionManager? = null
     private var deviceAudioManager: com.marceloferlan.stagemobile.audio.DeviceAudioManager? = null
-    private var usbAudioManager: SuperpoweredUSBAudioManager? = null
+    private var usbAudioManager: UsbAudioManager? = null
     private var settingsRepo: SettingsRepository? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var appContext: Context? = null
@@ -1162,14 +1162,17 @@ class MixerViewModel : ViewModel() {
             
             startResourceMonitor(context)
             
-            // Inicializar Superpowered USB Audio apenas se o modo "Otimizado" estiver ativo
+            // Inicializar Driver USB Nativo apenas se o modo "Otimizado" estiver ativo
             if (_audioDriverMode.value == 1 && usbAudioManager == null) {
-                usbAudioManager = SuperpoweredUSBAudioManager(context)
-                usbAudioManager?.initialize()
-                usbAudioManager?.checkConnectedDevices()
-                Log.i(TAG, "Superpowered USB Audio Manager initialized (Driver Otimizado)")
+                usbAudioManager = UsbAudioManager(context).also {
+                    it.onDriverStateChanged = { active ->
+                        Log.i(TAG, "Driver USB Nativo: active=$active")
+                    }
+                    it.register()
+                }
+                Log.i(TAG, "Driver USB Nativo inicializado (modo Otimizado)")
             } else if (_audioDriverMode.value == 0) {
-                Log.i(TAG, "Audio Driver Mode: Android Nativo (Superpowered não inicializado)")
+                Log.i(TAG, "Audio Driver Mode: Android Nativo (Driver USB não inicializado)")
             }
             
             // Monitor de Saúde do Stream (Auto-Recovery)
@@ -1180,9 +1183,9 @@ class MixerViewModel : ViewModel() {
                     if (engine is FluidSynthEngine) {
                         val isDead = engine.isStreamDead()
                         val notInit = !engine.isInitialized
-                        // Superpowered só é considerado ativo se o modo for "Otimizado"
+                        // Driver USB Nátivo é considerado ativo se o modo for "Otimizado"
                         val spActive = if (_audioDriverMode.value == 1) {
-                            usbAudioManager?.isActive() ?: false
+                            usbAudioManager?.nativeUsbIsActive() ?: false
                         } else false
 
                         // Se o USB está ativo por hardware, o Oboe pode falhar. Ignoramos e mantemos os canais MIDI vivos.
@@ -2099,19 +2102,23 @@ class MixerViewModel : ViewModel() {
 
         when (mode) {
             0 -> {
-                // NATIVO — desativar Superpowered, Oboe retoma
+                // NATIVO — parar Driver USB, Oboe retoma
                 Log.i(TAG, "Switching to Driver Android Nativo")
-                usbAudioManager?.disconnectAll()
+                usbAudioManager?.unregister()
+                usbAudioManager = null
                 reinitAudioEngine(context)
             }
             1 -> {
-                // OTIMIZADO — ativar Superpowered
-                Log.i(TAG, "Switching to Driver Otimizado (Superpowered USB)")
+                // OTIMIZADO — ativar Driver USB Nativo
+                Log.i(TAG, "Switching to Driver USB Nativo (libusb)")
                 if (usbAudioManager == null) {
-                    usbAudioManager = SuperpoweredUSBAudioManager(context)
+                    usbAudioManager = UsbAudioManager(context).also {
+                        it.onDriverStateChanged = { active ->
+                            Log.i(TAG, "Driver USB Nativo: active=$active")
+                        }
+                        it.register()
+                    }
                 }
-                usbAudioManager?.initialize()
-                usbAudioManager?.checkConnectedDevices()
             }
         }
     }
@@ -2291,7 +2298,10 @@ class MixerViewModel : ViewModel() {
                     if (ch.sfId >= 0 && ch.soundFont != null) {
                         // CRITICAL: Extract base name (remove preset suffix [ ... ])
                         val baseName = ch.soundFont!!.substringBefore(" [")
-                        val restoredFile = File(context.filesDir, "sf2_ch${ch.id}_$baseName")
+                        
+                        // Utilizamos a lógica correta do SoundFontRepository que mapeia o internal filesDir corretamente
+                        val filePath = soundFontRepo?.getFilePath(baseName)
+                        val restoredFile = filePath?.let { File(it) } ?: File(context.filesDir, baseName)
                         
                         Log.d(TAG, "Restoring channel ${ch.id}: looking for $restoredFile")
                         
@@ -2324,8 +2334,34 @@ class MixerViewModel : ViewModel() {
                 
                 syncEffectsToEngine()
                 
+                // CRÍTICO: Sincroniza ativamente todos os faders de volume após a recriação da engine.
+                // Como o Oboe + FluidSynth foram jogados no lixo e instanciados novamente, 
+                // seus CC #7 (Volume) foram perdidos e a DSPChain Master zerada!
+                _channels.value.forEach { ch ->
+                    applyChannelVolumeToEngine(ch.id)
+                }
+                updateMasterVolume(_masterVolume.value)
+                
                 updateSystemEvent("Motor Reiniciado (${_bufferSize.value} samples)")
                 Log.i(TAG, "Audio Engine re-initialization COMPLETE")
+
+                // --- MANEJO DO DRIVER USB NATIVO NO REINIT ---
+                val currentDeviceName = _availableAudioDevices.value.find { it.id == _selectedAudioDeviceId.value }?.name ?: ""
+                val isUsbDevice = currentDeviceName.contains("USB", ignoreCase = true) || currentDeviceName.contains("Externa", ignoreCase = true)
+
+                if (_audioDriverMode.value == 1 && isUsbDevice) {
+                    Log.i(TAG, "Re-triggering USB Driver for $currentDeviceName (SR=$primarySampleRate)")
+                    usbAudioManager?.currentSampleRate = primarySampleRate
+                    usbAudioManager?.scanDevices()
+                } else {
+                    // Se mudamos para Oboe (speaker) ou Modo Nativo, garantimos que o USB pare
+                    Log.i(TAG, "Ensuring USB Driver is STOPPED (Mode=${_audioDriverMode.value}, Device=$currentDeviceName)")
+                    usbAudioManager?.stopStreaming()
+                    if (_audioDriverMode.value == 0) {
+                        usbAudioManager?.unregister()
+                        usbAudioManager = null
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error during Audio Engine re-initialization: ${e.message}", e)
                 updateSystemEvent("Erro ao reiniciar motor de áudio")
@@ -2690,6 +2726,14 @@ class MixerViewModel : ViewModel() {
             withContext(Dispatchers.Main) {
                 _hasUnsavedChanges.value = false
                 rebuildArmedChannelsCache()
+                
+                // Se o modo for USB (1), religa o driver após a re-inicialização da engine
+                if (_audioDriverMode.value == 1) {
+                    usbAudioManager?.scanDevices()
+                } else {
+                    usbAudioManager?.stopStreaming()
+                }
+                
                 Log.i(TAG, "Set Stage carregado: ${stage.name}")
                 updateSystemEvent("SET STAGE ATIVADO: ${stage.name}")
             }
