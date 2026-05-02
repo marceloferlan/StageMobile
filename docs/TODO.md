@@ -23,6 +23,12 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 ## Alta prioridade (performance / qualidade de áudio)
 
+- [ ] **Testar Backup de Configurações** — Salvar → limpar dados → restaurar → verificar que settings, Set Stages, MIDI Learn e metadados SF2 voltam.
+
+- [ ] **Testar Backup Completo** — Salvar com SF2s → limpar dados → restaurar → verificar que SF2s + config voltam. Requer Firebase Storage ativado no Console.
+
+- [ ] **Ativar Firebase Storage no Console** — Necessário para backup completo (upload/download de SF2). Firebase Console → Storage → Get Started.
+
 - [ ] **Validar novo Punch (Master Limiter)** — Redesenhado com saturação tanh + lookahead 64 samples + attack suavizado + auto makeup gain. Testar que som fica "gordo" sem clicks/artefatos.
 
 - [ ] **Validar PAD sustain fix** — Tracking de estado do pedal (`sustainPedalState`) adicionado no ViewModel. Testar que vozes não ficam presas após soltar o pedal.

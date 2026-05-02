@@ -172,7 +172,8 @@ class MainActivity : ComponentActivity() {
                                             onNavigateToDrumpads = { currentScreen = "drumpads" },
                                             onNavigateToContinuousPads = { currentScreen = "continuous_pads" },
                                             onNavigateToDownloads = { currentScreen = "downloads" },
-                                            onNavigateToSf2Maintenance = { currentScreen = "sf2_maintenance" }
+                                            onNavigateToSf2Maintenance = { currentScreen = "sf2_maintenance" },
+                                            onNavigateToBackup = { currentScreen = "backup" }
                                         )
                                     }
                                     "sf2_maintenance" -> {
@@ -190,6 +191,12 @@ class MainActivity : ComponentActivity() {
                                     "sets" -> SetsScreen(onNavigateBack = { currentScreen = "mixer" }, viewModel = viewModel)
                                     "drumpads" -> DrumpadsScreen(onNavigateBack = { currentScreen = "mixer" })
                                     "continuous_pads" -> ContinuousPadsScreen(onNavigateBack = { currentScreen = "mixer" })
+                                    "backup" -> BackupScreen(
+                                        onNavigateBack = { currentScreen = "mixer" },
+                                        onEngineReinit = {
+                                            viewModel.reinitAudioEngine(this@MainActivity)
+                                        }
+                                    )
                                     "downloads" -> DownloadsScreen(onNavigateBack = { currentScreen = "mixer" })
                                 }
                             }

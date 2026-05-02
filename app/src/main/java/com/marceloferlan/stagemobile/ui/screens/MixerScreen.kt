@@ -120,7 +120,8 @@ fun MixerScreen(
     onNavigateToDrumpads: () -> Unit = {},
     onNavigateToContinuousPads: () -> Unit = {},
     onNavigateToDownloads: () -> Unit = {},
-    onNavigateToSf2Maintenance: () -> Unit = {}
+    onNavigateToSf2Maintenance: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isTablet = UiUtils.rememberIsTablet()
@@ -513,6 +514,24 @@ fun MixerScreen(
                         onNavigateToDownloads() 
                     },
                     icon = { Icon(Icons.Outlined.CloudDownload, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = Color.Transparent,
+                        unselectedIconColor = Color.White,
+                        unselectedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .padding(drawerItemPadding)
+                        .height(drawerItemHeight)
+                )
+
+                NavigationDrawerItem(
+                    label = { Text("Backup & Restauração", fontSize = 16.sp) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToBackup()
+                    },
+                    icon = { Icon(Icons.Outlined.Backup, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,

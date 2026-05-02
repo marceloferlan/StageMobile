@@ -151,7 +151,7 @@ class MixerViewModel : ViewModel() {
     private val _isDspMasterBypass = MutableStateFlow(false)
     val isDspMasterBypass: StateFlow<Boolean> = _isDspMasterBypass.asStateFlow()
 
-    // 0 = Driver Android Nativo (Oboe/AAudio), 1 = Driver Otimizado (Superpowered USB)
+    // 0 = Driver Android Nativo (Oboe/AAudio), 1 = Driver Otimizado (libusb USB)
     private val _audioDriverMode = MutableStateFlow(0)
     val audioDriverMode: StateFlow<Int> = _audioDriverMode.asStateFlow()
 
@@ -2249,7 +2249,7 @@ class MixerViewModel : ViewModel() {
         }
     }
 
-    private fun reinitAudioEngine(context: Context) {
+    fun reinitAudioEngine(context: Context) {
         if (_audioEngine is DummyAudioEngine || isReinitializing) return
         
         isReinitializing = true
