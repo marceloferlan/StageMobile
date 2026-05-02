@@ -268,3 +268,27 @@ Procurar por:
 - [ ] Spikes residuais reduzidos após runtime core detection
 - [ ] Disaster window no switch piano 1 → piano 2 eliminada
 - [ ] Underruns permanecem em 0 durante playback prolongado
+
+---
+
+## 9. Estabilidade USB & Resolução do Artifact "Pulse"
+
+### 9.1 Problema: O "Pulse" de 5Hz
+Durante a estabilização final do motor de áudio USB assíncrono (High-Speed UAC2), notou-se um ruído rítmico persistente semelhante a um "tsc" ocorrendo de forma constante e equidistante (~5Hz), audível em notas prolongadas. 
+
+### 9.2 Causa Raiz: Starvation Assíncrono do UAC2 Feedback
+O protocolo UAC2 Assíncrono exige que o host (Android) se adapte à frequência do cristal de hardware do DAC (ex: PreSonus) usando um endpoint isócrono de Feedback (EP 0x82).
+A telemetria profunda revelou que o Android não estava recebendo este feedback (`rate=0.0000`, `fb_cnt=0`), fazendo o driver injetar exatamente 48000Hz. No entanto, o cristal do DAC operava ligeiramente mais rápido (ex: `6.0005` frames por microframe). Sem adaptação, o DAC sofria starvations cíclicos (5 frames em falta por segundo), resultando no "pulse".
+
+O motivo de o Android não receber o feedback: O UAC2 define que o endpoint de feedback dispara dados com `interval=4` (1 vez a cada 8 microframes = 1 milissegundo). O driver antigo alocava transferências não-contíguas de 1 pacote. O kernel escalonava esse pacote de escuta em microframes aleatórios, errando quase sempre a janela de emissão da placa de áudio.
+
+### 9.3 Correção: Contiguous Isochronous Polling
+A solução exigiu remodelar o agrupamento de escuta do USB (URB queueing) para alocar blocos de transferências contíguas. O driver passou a alocar `16 packets` por transferência (2ms de janela de escuta ininterrupta). Isso instruiu o kernel a manter o bus de entrada isócrono sempre aberto.
+Como resultado, a escuta intercepta o microframe premiado em cada milissegundo.
+
+### 9.4 Validação
+O log de telemetria comprovou a correção:
+- `fb_cnt` (taxa de eventos de feedback capturados) decolou para exatos 1.000 disparos por segundo.
+- O campo `rate` destravou para o valor em tempo-real (`6.0005`).
+- O acumulador de drift `adapts` ajustou de forma autônoma o `framesPerPacket` injetado pelo Android.
+- O ring buffer de amostras passou a operar estabilizado (`peakFloat` normal), extinguindo o ruído.
