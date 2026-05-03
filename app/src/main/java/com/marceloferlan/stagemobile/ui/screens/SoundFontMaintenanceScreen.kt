@@ -80,7 +80,7 @@ fun SoundFontMaintenanceScreen(
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Pasta", fontSize = 13.sp)
                         }
