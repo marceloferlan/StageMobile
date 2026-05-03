@@ -24,7 +24,7 @@ import java.util.UUID
  */
 class BackupRepository(
     private val context: Context,
-    private val storageProvider: BackupStorageProvider = FirebaseStorageProvider()
+    private val storageProvider: BackupStorageProvider = CloudflareR2StorageProvider()
 ) {
     companion object {
         private const val TAG = "BackupRepository"

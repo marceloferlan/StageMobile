@@ -1,0 +1,8 @@
+name = "stagemobile-backup-worker"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+account_id = "a36f4d7805041c28078e41e472210154"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "stagemobile-backups"
