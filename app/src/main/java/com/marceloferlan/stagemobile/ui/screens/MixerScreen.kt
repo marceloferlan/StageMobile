@@ -531,7 +531,7 @@ fun MixerScreen(
                         scope.launch { drawerState.close() }
                         onNavigateToBackup()
                     },
-                    icon = { Icon(Icons.Outlined.CloudUpload, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    icon = { Icon(Icons.Outlined.Cloud, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,

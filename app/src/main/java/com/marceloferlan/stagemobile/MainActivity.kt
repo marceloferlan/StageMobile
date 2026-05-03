@@ -1039,4 +1039,3 @@ internal fun formatSize(bytes: Long): String {
         else -> String.format(java.util.Locale.US, "%.2f GB", bytes / 1_073_741_824.0)
     }
 }
-}
