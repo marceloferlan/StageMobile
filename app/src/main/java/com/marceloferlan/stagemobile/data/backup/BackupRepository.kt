@@ -92,7 +92,8 @@ class BackupRepository(
     /**
      * Restaura um backup de configurações.
      */
-    suspend fun restoreConfigBackup(onProgress: ((String) -> Unit)? = null): Result<Unit> = try {
+    suspend fun restoreConfigBackup(onProgress: ((String) -> Unit)? = null): Result<Unit> {
+        return try {
         onProgress?.invoke("Baixando configurações...")
         val doc = db.collection("backups").document(userId)
             .collection("data").document("config")
@@ -113,6 +114,7 @@ class BackupRepository(
     } catch (e: Exception) {
         Log.e(TAG, "Config restore failed: ${e.message}", e)
         Result.failure(e)
+    }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -200,8 +202,8 @@ class BackupRepository(
     /**
      * Restaura um backup completo (config + arquivos SF2).
      */
-    suspend fun restoreFullBackup(onProgress: ((String, Float) -> Unit)? = null): Result<Unit> = try {
-        // 1. Restaura config
+    suspend fun restoreFullBackup(onProgress: ((String, Float) -> Unit)? = null): Result<Unit> {
+        return try {
         onProgress?.invoke("Baixando configurações...", 0f)
         val doc = db.collection("backups").document(userId)
             .collection("data").document("full")
@@ -245,6 +247,7 @@ class BackupRepository(
     } catch (e: Exception) {
         Log.e(TAG, "Full restore failed: ${e.message}", e)
         Result.failure(e)
+    }
     }
 
     // ════════════════════════════════════════════════════════════════════

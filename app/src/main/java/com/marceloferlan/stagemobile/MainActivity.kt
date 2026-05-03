@@ -47,6 +47,13 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.core.content.ContextCompat
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -939,7 +946,7 @@ fun BatchImportOverlay(
                             ) {
                                 Checkbox(
                                     checked = file.selected,
-                                    onCheckedChange = { sf2Files[index] = file.copy(selected = it) },
+                                    onCheckedChange = { checked -> sf2Files[index] = file.copy(selected = checked) },
                                     colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50)),
                                     modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)
                                 )
@@ -976,7 +983,8 @@ fun BatchImportOverlay(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Categoria (aplicada a todos):", color = Color.Gray, fontSize = 11.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    androidx.compose.foundation.layout.FlowRow(
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -1023,7 +1031,7 @@ fun BatchImportOverlay(
     }
 }
 
-private fun formatSize(bytes: Long): String {
+internal fun formatSize(bytes: Long): String {
     return when {
         bytes < 1024 -> "$bytes B"
         bytes < 1_048_576 -> "${bytes / 1024} KB"
