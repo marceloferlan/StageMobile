@@ -258,12 +258,19 @@ class BackupRepository(
      * Retorna o metadata do backup de configurações (se existir).
      */
     suspend fun getConfigBackupInfo(): BackupMetadata? = try {
-        val doc = db.collection("backups").document(userId)
-            .collection("metadata").document("config")
-            .get().await()
+        val doc = try {
+            db.collection("backups").document(userId)
+                .collection("metadata").document("config")
+                .get(com.google.firebase.firestore.Source.SERVER).await()
+        } catch (_: Exception) {
+            // Fallback: cache local (funciona offline)
+            db.collection("backups").document(userId)
+                .collection("metadata").document("config")
+                .get(com.google.firebase.firestore.Source.CACHE).await()
+        }
         if (doc.exists()) BackupMetadata.fromMap(doc.data ?: emptyMap()) else null
     } catch (e: Exception) {
-        Log.e(TAG, "Failed to get config backup info: ${e.message}")
+        Log.w(TAG, "No config backup info available: ${e.message}")
         null
     }
 
@@ -271,12 +278,18 @@ class BackupRepository(
      * Retorna o metadata do backup completo (se existir).
      */
     suspend fun getFullBackupInfo(): BackupMetadata? = try {
-        val doc = db.collection("backups").document(userId)
-            .collection("metadata").document("full")
-            .get().await()
+        val doc = try {
+            db.collection("backups").document(userId)
+                .collection("metadata").document("full")
+                .get(com.google.firebase.firestore.Source.SERVER).await()
+        } catch (_: Exception) {
+            db.collection("backups").document(userId)
+                .collection("metadata").document("full")
+                .get(com.google.firebase.firestore.Source.CACHE).await()
+        }
         if (doc.exists()) BackupMetadata.fromMap(doc.data ?: emptyMap()) else null
     } catch (e: Exception) {
-        Log.e(TAG, "Failed to get full backup info: ${e.message}")
+        Log.w(TAG, "No full backup info available: ${e.message}")
         null
     }
 

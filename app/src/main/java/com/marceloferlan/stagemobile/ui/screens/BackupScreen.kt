@@ -39,6 +39,8 @@ fun BackupScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Scope que sobrevive à navegação (backup não deve ser cancelado se o usuário sair da tela)
+    val persistentScope = remember { kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()) }
     val isTablet = UiUtils.rememberIsTablet()
     val backupRepo = remember { BackupRepository(context) }
 
@@ -93,7 +95,7 @@ fun BackupScreen(
                     if (configBackupInfo != null) {
                         showConfirmOverwrite = BackupType.CONFIG
                     } else {
-                        performConfigBackup(scope, backupRepo, context, onEngineReinit,
+                        performConfigBackup(persistentScope, backupRepo, context, onEngineReinit,
                             onStart = { isLoading = true; progressMessage = it },
                             onDone = { meta, err ->
                                 isLoading = false; progressMessage = null
@@ -117,7 +119,7 @@ fun BackupScreen(
                     if (fullBackupInfo != null) {
                         showConfirmOverwrite = BackupType.FULL
                     } else {
-                        performFullBackup(scope, backupRepo, context, onEngineReinit,
+                        performFullBackup(persistentScope, backupRepo, context, onEngineReinit,
                             onStart = { msg, prog -> isLoading = true; progressMessage = msg; progressValue = prog },
                             onDone = { meta, err ->
                                 isLoading = false; progressMessage = null; progressValue = 0f
@@ -177,7 +179,7 @@ fun BackupScreen(
                     TextButton(onClick = {
                         showConfirmOverwrite = null
                         if (type == BackupType.CONFIG) {
-                            performConfigBackup(scope, backupRepo, context, onEngineReinit,
+                            performConfigBackup(persistentScope, backupRepo, context, onEngineReinit,
                                 onStart = { isLoading = true; progressMessage = it },
                                 onDone = { meta, err ->
                                     isLoading = false; progressMessage = null
@@ -185,7 +187,7 @@ fun BackupScreen(
                                     if (err != null) Toast.makeText(context, err, Toast.LENGTH_LONG).show()
                                 })
                         } else {
-                            performFullBackup(scope, backupRepo, context, onEngineReinit,
+                            performFullBackup(persistentScope, backupRepo, context, onEngineReinit,
                                 onStart = { msg, prog -> isLoading = true; progressMessage = msg; progressValue = prog },
                                 onDone = { meta, err ->
                                     isLoading = false; progressMessage = null; progressValue = 0f
@@ -213,7 +215,7 @@ fun BackupScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         showConfirmRestore = null
-                        scope.launch {
+                        persistentScope.launch {
                             isLoading = true
                             val result = if (type == BackupType.CONFIG) {
                                 progressMessage = "Restaurando configurações..."

@@ -41,12 +41,19 @@ data class ConfigSnapshot(
             val settingsMap = serializePrefs(settingsPrefs)
             val setsMap = serializePrefs(setsPrefs)
 
-            // 2. Buscar metadados SF2 do Firestore
+            // 2. Buscar metadados SF2 do Firestore (cache-first pra funcionar offline)
             val sf2Metadata = try {
-                val snapshot = FirebaseFirestore.getInstance()
-                    .collection("soundfonts")
-                    .get()
-                    .await()
+                val snapshot = try {
+                    FirebaseFirestore.getInstance()
+                        .collection("soundfonts")
+                        .get(com.google.firebase.firestore.Source.CACHE)
+                        .await()
+                } catch (_: Exception) {
+                    FirebaseFirestore.getInstance()
+                        .collection("soundfonts")
+                        .get(com.google.firebase.firestore.Source.SERVER)
+                        .await()
+                }
                 snapshot.documents.map { doc ->
                     val data = doc.data?.toMutableMap() ?: mutableMapOf()
                     data["_docId"] = doc.id
