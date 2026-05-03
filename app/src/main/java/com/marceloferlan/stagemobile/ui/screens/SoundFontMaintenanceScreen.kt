@@ -56,6 +56,13 @@ fun SoundFontMaintenanceScreen(
         }
     )
 
+    val folderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { treeUri ->
+            treeUri?.let { viewModel.showBatchImport(it) }
+        }
+    )
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,14 +74,26 @@ fun SoundFontMaintenanceScreen(
                 },
                 actions = {
                     Button(
-                        onClick = { 
+                        onClick = { folderLauncher.launch(null) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Pasta", fontSize = 13.sp)
+                        }
+                    }
+                    Button(
+                        onClick = {
                             launcher.launch(arrayOf(
                                 "application/x-soundfont",
                                 "audio/x-soundfont",
                                 "audio/soundfont",
                                 "application/octet-stream",
                                 "audio/*"
-                            )) 
+                            ))
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                         shape = RoundedCornerShape(8.dp),
@@ -83,7 +102,7 @@ fun SoundFontMaintenanceScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Importar SF2", fontSize = 13.sp)
+                            Text("Arquivo", fontSize = 13.sp)
                         }
                     }
                 },

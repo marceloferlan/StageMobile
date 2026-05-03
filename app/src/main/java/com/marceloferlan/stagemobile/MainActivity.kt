@@ -454,6 +454,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        // Batch Import Overlay (folder import)
+                        val showBatchImport by viewModel.showBatchImport.collectAsState()
+                        val batchImportState by viewModel.batchImportState.collectAsState()
+                        showBatchImport?.let { treeUri ->
+                            BatchImportOverlay(
+                                treeUri = treeUri,
+                                batchState = batchImportState,
+                                viewModel = viewModel,
+                                onDismiss = { viewModel.dismissBatchImport() }
+                            )
+                        }
+
                         val showSf2Rename by viewModel.showSf2RenameDialog.collectAsState()
                         showSf2Rename?.let { sf2 ->
                             RenameSF2Overlay(
@@ -766,4 +778,257 @@ fun RenameSF2Overlay(
             }
         }
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Batch Import Overlay — folder SF2 import
+// ═══════════════════════════════════════════════════════════════════════
+
+data class Sf2FileInfo(
+    val uri: android.net.Uri,
+    val name: String,
+    val size: Long,
+    val alreadyExists: Boolean,
+    var selected: Boolean = true
+)
+
+@Composable
+fun BatchImportOverlay(
+    treeUri: android.net.Uri,
+    batchState: MixerViewModel.BatchImportState?,
+    viewModel: MixerViewModel,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
+    val categories = listOf("Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", "Brass", "Strings", "Organ", "Bells", "Guitar", "Drums/Percussion", "FX", "Outros")
+    val selectedTags = remember { mutableStateListOf<String>() }
+
+    // Scan folder for SF2 files
+    val sf2Files = remember(treeUri) {
+        mutableStateListOf<Sf2FileInfo>().apply {
+            val docUri = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, treeUri)
+            docUri?.listFiles()?.forEach { file ->
+                if (file.isFile && file.name?.endsWith(".sf2", ignoreCase = true) == true) {
+                    add(Sf2FileInfo(
+                        uri = file.uri,
+                        name = file.name ?: "unknown.sf2",
+                        size = file.length(),
+                        alreadyExists = viewModel.isSoundFontInLibrary(file.name ?: "")
+                    ))
+                }
+            }
+            sortBy { it.name.lowercase() }
+        }
+    }
+
+    // Storage check
+    val availableBytes = remember {
+        val stat = android.os.StatFs(context.filesDir.path)
+        stat.availableBytes
+    }
+    val selectedFiles = sf2Files.filter { it.selected }
+    val totalSelectedSize = selectedFiles.sumOf { it.size }
+    val hasEnoughSpace = totalSelectedSize < (availableBytes * 0.9).toLong()
+
+    // Is importing?
+    val isImporting = batchState != null
+
+    BackHandler(onBack = { if (!isImporting) onDismiss() })
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .clickable(enabled = !isImporting) { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(if (isTablet) 0.6f else 0.92f)
+                .fillMaxHeight(if (isTablet) 0.85f else 0.9f)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF1E1E1E)
+        ) {
+            Column(modifier = Modifier.padding(if (isTablet) 20.dp else 14.dp)) {
+                // Header
+                Text(
+                    text = if (isImporting) "IMPORTANDO SOUNDFONTS (${batchState?.currentIndex} de ${batchState?.totalFiles})" else "IMPORTAR PASTA DE SOUNDFONTS",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (isTablet) 18.sp else 14.sp
+                )
+
+                if (!isImporting) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("${sf2Files.size} arquivo(s) .sf2 encontrado(s)", color = Color.Gray, fontSize = 12.sp)
+                }
+
+                Spacer(modifier = Modifier.height(if (isTablet) 12.dp else 8.dp))
+
+                if (sf2Files.isEmpty()) {
+                    // No SF2 files found
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Text("Nenhum arquivo .sf2 encontrado nesta pasta.", color = Color.Gray, fontSize = 14.sp, textAlign = TextAlign.Center)
+                    }
+                } else if (isImporting) {
+                    // ── IMPORTING STATE ──
+                    Column(modifier = Modifier.weight(1f)) {
+                        // Current file progress
+                        Text(batchState?.currentFile ?: "", color = Color(0xFF26C6DA), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { batchState?.fileProgress ?: 0f },
+                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                            color = Color(0xFF26C6DA),
+                            trackColor = Color(0xFF333333)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("${((batchState?.fileProgress ?: 0f) * 100).toInt()}%", color = Color.LightGray, fontSize = 11.sp)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // File list with status
+                        androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                            sf2Files.filter { it.selected }.forEachIndexed { idx, file ->
+                                item {
+                                    val completed = batchState?.completedFiles?.contains(file.name) == true
+                                    val failed = batchState?.failedFiles?.contains(file.name) == true
+                                    val isCurrent = batchState?.currentFile == file.name
+                                    val icon = when {
+                                        completed -> "✓"
+                                        failed -> "✗"
+                                        isCurrent -> "⏳"
+                                        else -> "○"
+                                    }
+                                    val color = when {
+                                        completed -> Color(0xFF4CAF50)
+                                        failed -> Color(0xFFEF5350)
+                                        isCurrent -> Color(0xFF26C6DA)
+                                        else -> Color.Gray
+                                    }
+                                    Text(
+                                        "$icon ${file.name} — ${formatSize(file.size)}",
+                                        color = color,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Cancel button
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { viewModel.cancelBatchImport() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("CANCELAR", color = Color(0xFFEF5350))
+                    }
+                } else {
+                    // ── SELECTION STATE ──
+                    // File list with checkboxes
+                    androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(sf2Files.size) { index ->
+                            val file = sf2Files[index]
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { sf2Files[index] = file.copy(selected = !file.selected) }
+                                    .padding(vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = file.selected,
+                                    onCheckedChange = { sf2Files[index] = file.copy(selected = it) },
+                                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50)),
+                                    modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(file.name, color = Color.White, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(formatSize(file.size), color = Color.Gray, fontSize = 11.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (file.alreadyExists) "Existe" else "Novo",
+                                    color = if (file.alreadyExists) Color(0xFFFFA000) else Color(0xFF4CAF50),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    // Storage info
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Necessário: ${formatSize(totalSelectedSize)}", color = Color.LightGray, fontSize = 11.sp)
+                        Text(
+                            "Disponível: ${formatSize(availableBytes)}",
+                            color = if (hasEnoughSpace) Color(0xFF4CAF50) else Color(0xFFEF5350),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (!hasEnoughSpace) {
+                        Text("⚠ Espaço insuficiente no dispositivo!", color = Color(0xFFEF5350), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+                    }
+
+                    // Tags
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Categoria (aplicada a todos):", color = Color.Gray, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        categories.forEach { cat ->
+                            val isSelected = cat in selectedTags
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { if (isSelected) selectedTags.remove(cat) else selectedTags.add(cat) },
+                                label = { Text(cat, fontSize = 10.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF4CAF50).copy(alpha = 0.3f),
+                                    selectedLabelColor = Color(0xFF4CAF50)
+                                ),
+                                modifier = Modifier.height(28.dp)
+                            )
+                        }
+                    }
+
+                    // Action buttons
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                            Text("CANCELAR", color = Color.Gray)
+                        }
+                        Button(
+                            onClick = {
+                                val toImport = sf2Files.filter { it.selected }.map { Pair(it.uri, it.name) }
+                                viewModel.importBatchSoundFonts(toImport, selectedTags.toList())
+                            },
+                            enabled = selectedFiles.isNotEmpty() && selectedTags.isNotEmpty() && hasEnoughSpace,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50),
+                                disabledContainerColor = Color(0xFF333333)
+                            )
+                        ) {
+                            Text("IMPORTAR ${selectedFiles.size} ARQUIVO(S)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatSize(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1_048_576 -> "${bytes / 1024} KB"
+        bytes < 1_073_741_824 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_048_576.0)
+        else -> String.format(java.util.Locale.US, "%.2f GB", bytes / 1_073_741_824.0)
+    }
+}
 }

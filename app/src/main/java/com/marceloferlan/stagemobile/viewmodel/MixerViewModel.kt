@@ -263,6 +263,90 @@ class MixerViewModel : ViewModel() {
     private val _importProgress = MutableStateFlow<Float?>(null)
     val importProgress = _importProgress.asStateFlow()
 
+    // Batch import state
+    private val _showBatchImport = MutableStateFlow<android.net.Uri?>(null)
+    val showBatchImport = _showBatchImport.asStateFlow()
+
+    data class BatchImportState(
+        val currentFile: String = "",
+        val currentIndex: Int = 0,
+        val totalFiles: Int = 0,
+        val fileProgress: Float = 0f,
+        val completedFiles: MutableList<String> = mutableListOf(),
+        val failedFiles: MutableList<String> = mutableListOf(),
+        val isCancelled: Boolean = false
+    )
+
+    private val _batchImportState = MutableStateFlow<BatchImportState?>(null)
+    val batchImportState = _batchImportState.asStateFlow()
+
+    fun showBatchImport(treeUri: android.net.Uri) {
+        _showBatchImport.value = treeUri
+    }
+
+    fun dismissBatchImport() {
+        _showBatchImport.value = null
+    }
+
+    fun cancelBatchImport() {
+        _batchImportState.value = _batchImportState.value?.copy(isCancelled = true)
+    }
+
+    /**
+     * Importa uma lista de SF2 sequencialmente com progresso individual.
+     */
+    fun importBatchSoundFonts(
+        files: List<Pair<android.net.Uri, String>>, // (uri, fileName)
+        tags: List<String>
+    ) {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val state = BatchImportState(totalFiles = files.size)
+            _batchImportState.value = state
+
+            for ((index, pair) in files.withIndex()) {
+                val (uri, fileName) = pair
+
+                // Check cancellation
+                if (_batchImportState.value?.isCancelled == true) break
+
+                _batchImportState.value = _batchImportState.value?.copy(
+                    currentFile = fileName,
+                    currentIndex = index + 1,
+                    fileProgress = 0f
+                )
+
+                val result = soundFontRepo?.importSoundFont(uri, fileName, tags) { progress ->
+                    _batchImportState.value = _batchImportState.value?.copy(fileProgress = progress)
+                }
+
+                if (result?.isSuccess == true) {
+                    _batchImportState.value?.completedFiles?.add(fileName)
+                } else {
+                    _batchImportState.value?.failedFiles?.add(fileName)
+                }
+            }
+
+            // Keep final state briefly for summary display
+            val finalState = _batchImportState.value
+            kotlinx.coroutines.delay(500)
+            _batchImportState.value = null
+            dismissBatchImport()
+
+            // Return result count for toast (via main thread)
+            val completed = finalState?.completedFiles?.size ?: 0
+            val failed = finalState?.failedFiles?.size ?: 0
+            val cancelled = finalState?.isCancelled == true
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                val msg = buildString {
+                    append("$completed arquivo(s) importado(s)")
+                    if (failed > 0) append(", $failed falha(s)")
+                    if (cancelled) append(" (cancelado)")
+                }
+                _lastSystemEvent.tryEmit(msg)
+            }
+        }
+    }
+
     fun showSoundFontSelector(channelId: Int) {
         _showSoundFontSelectorForChannel.value = channelId
     }
