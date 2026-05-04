@@ -1,6 +1,6 @@
 # StageMobile — TODO (Backlog Técnico)
 
-*Última atualização: 2026-04-23*
+*Última atualização: 2026-05-03*
 
 Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
@@ -18,20 +18,19 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 - [x] **Firebase Auth (primeira instalação)** — Login com E-mail/Senha e Google Sign-In implementado em abril/2026. `AuthRepository.kt` + `LoginScreen.kt` + roteamento em `MainActivity.kt`.
 
-
 ---
 
 ## Alta prioridade (performance / qualidade de áudio)
 
-- [ ] **Testar Backup de Configurações** — Salvar → limpar dados → restaurar → verificar que settings, Set Stages, MIDI Learn e metadados SF2 voltam.
+- [x] **Backup de Configurações** — Salvar/restaurar settings, Set Stages, MIDI Learn e metadados SF2 via Firestore. Funcional desde maio/2026. Firestore network toggle (`enableNetwork`/`disableNetwork`) para contornar o `disableNetwork()` do SoundFontRepository.
 
-- [ ] **Testar Backup Completo** — Salvar com SF2s → limpar dados → restaurar → verificar que SF2s + config voltam. Requer Firebase Storage ativado no Console.
-
-- [ ] **Ativar Firebase Storage no Console** — Necessário para backup completo (upload/download de SF2). Firebase Console → Storage → Get Started.
+- [x] **Backup Completo (SF2)** — Upload/download de SF2 via Cloudflare R2 com multipart upload (partes de 50MB) para arquivos >90MB. Worker deployado em `stagemobile-backup-worker.ferlan.workers.dev`. Funcional desde maio/2026.
 
 - [ ] **Validar novo Punch (Master Limiter)** — Redesenhado com saturação tanh + lookahead 64 samples + attack suavizado + auto makeup gain. Testar que som fica "gordo" sem clicks/artefatos.
 
 - [ ] **Validar PAD sustain fix** — Tracking de estado do pedal (`sustainPedalState`) adicionado no ViewModel. Testar que vozes não ficam presas após soltar o pedal.
+
+- [ ] **Restaurar MIN_INTERVAL_MS para backup** — Atualmente `0L` para testes. Restaurar para `3600_000L` (1 hora) antes do release.
 
 ---
 
@@ -73,23 +72,28 @@ Itens pendentes organizados por prioridade. Marcar com `[x]` ao completar.
 
 ## Concluídos (referência)
 
-- [x] **Indicadores DSP nos channel strips** — Quadrinhos (HP, LP, CP, EQ, CH, TR, DL, RV, LM) à direita do peak meter. Verde=ativo, escuro=inativo. Dimensões adaptativas phone/tablet. Concluído abril/2026.
-- [x] **SF2 import dialog fix** — Dialog de conflito redimensionado (era 90% da tela) + verificação de duplicata agora consulta Firestore (lista visível) em vez do filesystem (falso positivo com órfãos). Concluído abril/2026.
-- [x] **isTablet fix global** — `UiUtils.isTablet()` corrigido: `smallestScreenWidthDp >= 600` em vez de `screenWidthDp >= 600`. S24 Ultra em landscape não é mais detectado como tablet. Concluído abril/2026.
-- [x] **TopBar compacta phone** — Botões 26dp, logo 36×20dp, título 14sp, paddings reduzidos pra phone landscape. Concluído abril/2026.
-- [x] **LoginScreen layout horizontal phone** — Layout em Row (logo esquerda 30%, form direita 70%) pra caber em landscape de celular. TabletLoginCard extraído como composable compartilhado. Concluído abril/2026.
-- [x] **Seletor de Driver de Áudio** — "Android Nativo" vs "Otimizado (USB)" em Parâmetros Globais. Persiste em SharedPreferences. Superpowered só inicia se modo=1. Concluído abril/2026.
-- [x] **Channel culling** — Canais silenciosos (peak<0.001 + 0 notas) são removidos do `activeChannelsMask`. Economia de ~700µs/render idle. Concluído abril/2026.
-- [x] **SF2 unload fix (update=0 + programSelect reaffirm)** — `fluid_synth_sfunload` com update=0 + reafirmação de programSelect nos canais ativos. Concluído abril/2026.
-- [x] **MIDI drain inline** — `midiProcessingLoop` removida, `drainMidiQueue()` dentro de `renderAudioEngine`. MutexMiss→0. Concluído abril/2026.
-- [x] **SIMD NEON** — Channel mix + peak e Master interleave + peak vetorizados. Concluído abril/2026.
-- [x] **Punch redesenhado** — LimiterEffect com tanh saturation + lookahead 64 samples + auto makeup gain. Concluído abril/2026.
-- [x] **APM HUD reset button** — Botão "Zerar Contadores" no APM HUD. Concluído abril/2026.
-- [x] **CC MIDI label fix** — "Filtros MIDI" → "CC MIDI Habilitados". Concluído abril/2026.
-- [x] **Per-phase APM instrumentation** — `MEASURE_PHASE` macro + ATrace markers + FloatArray[14]. Concluído abril/2026.
-- [x] **FluidSynth critical settings** — preload, cpu-cores=1, reverb/chorus disabled, overflow tuning com `setnum`. Concluído abril/2026.
-- [x] **Runtime CPU detection + thread affinity** — sysfs `cpuinfo_max_freq` + pin ao big cluster + SCHED_FIFO fallback nice=-19. Concluído abril/2026.
-- [x] **Stage Set load bug fix** — SF2 name normalization, sfId=-1 normalization, armed cache rebuild, load síncrono. Concluído abril/2026.
-- [x] **Voice overflow params** — Corrigido `setint` → `setnum` para `synth.overflow.*`. Concluído abril/2026.
-- [x] **Superpowered USB bridge** — Módulo Gradle isolado `:superpowered-usb` com c++_static, ponte C pura. Concluído abril/2026.
-- [x] **Agent memory versionada** — Movida para `docs/.agent-memory/` com symlink. Concluído abril/2026.
+- [x] **Delay SYNC (subdivisão rítmica)** — Seletor de subdivisão (1/1 a 1/16T) no card do Delay no rack DSP. BPM via TAP global, delay_ms = (60000/BPM) × multiplicador. Grid 2×5 chips. Concluído maio/2026.
+- [x] **TAP BPM display na toolbar** — BPM médio dos toques exibido ao lado do botão TAP (bolinha). Concluído maio/2026.
+- [x] **Limite de 8 canais** — Máximo de 8 instrument channels na mixer. Botão "+" desabilitado ao atingir limite. Concluído maio/2026.
+- [x] **Reorganização do Drawer** — Removido "Downloads". "Configurações" movido para top bar. "Mostrar Teclado" movido para toolbar (botão piano). "Suporte/Feedback" como último item. Concluído maio/2026.
+- [x] **Ícones SF2 Maintenance** — Emoji 📁 substituído por `Icons.Default.FolderOpen`, `Icons.Default.Add` por `Icons.Default.NoteAdd`. Concluído maio/2026.
+- [x] **FilterChip categorias padronizados** — Largura mínima 72dp, texto centralizado. "Drums/Percussion" → "Drums". Concluído maio/2026.
+- [x] **BackupScreen info tabular** — Layout de info do backup em colunas (tablet: 1 row, phone: 2 rows de 2). Mensagem dinâmica backup vs restauração. Concluído maio/2026.
+- [x] **Backup Firestore offline fix** — Root cause: `SoundFontRepository.disableNetwork()` bloqueava todos os repositórios. Fix: `withFirestoreNetwork()` habilita rede temporariamente. Bug `Task<Void>.await()` retornando null corrigido. Toast crash no Dispatchers.IO corrigido. Concluído maio/2026.
+- [x] **Multipart upload R2** — SF2 >90MB enviados em partes de 50MB via endpoints `/multipart/*` no Cloudflare Worker. Concluído maio/2026.
+- [x] **Indicadores DSP nos channel strips** — Quadrinhos (HP, LP, CP, EQ, CH, TR, DL, RV, LM) à direita do peak meter. Concluído abril/2026.
+- [x] **SF2 import dialog fix** — Dialog redimensionado + verificação de duplicata via Firestore. Concluído abril/2026.
+- [x] **isTablet fix global** — `smallestScreenWidthDp >= 600`. Concluído abril/2026.
+- [x] **TopBar compacta phone** — Botões 26dp, paddings reduzidos. Concluído abril/2026.
+- [x] **LoginScreen layout horizontal phone** — Row layout para landscape. Concluído abril/2026.
+- [x] **Seletor de Driver de Áudio** — "Android Nativo" vs "Otimizado (USB)". Concluído abril/2026.
+- [x] **Channel culling** — Canais silenciosos removidos do mix. Concluído abril/2026.
+- [x] **SF2 unload fix** — `update=0` + programSelect reaffirm. Concluído abril/2026.
+- [x] **MIDI drain inline** — MutexMiss→0. Concluído abril/2026.
+- [x] **SIMD NEON** — Channel mix + peak vetorizados. Concluído abril/2026.
+- [x] **Punch redesenhado** — tanh saturation + lookahead. Concluído abril/2026.
+- [x] **APM HUD reset button** — Concluído abril/2026.
+- [x] **Per-phase APM instrumentation** — Concluído abril/2026.
+- [x] **FluidSynth critical settings** — Concluído abril/2026.
+- [x] **Runtime CPU detection + thread affinity** — Concluído abril/2026.
+- [x] **Stage Set load bug fix** — Concluído abril/2026.

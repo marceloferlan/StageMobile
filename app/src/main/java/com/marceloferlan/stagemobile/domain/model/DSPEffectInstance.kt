@@ -66,9 +66,28 @@ enum class DSPEffectType(val id: Int, val label: String, val params: List<DSPPar
     REVERB_SEND(9, "Envio Reverb", listOf(DSPParamType.SEND_LEVEL), 9)
 }
 
+/**
+ * Subdivisões rítmicas para sync do Delay com o TAP BPM.
+ * O multiplicador é aplicado sobre a duração de 1 tempo (semínima):
+ *   delay_ms = (60000 / BPM) × multiplicador
+ */
+enum class DelaySubdivision(val label: String, val multiplier: Float) {
+    WHOLE("1/1", 4.0f),           // Semibreve (4 tempos)
+    HALF_DOT("1/2.", 3.0f),       // Mínima pontuada
+    HALF("1/2", 2.0f),            // Mínima (2 tempos)
+    QUARTER_DOT("1/4.", 1.5f),    // Semínima pontuada
+    QUARTER("1/4", 1.0f),         // Semínima (1 tempo) — padrão
+    EIGHTH_DOT("1/8.", 0.75f),    // Colcheia pontuada
+    EIGHTH("1/8", 0.5f),          // Colcheia
+    EIGHTH_TRIP("1/8T", 0.333f),  // Tercina de colcheia
+    SIXTEENTH("1/16", 0.25f),     // Semicolcheia
+    SIXTEENTH_TRIP("1/16T", 0.167f) // Tercina de semicolcheia
+}
+
 data class DSPEffectInstance(
     val id: String, // Unique UUID for UI tracking
     val type: DSPEffectType,
     val isEnabled: Boolean = true,
-    val params: Map<Int, Float> = emptyMap() // Map of paramId to value
+    val params: Map<Int, Float> = emptyMap(), // Map of paramId to value
+    val delaySubdivision: DelaySubdivision = DelaySubdivision.QUARTER // Só usado para DELAY
 )

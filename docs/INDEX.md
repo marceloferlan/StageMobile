@@ -1,6 +1,6 @@
 # StageMobile — Índice de Documentação
 
-*Última atualização: 2026-04-23*
+*Última atualização: 2026-05-03*
 
 ---
 
@@ -8,15 +8,9 @@
 
 - App Android de síntese de áudio profissional para músicos de palco
 - UI em Jetpack Compose + motor nativo C++17 via JNI
-- Render híbrido: Oboe (áudio interno) + Superpowered SDK (áudio USB direto)
-- 16 canais MIDI simultâneos, rack DSP por canal, múltiplos SF2 carregados em RAM
+- Render: Oboe/AAudio (áudio interno) + driver USB próprio com libusb (em desenvolvimento)
+- 8 canais MIDI simultâneos, rack DSP por canal com sync rítmico, múltiplos SF2 carregados em RAM
 - Constraint crítica: latência e estabilidade de áudio — regras de segurança no hot path são invioláveis
-
----
-
-## Branch atual
-
-`feature/Stage-Mobile-DSP-Superpowered` — integração do Superpowered SDK para contornar o driver USB audio do Android (jitter no Exynos). Ver [superpowered_isolation.md](./superpowered_isolation.md).
 
 ---
 
@@ -29,7 +23,7 @@
 | [architecture.md](./architecture.md) | Stack, threading model, decisões arquiteturais | Entender o "por quê" da estrutura |
 | [audio_routing_flow.md](./audio_routing_flow.md) | Fluxo completo MIDI → síntese → DSP → saída | Trabalhar na camada nativa (C++) |
 | [component_map.md](./component_map.md) | Tabela arquivo → função Compose por área | Navegar o código rapidamente |
-| [superpowered_isolation.md](./superpowered_isolation.md) | Integração Superpowered via módulo Gradle isolado (c++_static vs c++_shared) | Entender/manter a ponte USB |
+| [plan_backup_feature.md](./plan_backup_feature.md) | Plano de backup: 2 modalidades (Config + Full), Cloudflare R2, multipart upload | Entender/manter o sistema de backup |
 
 ### Performance e Diagnóstico
 
@@ -44,7 +38,7 @@
 
 | Documento | Cobre | Quando usar |
 |---|---|---|
-| [superpowered_licensing_briefing.md](./superpowered_licensing_briefing.md) | Briefing pra call com Superpowered Sales: specs, uso do SDK, modelo de add-on, 12 perguntas | Reunião comercial com Superpowered |
+| [superpowered_licensing_briefing.md](./superpowered_licensing_briefing.md) | Briefing histórico da call com Superpowered Sales (licença inviável, descartado) | Referência histórica |
 
 ### Backlog e Planejamento
 
@@ -117,7 +111,7 @@ FILL_HIGH_WATERMARK = 1024      // Sair de contenção (quality up)
 |---|---|---|
 | FluidSynth | Síntese de áudio via SoundFonts (.sf2) | Nativa (pré-compilada em `jniLibs/arm64-v8a/`) |
 | Google Oboe | Áudio de baixa latência (AAudio/OpenSLES) | Nativa (via prefab) |
-| Superpowered SDK | Áudio USB direto (contorna driver Android) | Nativa isolada em `:superpowered-usb` com c++_static |
+| Cloudflare R2 | Storage de SF2 para backup completo (via Workers) | HTTP/REST |
 | STK (Synthesis Toolkit) | DSP: reverb, chorus, delay, filtros | Nativa (fonte em `cpp/externals/STK/`) |
 | SoundTouch | Pitch shift e time stretch | Nativa |
 | DSPFilters | Filtros digitais: Bessel, Butterworth, Chebyshev | Nativa |

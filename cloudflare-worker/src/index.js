@@ -2,10 +2,16 @@
  * StageMobile Backup Worker — Cloudflare R2 Storage Bridge
  *
  * Endpoints:
- *   PUT    /upload?key=path/to/file     — upload file (body = raw bytes)
- *   GET    /download?key=path/to/file   — download file
- *   DELETE /delete?key=path/to/file     — delete file
- *   GET    /list?prefix=path/to/dir/    — list files under prefix
+ *   PUT    /upload?key=path/to/file              — upload file (body = raw bytes, <100MB)
+ *   GET    /download?key=path/to/file            — download file
+ *   DELETE /delete?key=path/to/file              — delete file
+ *   GET    /list?prefix=path/to/dir/             — list files under prefix
+ *
+ * Multipart upload (arquivos >100MB):
+ *   POST   /multipart/create?key=path/to/file    — inicia multipart upload → {uploadId}
+ *   PUT    /multipart/part?key=...&uploadId=...&partNumber=N  — envia uma parte → {etag}
+ *   POST   /multipart/complete?key=...&uploadId=... — finaliza (body = JSON [{partNumber, etag}])
+ *   POST   /multipart/abort?key=...&uploadId=...  — cancela upload
  *
  * Auth: Authorization: Bearer <firebase-id-token>
  * R2 access via binding (no credentials in code — configured in wrangler.toml)
@@ -26,7 +32,6 @@ export default {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    // Extract userId from token (simple decode — production should verify signature)
     const token = authHeader.slice(7);
     const userId = extractUserIdFromToken(token);
     if (!userId) {
@@ -37,7 +42,7 @@ export default {
     const key = url.searchParams.get('key');
     const prefix = url.searchParams.get('prefix');
 
-    // Validate that the key belongs to this user (prevent accessing other users' data)
+    // Validate that the key belongs to this user
     if (key && !key.startsWith(`backups/${userId}/`)) {
       return jsonResponse({ error: 'Forbidden: key must start with backups/{userId}/' }, 403);
     }
@@ -46,7 +51,7 @@ export default {
     }
 
     try {
-      // ── UPLOAD ────────────────────────────────────────────────
+      // ── UPLOAD (single request, <100MB) ──────────────────────
       if (url.pathname === '/upload' && request.method === 'PUT') {
         if (!key) return jsonResponse({ error: 'Missing key parameter' }, 400);
 
@@ -57,6 +62,61 @@ export default {
         });
 
         return jsonResponse({ success: true, key });
+      }
+
+      // ── MULTIPART CREATE ─────────────────────────────────────
+      if (url.pathname === '/multipart/create' && request.method === 'POST') {
+        if (!key) return jsonResponse({ error: 'Missing key parameter' }, 400);
+
+        const multipart = await env.BUCKET.createMultipartUpload(key, {
+          httpMetadata: {
+            contentType: 'application/octet-stream',
+          },
+        });
+
+        return jsonResponse({ uploadId: multipart.uploadId, key });
+      }
+
+      // ── MULTIPART UPLOAD PART ────────────────────────────────
+      if (url.pathname === '/multipart/part' && request.method === 'PUT') {
+        if (!key) return jsonResponse({ error: 'Missing key parameter' }, 400);
+        const uploadId = url.searchParams.get('uploadId');
+        const partNumber = parseInt(url.searchParams.get('partNumber'));
+        if (!uploadId) return jsonResponse({ error: 'Missing uploadId' }, 400);
+        if (!partNumber || partNumber < 1) return jsonResponse({ error: 'Invalid partNumber' }, 400);
+
+        const multipart = env.BUCKET.resumeMultipartUpload(key, uploadId);
+        const part = await multipart.uploadPart(partNumber, request.body);
+
+        return jsonResponse({ etag: part.etag, partNumber });
+      }
+
+      // ── MULTIPART COMPLETE ───────────────────────────────────
+      if (url.pathname === '/multipart/complete' && request.method === 'POST') {
+        if (!key) return jsonResponse({ error: 'Missing key parameter' }, 400);
+        const uploadId = url.searchParams.get('uploadId');
+        if (!uploadId) return jsonResponse({ error: 'Missing uploadId' }, 400);
+
+        // Body deve ser JSON: [{partNumber: 1, etag: "..."}, ...]
+        const parts = await request.json();
+        const multipart = env.BUCKET.resumeMultipartUpload(key, uploadId);
+
+        // R2 espera UploadedPart[] com .partNumber e .etag
+        await multipart.complete(parts);
+
+        return jsonResponse({ success: true, key });
+      }
+
+      // ── MULTIPART ABORT ──────────────────────────────────────
+      if (url.pathname === '/multipart/abort' && request.method === 'POST') {
+        if (!key) return jsonResponse({ error: 'Missing key parameter' }, 400);
+        const uploadId = url.searchParams.get('uploadId');
+        if (!uploadId) return jsonResponse({ error: 'Missing uploadId' }, 400);
+
+        const multipart = env.BUCKET.resumeMultipartUpload(key, uploadId);
+        await multipart.abort();
+
+        return jsonResponse({ success: true });
       }
 
       // ── DOWNLOAD ──────────────────────────────────────────────
@@ -111,7 +171,7 @@ export default {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   };
 }

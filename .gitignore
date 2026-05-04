@@ -35,3 +35,4 @@ firebase.json
 .mcp.json
 *.tgz
 package/
+cloudflare-worker/node_modules/

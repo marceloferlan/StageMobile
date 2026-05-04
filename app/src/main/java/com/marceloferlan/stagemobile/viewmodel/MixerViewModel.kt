@@ -1844,38 +1844,76 @@ class MixerViewModel : ViewModel() {
 
     private val tapTimes = mutableMapOf<String, MutableList<Long>>()
     private val globalTapTimes = mutableListOf<Long>()
+    private val _globalTapBpm = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val globalTapBpm: kotlinx.coroutines.flow.StateFlow<Int> = _globalTapBpm
 
     fun tapGlobalDelayTime() {
-        // Optimization: Exit early if no delay effects are active anywhere
-        val allDelays = _channels.value.flatMap { it.dspEffects } + _masterDspEffects.value
-        val hasActiveDelay = allDelays.any { it.type == DSPEffectType.DELAY && it.isEnabled }
-        if (!hasActiveDelay) return
-
         val now = System.currentTimeMillis()
         globalTapTimes.add(now)
         if (globalTapTimes.size > 4) globalTapTimes.removeAt(0)
-        
+
         if (globalTapTimes.size >= 2) {
             val intervals = globalTapTimes.zipWithNext { a, b -> b - a }
-            val avgMs = intervals.average().toFloat().coerceIn(10f, 2000f)
-            
-            // Apply to all channels
-            _channels.value.forEach { ch ->
-                ch.dspEffects.filter { it.type == DSPEffectType.DELAY }.forEach { effect ->
-                    val paramIndex = effect.type.params.indexOf(DSPParamType.DELAY_TIME)
-                    if (paramIndex != -1) {
-                        updateEffectParam(ch.id, effect.id, paramIndex, avgMs)
-                    }
-                }
-            }
-            
-            // Apply to Master
-            _masterDspEffects.value.filter { it.type == DSPEffectType.DELAY }.forEach { effect ->
+            val beatMs = intervals.average().toFloat().coerceIn(10f, 2000f)
+            _globalTapBpm.value = (60000f / beatMs).toInt().coerceIn(30, 300)
+
+            applyBpmToAllDelays(beatMs)
+        }
+    }
+
+    /**
+     * Aplica o delay time calculado a partir do BPM e subdivisão de cada efeito Delay.
+     */
+    private fun applyBpmToAllDelays(beatMs: Float) {
+        // Canais de instrumento
+        _channels.value.forEach { ch ->
+            ch.dspEffects.filter { it.type == DSPEffectType.DELAY && it.isEnabled }.forEach { effect ->
+                val delayMs = (beatMs * effect.delaySubdivision.multiplier).coerceIn(10f, 2000f)
                 val paramIndex = effect.type.params.indexOf(DSPParamType.DELAY_TIME)
                 if (paramIndex != -1) {
-                    updateEffectParam(MASTER_CHANNEL_ID, effect.id, paramIndex, avgMs)
+                    updateEffectParam(ch.id, effect.id, paramIndex, delayMs)
                 }
             }
+        }
+
+        // Master
+        _masterDspEffects.value.filter { it.type == DSPEffectType.DELAY && it.isEnabled }.forEach { effect ->
+            val delayMs = (beatMs * effect.delaySubdivision.multiplier).coerceIn(10f, 2000f)
+            val paramIndex = effect.type.params.indexOf(DSPParamType.DELAY_TIME)
+            if (paramIndex != -1) {
+                updateEffectParam(MASTER_CHANNEL_ID, effect.id, paramIndex, delayMs)
+            }
+        }
+    }
+
+    /**
+     * Atualiza a subdivisão rítmica de um efeito Delay e recalcula o delay time.
+     */
+    fun updateDelaySubdivision(channelId: Int, effectId: String, subdivision: com.marceloferlan.stagemobile.domain.model.DelaySubdivision) {
+        if (channelId == MASTER_CHANNEL_ID) {
+            val currentEffects = _masterDspEffects.value
+            val effectIdx = currentEffects.indexOfFirst { it.id == effectId }
+            if (effectIdx >= 0) {
+                val updatedEffects = currentEffects.toMutableList()
+                updatedEffects[effectIdx] = updatedEffects[effectIdx].copy(delaySubdivision = subdivision)
+                _masterDspEffects.value = updatedEffects
+            }
+        } else {
+            updateChannel(channelId) { ch ->
+                val effectIdx = ch.dspEffects.indexOfFirst { it.id == effectId }
+                if (effectIdx >= 0) {
+                    val updatedEffects = ch.dspEffects.toMutableList()
+                    updatedEffects[effectIdx] = updatedEffects[effectIdx].copy(delaySubdivision = subdivision)
+                    ch.copy(dspEffects = updatedEffects)
+                } else ch
+            }
+        }
+
+        // Recalcula delay time se temos BPM
+        val bpm = _globalTapBpm.value
+        if (bpm > 0) {
+            val beatMs = 60000f / bpm
+            applyBpmToAllDelays(beatMs)
         }
     }
 

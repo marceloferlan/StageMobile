@@ -422,7 +422,7 @@ class MainActivity : ComponentActivity() {
 
                         val showSf2Import by viewModel.showSf2ImportTagSelector.collectAsState()
                         showSf2Import?.let { uri ->
-                            val categories = listOf("Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", "Brass", "Strings", "Organ", "Bells", "Guitar", "Drums/Percussion", "FX", "Outros")
+                            val categories = listOf("Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", "Brass", "Strings", "Organ", "Bells", "Guitar", "Drums", "FX", "Outros")
                             TagSelectionOverlay(
                                 uri = uri,
                                 categories = categories,
@@ -808,7 +808,7 @@ fun BatchImportOverlay(
 ) {
     val context = LocalContext.current
     val isTablet = com.marceloferlan.stagemobile.utils.UiUtils.rememberIsTablet()
-    val categories = listOf("Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", "Brass", "Strings", "Organ", "Bells", "Guitar", "Drums/Percussion", "FX", "Outros")
+    val categories = listOf("Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", "Brass", "Strings", "Organ", "Bells", "Guitar", "Drums", "FX", "Outros")
     val selectedTags = remember { mutableStateListOf<String>() }
 
     // Scan folder for SF2 files
@@ -993,12 +993,19 @@ fun BatchImportOverlay(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { if (isSelected) selectedTags.remove(cat) else selectedTags.add(cat) },
-                                label = { Text(cat, fontSize = 10.sp) },
+                                label = {
+                                    Text(
+                                        cat,
+                                        fontSize = 10.sp,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        modifier = Modifier.widthIn(min = 36.dp).fillMaxWidth()
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Color(0xFF4CAF50).copy(alpha = 0.3f),
                                     selectedLabelColor = Color(0xFF4CAF50)
                                 ),
-                                modifier = Modifier.height(28.dp)
+                                modifier = Modifier.height(28.dp).widthIn(min = 64.dp)
                             )
                         }
                     }

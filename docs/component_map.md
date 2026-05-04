@@ -34,6 +34,21 @@ Este índice centraliza a localização dos componentes fundamentais do projeto 
 | **Drum Pads** | `app/src/main/java/com/marceloferlan/stagemobile/ui/screens/DrumpadsScreen.kt` | `fun DrumpadsScreen` |
 | **Continuous Pads** | `app/src/main/java/com/marceloferlan/stagemobile/ui/screens/ContinuousPadsScreen.kt` | `fun ContinuousPadsScreen` |
 
+## ☁️ Backup & Restauração
+| Componente | Arquivo | Função / Âncora |
+| :--- | :--- | :--- |
+| **Tela de Backup** | `app/src/main/java/com/marceloferlan/stagemobile/ui/screens/BackupScreen.kt` | `fun BackupScreen` |
+| **Repositório de Backup** | `app/src/main/java/com/marceloferlan/stagemobile/data/backup/BackupRepository.kt` | `class BackupRepository` |
+| **Snapshot de Config** | `app/src/main/java/com/marceloferlan/stagemobile/data/backup/ConfigSnapshot.kt` | `data class ConfigSnapshot` |
+| **Storage Provider (R2)** | `app/src/main/java/com/marceloferlan/stagemobile/data/backup/CloudflareR2StorageProvider.kt` | `class CloudflareR2StorageProvider` |
+| **Cloudflare Worker** | `cloudflare-worker/src/index.js` | Endpoints: upload, download, delete, list, multipart/* |
+
+## 🎵 Modelos DSP
+| Componente | Arquivo | Função / Âncora |
+| :--- | :--- | :--- |
+| **Tipos de Efeito** | `app/src/main/java/com/marceloferlan/stagemobile/domain/model/DSPEffectInstance.kt` | `enum class DSPEffectType` |
+| **Subdivisão Delay** | `app/src/main/java/com/marceloferlan/stagemobile/domain/model/DSPEffectInstance.kt` | `enum class DelaySubdivision` |
+
 ## 🖼️ Overlays & Modais (MainActivity)
 As modais imersivas são gerenciadas no bloco de UI da `MainActivity.kt`:
 - **Caminho:** `app/src/main/java/com/marceloferlan/stagemobile/MainActivity.kt`

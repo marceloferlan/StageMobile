@@ -191,7 +191,106 @@ Durante o processo de importação de novos patches pela tela de manutenção:
 
 ---
 
-## 12. Add-ons e Monetização (Planejado)
+## 12. Backup & Restauração (Implementado maio/2026)
+
+### 12.1 Modalidades
+- **Backup de Configurações**: SharedPreferences (settings, Set Stages, MIDI Learn) + metadados SF2 do Firestore. Armazenado no Firestore (~500KB).
+- **Backup Completo**: Configurações + arquivos SF2 físicos. SF2 armazenados no Cloudflare R2 via Workers. Multipart upload para arquivos >90MB (partes de 50MB).
+
+### 12.2 Arquitetura de Storage
+- **Firestore**: configs + metadata (`backups/{userId}/data/*` e `backups/{userId}/metadata/*`)
+- **Cloudflare R2**: arquivos SF2 (`backups/{userId}/full/soundfonts/*.sf2`)
+- **Worker**: `stagemobile-backup-worker.ferlan.workers.dev` — bridge HTTP com auth via Firebase ID Token
+- **Interface**: `BackupStorageProvider` permite trocar backend sem mexer no resto
+
+### 12.3 Firestore Network Toggle
+O `SoundFontRepository` desabilita a rede do Firestore (`disableNetwork()`) para evitar Death-Loop do GMS em tablets de palco. O `BackupRepository` usa `withFirestoreNetwork()` para habilitar temporariamente durante operações de backup/restore.
+
+### 12.4 UI
+- Tela acessível via drawer lateral ("Backup & Restauração")
+- 2 cards: Config e Completo, cada um com info tabular (data, dispositivo, versão, SF2)
+- Layout adaptativo: tablet (1 row), phone (2 rows de 2 colunas)
+- Progress bar com detalhes: arquivo atual, contador, MB enviados/total, percentual
+- Mensagens dinâmicas: "Backup em andamento..." vs "Restauração de backup em andamento..."
+- Diálogos de confirmação para sobrescrita e restauração
+
+### 12.5 Limites
+- 1 backup por modalidade (sobrescreve o anterior)
+- Intervalo mínimo: 1 hora entre backups (desabilitado em dev)
+
+---
+
+## 13. Importação em Lote de SF2 (Implementado maio/2026)
+
+- Botão "Pasta" na `SoundFontMaintenanceScreen` abre `OpenDocumentTree()`
+- Lista todos os `.sf2` da pasta selecionada
+- Seleção/deseleção individual, verificação de espaço em disco
+- Seleção de categorias (tags) aplicada a todos os arquivos
+- Importação sequencial com progress por arquivo
+- Verificação de duplicatas contra lista do Firestore
+
+---
+
+## 14. Delay SYNC — Subdivisão Rítmica (Implementado maio/2026)
+
+### 14.1 Conceito
+O delay time é calculado a partir do BPM (via TAP) e da subdivisão rítmica selecionada:
+```
+delay_ms = (60000 / BPM) × multiplicador
+```
+
+### 14.2 Subdivisões disponíveis
+| Label | Multiplicador | Descrição |
+|---|---|---|
+| 1/1 | 4.0 | Semibreve |
+| 1/2. | 3.0 | Mínima pontuada |
+| 1/2 | 2.0 | Mínima |
+| 1/4. | 1.5 | Semínima pontuada |
+| 1/4 | 1.0 | Semínima (padrão) |
+| 1/8. | 0.75 | Colcheia pontuada |
+| 1/8 | 0.5 | Colcheia |
+| 1/8T | 0.333 | Tercina de colcheia |
+| 1/16 | 0.25 | Semicolcheia |
+| 1/16T | 0.167 | Tercina de semicolcheia |
+
+### 14.3 UI
+- TAP BPM exibido na MixerScreenToolBar (ao lado do botão TAP)
+- Seletor SYNC no card do Delay no rack DSP: grid 2×5 de chips
+- Chips com tamanho fixo adaptativo (tablet 40×30dp, celular 32×26dp)
+- Cada efeito Delay tem sua própria subdivisão independente
+
+### 14.4 Fluxo
+1. Músico faz TAP → `globalTapBpm` atualizado
+2. `applyBpmToAllDelays()` calcula `beatMs × subdivision.multiplier` para cada Delay ativo
+3. Ao mudar subdivisão no rack → `updateDelaySubdivision()` recalcula o delay time
+
+---
+
+## 15. Organização da UI (Atualizado maio/2026)
+
+### 15.1 Top Bar
+Botões à direita: Configurações (engrenagem) | Logout | Encerrar App
+
+### 15.2 MixerScreenToolBar
+Esquerda: Save | MIDI Learn | Teclado (piano)
+Centro: Octave | BPM + TAP | Transpose
+Direita: +CH (max 8) | Master | Info
+
+### 15.3 Drawer Lateral
+1. Set Stages
+2. Drumpads
+3. Pads Contínuos
+4. Biblioteca SF2
+5. Backup & Restauração
+6. ── separador ──
+7. Suporte / Feedback
+
+### 15.4 Limite de Canais
+Máximo de 8 instrument channels. Botão "+" desabilitado ao atingir o limite.
+
+---
+
+## 16. Add-ons e Monetização (Planejado)
 
 ### 12.1 Add-on: Seletor de Driver de Áudio (USB Otimizado)
 **Descrição:** A funcionalidade de selecionar o driver "Otimizado (USB)" (Superpowered SDK) será disponibilizada apenas para usuários que adquirirem o add-on via Google Play In-App Purchase.

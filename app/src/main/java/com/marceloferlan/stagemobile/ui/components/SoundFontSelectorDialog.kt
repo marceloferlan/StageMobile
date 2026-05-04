@@ -40,7 +40,7 @@ fun SoundFontSelectorDialog(
     val categories = listOf(
         "Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", 
         "Brass", "Strings", "Organ", "Bells", "Guitar", 
-        "Drums/Percussion", "FX", "Outros"
+        "Drums", "FX", "Outros"
     )
 
     val filteredSF2: List<MixerViewModel.SoundFontListItem> = remember(availableSoundFonts, selectedTags) {
@@ -111,12 +111,20 @@ fun SoundFontSelectorDialog(
                             onClick = {
                                 selectedTags = if (isSelected) selectedTags - category else selectedTags + category
                             },
-                            label = { Text(category, fontSize = 11.sp) },
+                            label = {
+                                Text(
+                                    category,
+                                    fontSize = 11.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.widthIn(min = 40.dp).fillMaxWidth()
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Color(0xFF4CAF50),
                                 labelColor = Color(0xFFBBBBBB),
                                 selectedLabelColor = Color.White
-                            )
+                            ),
+                            modifier = Modifier.widthIn(min = 72.dp)
                         )
                     }
                 }

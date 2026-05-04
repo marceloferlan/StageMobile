@@ -27,7 +27,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -487,6 +489,9 @@ fun DSPEffectsRackDialog(
                                 },
                                 onUpdateReverbSendParam = { paramId, value ->
                                     reverbSendEffect?.let { onUpdateParam(it.id, paramId, value) }
+                                },
+                                onUpdateSubdivision = { sub ->
+                                    viewModel?.updateDelaySubdivision(channelId, effect.id, sub)
                                 }
                             )
                         }
@@ -530,6 +535,7 @@ fun EffectRackUnit(
     midiLearnMappings: List<MidiLearnMapping> = emptyList(),
     midiLearnTarget: MidiLearnTargetInfo? = null,
     channelId: Int = -1,
+    onUpdateSubdivision: (com.marceloferlan.stagemobile.domain.model.DelaySubdivision) -> Unit = {},
     effectIndex: Int = -1,
     engine: com.marceloferlan.stagemobile.audio.engine.AudioEngine? = null,
     reverbSendEffect: DSPEffectInstance? = null,
@@ -1492,37 +1498,29 @@ fun EffectRackUnit(
                         }
                     }
                     else -> {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val paramsCount = effect.type.params.size
-                            // Reduzido em ~30-35% para acompanhar a altura do card
-                            val multiplier = if (paramsCount == 2) 1.4f else if (paramsCount == 3) 1.2f else 1.0f
-                            
-                            // Ajuste proporcional dos textos para acompanhar o tamanho
-                            val dynamicKnobSize = knobSize * multiplier
-                            val dynamicLabelFontSize = knobLabelFontSize * (if (multiplier > 1.1f) multiplier * 0.85f else 1.0f)
-                            val dynamicValueFontSize = knobValueFontSize * (if (multiplier > 1.1f) multiplier * 0.85f else 1.0f)
+                        val paramsCount = effect.type.params.size
+                        val multiplier = if (paramsCount == 2) 1.4f else if (paramsCount == 3) 1.2f else 1.0f
+                        val dynamicKnobSize = knobSize * multiplier
+                        val dynamicLabelFontSize = knobLabelFontSize * (if (multiplier > 1.1f) multiplier * 0.85f else 1.0f)
+                        val dynamicValueFontSize = knobValueFontSize * (if (multiplier > 1.1f) multiplier * 0.85f else 1.0f)
 
-                            // Estado local para Delay Time (commit-on-release)
-                            val isDelayEffect = effect.type == DSPEffectType.DELAY
-                            var localDelayTime by remember(effect.id) { 
-                                mutableStateOf(effect.params[0] ?: 500f) 
-                            }
-                            // Sincroniza com mudanças externas (ex: tap tempo)
-                            LaunchedEffect(effect.params[0]) {
-                                localDelayTime = effect.params[0] ?: 500f
-                            }
+                        val isDelayEffect = effect.type == DSPEffectType.DELAY
+                        var localDelayTime by remember(effect.id) {
+                            mutableStateOf(effect.params[0] ?: 500f)
+                        }
+                        LaunchedEffect(effect.params[0]) {
+                            localDelayTime = effect.params[0] ?: 500f
+                        }
 
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                        if (isDelayEffect) {
+                            // Delay: 4 colunas — TIME, FEEDBACK, MIX, SYNC
+                            Row(
+                                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 effect.type.params.forEachIndexed { i, param ->
-                                    val isDelayTime = isDelayEffect && i == 0
-                                    
+                                    val isDelayTime = i == 0
                                     DSPCircularKnob(
                                         label = param.label,
                                         value = if (isDelayTime) localDelayTime else (effect.params[i] ?: 0f),
@@ -1535,25 +1533,116 @@ fun EffectRackUnit(
                                         valueFormatter = { formatValue(it, param) },
                                         knobModifier = getLearnModifier(i, CircleShape),
                                         onValueChange = { newValue ->
-                                            if (isDelayTime) {
-                                                // Apenas atualiza a UI local, NÃO envia para a engine
-                                                localDelayTime = newValue
-                                            } else {
-                                                onUpdateParam(i, newValue)
-                                            }
+                                            if (isDelayTime) localDelayTime = newValue
+                                            else onUpdateParam(i, newValue)
                                         },
                                         onValueCommit = if (isDelayTime) { finalValue ->
-                                            // Envia o valor final para a engine quando o knob é solto
                                             onUpdateParam(0, finalValue)
                                         } else null,
                                         enabled = effect.isEnabled
                                     )
+                                }
+                                DelaySubdivisionGrid(
+                                    currentSubdivision = effect.delaySubdivision,
+                                    onSubdivisionChange = onUpdateSubdivision,
+                                    enabled = effect.isEnabled,
+                                    accentColor = accentColor,
+                                    isTablet = isTablet
+                                )
+                            }
+                        } else {
+                            // Outros efeitos: FlowRow padrão
+                            Box(
+                                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    effect.type.params.forEachIndexed { i, param ->
+                                        DSPCircularKnob(
+                                            label = param.label,
+                                            value = effect.params[i] ?: 0f,
+                                            range = getRange(param),
+                                            size = dynamicKnobSize,
+                                            labelFontSize = dynamicLabelFontSize,
+                                            valueFontSize = dynamicValueFontSize,
+                                            accentColor = accentColor,
+                                            knobImageResId = R.drawable.knob_custom,
+                                            valueFormatter = { formatValue(it, param) },
+                                            knobModifier = getLearnModifier(i, CircleShape),
+                                            onValueChange = { onUpdateParam(i, it) },
+                                            enabled = effect.isEnabled
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DelaySubdivisionGrid(
+    currentSubdivision: com.marceloferlan.stagemobile.domain.model.DelaySubdivision,
+    onSubdivisionChange: (com.marceloferlan.stagemobile.domain.model.DelaySubdivision) -> Unit,
+    enabled: Boolean,
+    accentColor: Color,
+    isTablet: Boolean
+) {
+    val subdivisions = com.marceloferlan.stagemobile.domain.model.DelaySubdivision.entries
+    val chipWidth = if (isTablet) 40.dp else 32.dp
+    val chipHeight = if (isTablet) 30.dp else 26.dp
+    val chipFontSize = if (isTablet) 10.sp else 8.sp
+    val gap = if (isTablet) 5.dp else 4.dp
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "SYNC",
+            color = Color.Gray,
+            fontSize = if (isTablet) 9.sp else 8.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 3.dp)
+        )
+        for (row in 0..1) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                for (col in 0..4) {
+                    val index = row * 5 + col
+                    if (index < subdivisions.size) {
+                        val sub = subdivisions[index]
+                        val isSelected = sub == currentSubdivision
+                        Surface(
+                            onClick = { if (enabled) onSubdivisionChange(sub) },
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (isSelected) accentColor.copy(alpha = 0.3f) else Color(0xFF1A1A1A),
+                            border = BorderStroke(
+                                if (isSelected) 1.dp else 0.5.dp,
+                                if (isSelected) accentColor else Color(0xFF444444)
+                            ),
+                            modifier = Modifier.size(width = chipWidth, height = chipHeight)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = if (isTablet) 4.dp else 2.dp)
+                            ) {
+                                Text(
+                                    sub.label,
+                                    color = if (isSelected) accentColor else if (enabled) Color.LightGray else Color.DarkGray,
+                                    fontSize = chipFontSize,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            if (row == 0) Spacer(modifier = Modifier.height(gap))
         }
     }
 }

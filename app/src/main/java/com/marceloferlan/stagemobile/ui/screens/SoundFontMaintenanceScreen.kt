@@ -12,15 +12,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,7 +42,7 @@ fun SoundFontMaintenanceScreen(
     val categories = listOf(
         "Piano", "EP/FM", "Pad", "Synth", "Lead", "Bass", 
         "Brass", "Strings", "Organ", "Guitar", 
-        "Drums/Percussion", "FX", "Outros"
+        "Drums", "FX", "Outros"
     )
 
     val filteredSF2 = remember(availableSF2, selectedTags) {
@@ -80,7 +82,7 @@ fun SoundFontMaintenanceScreen(
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("\uD83D\uDCC1", fontSize = 14.sp)
+                            Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Pasta", fontSize = 13.sp)
                         }
@@ -100,7 +102,7 @@ fun SoundFontMaintenanceScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.NoteAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Arquivo", fontSize = 13.sp)
                         }
@@ -130,12 +132,20 @@ fun SoundFontMaintenanceScreen(
                         onClick = {
                             selectedTags = if (isSelected) selectedTags - category else selectedTags + category
                         },
-                        label = { Text(category, fontSize = 11.sp) },
+                        label = {
+                            Text(
+                                category,
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.widthIn(min = 40.dp).fillMaxWidth()
+                            )
+                        },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Color(0xFF4CAF50),
                             labelColor = Color(0xFFBBBBBB),
                             selectedLabelColor = Color.White
-                        )
+                        ),
+                        modifier = Modifier.widthIn(min = 72.dp)
                     )
                 }
             }

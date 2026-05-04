@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -398,29 +399,11 @@ fun MixerScreen(
                 val drawerItemPadding = if (isTablet) NavigationDrawerItemDefaults.ItemPadding else PaddingValues(horizontal = 12.dp, vertical = 4.dp)
 
                 NavigationDrawerItem(
-                    label = { Text("Configurações", fontSize = 16.sp) }, // Removido if redundante
-                    selected = false,
-                    onClick = { 
-                        scope.launch { drawerState.close() }
-                        onNavigateToSettings() 
-                    },
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = Color.Transparent,
-                        unselectedIconColor = Color.White,
-                        unselectedTextColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .padding(drawerItemPadding)
-                        .height(drawerItemHeight)
-                )
-
-                NavigationDrawerItem(
                     label = { Text("Set Stages", fontSize = 16.sp) },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
-                        onNavigateToSets() 
+                        onNavigateToSets()
                     },
                     icon = { Icon(Icons.AutoMirrored.Outlined.FormatListBulleted, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -436,9 +419,9 @@ fun MixerScreen(
                 NavigationDrawerItem(
                     label = { Text("Drumpads", fontSize = 16.sp) },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
-                        onNavigateToDrumpads() 
+                        onNavigateToDrumpads()
                     },
                     icon = { Icon(Icons.Outlined.Apps, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -452,29 +435,11 @@ fun MixerScreen(
                 )
 
                 NavigationDrawerItem(
-                    label = { Text("Suporte / Feedback", fontSize = 16.sp) },
-                    selected = false,
-                    onClick = { 
-                        scope.launch { drawerState.close() }
-                        showFeedbackScreen = true
-                    },
-                    icon = { Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = Color.Transparent,
-                        unselectedIconColor = Color.White,
-                        unselectedTextColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .padding(drawerItemPadding)
-                        .height(drawerItemHeight)
-                )
-
-                NavigationDrawerItem(
                     label = { Text("Pads Contínuos", fontSize = 16.sp) },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
-                        onNavigateToContinuousPads() 
+                        onNavigateToContinuousPads()
                     },
                     icon = { Icon(Icons.Outlined.Loop, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
@@ -487,33 +452,14 @@ fun MixerScreen(
                         .height(drawerItemHeight)
                 )
 
-                // NOVO ITEM: BIBLIOTECA SF2
                 NavigationDrawerItem(
                     label = { Text("Biblioteca SF2", fontSize = 16.sp) },
                     selected = false,
-                    onClick = { 
+                    onClick = {
                         scope.launch { drawerState.close() }
                         onNavigateToSf2Maintenance()
                     },
                     icon = { Icon(Icons.Outlined.LibraryMusic, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
-                    colors = NavigationDrawerItemDefaults.colors(
-                        unselectedContainerColor = Color.Transparent,
-                        unselectedIconColor = Color.White,
-                        unselectedTextColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .padding(drawerItemPadding)
-                        .height(drawerItemHeight)
-                )
-
-                NavigationDrawerItem(
-                    label = { Text("Downloads", fontSize = 16.sp) },
-                    selected = false,
-                    onClick = { 
-                        scope.launch { drawerState.close() }
-                        onNavigateToDownloads() 
-                    },
-                    icon = { Icon(Icons.Outlined.CloudDownload, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,
@@ -531,7 +477,7 @@ fun MixerScreen(
                         scope.launch { drawerState.close() }
                         onNavigateToBackup()
                     },
-                    icon = { Icon(Icons.Outlined.CloudDownload, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    icon = { Icon(Icons.Outlined.Backup, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,
@@ -545,17 +491,14 @@ fun MixerScreen(
                 HorizontalDivider(color = Color(0xFF333333), modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isTablet) 8.dp else 4.dp))
 
                 NavigationDrawerItem(
-                    label = { Text(if (showKeyboard) "Ocultar Teclado" else "Mostrar Teclado", fontSize = 16.sp) },
-                    selected = showKeyboard,
-                    onClick = { 
+                    label = { Text("Suporte / Feedback", fontSize = 16.sp) },
+                    selected = false,
+                    onClick = {
                         scope.launch { drawerState.close() }
-                        showKeyboard = !showKeyboard 
+                        showFeedbackScreen = true
                     },
-                    icon = { Icon(Icons.Outlined.Piano, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
+                    icon = { Icon(Icons.Outlined.Info, contentDescription = null, modifier = Modifier.size(if (isTablet) 24.dp else 20.dp)) },
                     colors = NavigationDrawerItemDefaults.colors(
-                        selectedContainerColor = Color(0xFF81C784).copy(alpha = 0.2f),
-                        selectedIconColor = Color(0xFF81C784),
-                        selectedTextColor = Color(0xFF81C784),
                         unselectedContainerColor = Color.Transparent,
                         unselectedIconColor = Color.White,
                         unselectedTextColor = Color.White
@@ -623,6 +566,16 @@ fun MixerScreen(
 
                                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
                                     Row(horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                                        Button(
+                                            onClick = { onNavigateToSettings() },
+                                            shape = RoundedCornerShape(6.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF424242), contentColor = Color.White),
+                                            contentPadding = PaddingValues(0.dp),
+                                            modifier = Modifier.size(topBarBtnSize)
+                                        ) {
+                                            Icon(Icons.Outlined.Settings, contentDescription = "Configurações", modifier = Modifier.size(topBarIconSize), tint = Color.LightGray)
+                                        }
+                                        Spacer(modifier = Modifier.width(if (isTablet) 8.dp else 4.dp))
                                         Button(
                                             onClick = { com.google.firebase.auth.FirebaseAuth.getInstance().signOut() },
                                             shape = RoundedCornerShape(6.dp),
@@ -699,14 +652,19 @@ fun MixerScreen(
                     },
                     channelsCount = channels.size,
                     onAddChannel = {
-                        val nextNum = channels.size + 1
-                        val formattedNum = nextNum.toString().padStart(2, '0')
-                        viewModel.addChannel("Instrumento $formattedNum")
+                        if (channels.size < 8) {
+                            val nextNum = channels.size + 1
+                            val formattedNum = nextNum.toString().padStart(2, '0')
+                            viewModel.addChannel("Instrumento $formattedNum")
+                        }
                     },
                     isMasterVisible = isMasterVisible,
                     onToggleMaster = { viewModel.toggleMasterVisibility() },
                     showInfoPanel = showApmHudDialog,
-                    onToggleInfoPanel = { viewModel.toggleApmHud() }
+                    onToggleInfoPanel = { viewModel.toggleApmHud() },
+                    showKeyboard = showKeyboard,
+                    onToggleKeyboard = { showKeyboard = !showKeyboard },
+                    tapBpm = viewModel.globalTapBpm.collectAsState().value
                 )
 
                 BoxWithConstraints(
@@ -910,7 +868,10 @@ fun MixerScreenToolBar(
     isMasterVisible: Boolean,
     onToggleMaster: () -> Unit,
     showInfoPanel: Boolean,
-    onToggleInfoPanel: () -> Unit
+    onToggleInfoPanel: () -> Unit,
+    showKeyboard: Boolean = false,
+    onToggleKeyboard: () -> Unit = {},
+    tapBpm: Int = 0
 ) {
     val pulseAlpha = rememberMidiLearnPulse(isMidiLearnActive)
     val barHeight = if (isTablet) 38.dp else 34.dp
@@ -982,6 +943,24 @@ fun MixerScreenToolBar(
                         modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
                     )
                 }
+
+                // Keyboard Toggle Button
+                Button(
+                    onClick = onToggleKeyboard,
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (showKeyboard) Color(0xFF81C784) else Color(0xFF424242),
+                        contentColor = if (showKeyboard) Color.Black else Color.White
+                    ),
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(height = barHeight - 4.dp, width = (barHeight - 4.dp) * 1.3f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Piano,
+                        contentDescription = if (showKeyboard) "Ocultar Teclado" else "Mostrar Teclado",
+                        modifier = Modifier.size(if (isTablet) 18.dp else 14.dp)
+                    )
+                }
             }
 
             // --- CENTER: GLOBAL CONTROLS ---
@@ -1022,13 +1001,25 @@ fun MixerScreenToolBar(
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "TAP", // Shorter label for better fit
-                        color = Color.Gray,
-                        fontSize = if (isTablet) 8.sp else 8.sp,
-                        fontWeight = FontWeight.Bold,
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(end = if (isTablet) 6.dp else 3.dp)
-                    )
+                    ) {
+                        Text(
+                            text = "BPM",
+                            color = Color.Gray,
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 8.sp
+                        )
+                        Text(
+                            text = if (tapBpm > 0) "$tapBpm" else "---",
+                            color = if (tapBpm > 0) Color(0xFFBA68C8) else Color(0xFF555555),
+                            fontSize = if (isTablet) 10.sp else 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 10.sp
+                        )
+                    }
                     Surface(
                         modifier = Modifier
                             .size(tapBtnSize)
@@ -1088,7 +1079,7 @@ fun MixerScreenToolBar(
                 // Button + CH
                 Button(
                     onClick = onAddChannel,
-                    enabled = channelsCount < 16,
+                    enabled = channelsCount < 8,
                     shape = RoundedCornerShape(4.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF424242),

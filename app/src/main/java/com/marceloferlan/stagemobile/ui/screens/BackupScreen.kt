@@ -48,6 +48,7 @@ fun BackupScreen(
     var configBackupInfo by remember { mutableStateOf<BackupMetadata?>(null) }
     var fullBackupInfo by remember { mutableStateOf<BackupMetadata?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var isRestoring by remember { mutableStateOf(false) }
     var progressMessage by remember { mutableStateOf<String?>(null) }
     var progressValue by remember { mutableStateOf(0f) }
     var showConfirmRestore by remember { mutableStateOf<BackupType?>(null) }
@@ -144,22 +145,53 @@ fun BackupScreen(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(progressMessage ?: "", color = Color.White, fontSize = 14.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
+                        // Separar linhas da mensagem
+                        val lines = (progressMessage ?: "").split("\n")
+                        // Primeira linha: título (ex: "Enviando 1 de 2")
+                        Text(
+                            lines.firstOrNull() ?: "",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isTablet) 15.sp else 13.sp
+                        )
+                        // Linhas adicionais: detalhes (nome do arquivo, MB enviados)
+                        for (line in lines.drop(1)) {
+                            Text(
+                                line,
+                                color = Color(0xFFAAAAAA),
+                                fontSize = if (isTablet) 13.sp else 11.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         if (progressValue > 0f) {
                             LinearProgressIndicator(
                                 progress = { progressValue },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
                                 color = Color(0xFF26C6DA),
                                 trackColor = Color(0xFF333333)
                             )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "${(progressValue * 100).toInt()}%",
+                                color = Color(0xFF26C6DA),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         } else {
                             LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().height(6.dp),
                                 color = Color(0xFF26C6DA),
                                 trackColor = Color(0xFF333333)
                             )
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            if (isRestoring) "Restauração de backup em andamento. Aguarde a conclusão!"
+                            else "Backup em andamento. Aguarde a conclusão!",
+                            color = Color(0xFF888888),
+                            fontSize = if (isTablet) 12.sp else 10.sp,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
@@ -216,7 +248,7 @@ fun BackupScreen(
                     TextButton(onClick = {
                         showConfirmRestore = null
                         persistentScope.launch {
-                            isLoading = true
+                            isLoading = true; isRestoring = true
                             val result = if (type == BackupType.CONFIG) {
                                 progressMessage = "Restaurando configurações..."
                                 backupRepo.restoreConfigBackup { progressMessage = it }
@@ -225,16 +257,18 @@ fun BackupScreen(
                                     progressMessage = msg; progressValue = prog
                                 }
                             }
-                            isLoading = false; progressMessage = null; progressValue = 0f
-                            result.fold(
-                                onSuccess = {
-                                    onEngineReinit()
-                                    Toast.makeText(context, "Restauração concluída!", Toast.LENGTH_SHORT).show()
-                                },
-                                onFailure = {
-                                    Toast.makeText(context, it.message ?: "Erro na restauração", Toast.LENGTH_LONG).show()
-                                }
-                            )
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                isLoading = false; isRestoring = false; progressMessage = null; progressValue = 0f
+                                result.fold(
+                                    onSuccess = {
+                                        onEngineReinit()
+                                        Toast.makeText(context, "Restauração concluída!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onFailure = {
+                                        Toast.makeText(context, it.message ?: "Erro na restauração", Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            }
                         }
                     }) { Text("RESTAURAR", color = Color(0xFFEF5350)) }
                 },
@@ -280,23 +314,50 @@ private fun BackupCard(
             Spacer(modifier = Modifier.height(6.dp))
             Text(description, color = Color.Gray, fontSize = if (isTablet) 13.sp else 11.sp)
 
-            // Backup info (se existir)
+            // Backup info (se existir) — layout tabular compacto
             if (backupInfo != null) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = Color(0xFF1A1A1A),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                        val date = dateFormat.format(backupInfo.createdAt.toDate())
-                        Text("Último backup: $date", color = Color(0xFF81C784), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("Dispositivo: ${backupInfo.deviceName}", color = Color.Gray, fontSize = 11.sp)
-                        Text("Versão: ${backupInfo.appVersion}", color = Color.Gray, fontSize = 11.sp)
-                        if (backupInfo.sf2FileCount > 0) {
-                            val sizeMb = String.format(Locale.US, "%.1f", backupInfo.sf2SizeBytes / 1_048_576.0)
-                            Text("SoundFonts: ${backupInfo.sf2FileCount} arquivos ($sizeMb MB)", color = Color.Gray, fontSize = 11.sp)
+                    val dateFormat = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
+                    val date = dateFormat.format(backupInfo.createdAt.toDate())
+                    val hasSf2 = backupInfo.sf2FileCount > 0
+                    val labelSize = if (isTablet) 10.sp else 9.sp
+                    val valueSize = if (isTablet) 12.sp else 10.sp
+
+                    if (isTablet) {
+                        // Tablet: tudo em uma Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            BackupInfoCell("Backup", date, Color(0xFF81C784), labelSize, valueSize, Modifier.weight(1f))
+                            BackupInfoCell("Dispositivo", backupInfo.deviceName, Color.White, labelSize, valueSize, Modifier.weight(1f), maxLines = 1)
+                            BackupInfoCell("Versão", backupInfo.appVersion, Color.White, labelSize, valueSize, Modifier.weight(0.6f))
+                            if (hasSf2) {
+                                val sizeMb = String.format(Locale.US, "%.1f", backupInfo.sf2SizeBytes / 1_048_576.0)
+                                BackupInfoCell("SoundFonts", "${backupInfo.sf2FileCount} (${sizeMb}MB)", Color.White, labelSize, valueSize, Modifier.weight(1f))
+                            }
+                        }
+                    } else {
+                        // Phone: 2 rows de 2 colunas
+                        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                BackupInfoCell("Backup", date, Color(0xFF81C784), labelSize, valueSize, Modifier.weight(1f))
+                                BackupInfoCell("Dispositivo", backupInfo.deviceName, Color.White, labelSize, valueSize, Modifier.weight(1f), maxLines = 1)
+                            }
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                BackupInfoCell("Versão", backupInfo.appVersion, Color.White, labelSize, valueSize, Modifier.weight(1f))
+                                if (hasSf2) {
+                                    val sizeMb = String.format(Locale.US, "%.1f", backupInfo.sf2SizeBytes / 1_048_576.0)
+                                    BackupInfoCell("SoundFonts", "${backupInfo.sf2FileCount} (${sizeMb}MB)", Color.White, labelSize, valueSize, Modifier.weight(1f))
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
@@ -344,6 +405,30 @@ private fun BackupCard(
     }
 }
 
+@Composable
+private fun BackupInfoCell(
+    label: String,
+    value: String,
+    valueColor: Color,
+    labelSize: androidx.compose.ui.unit.TextUnit,
+    valueSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+        Text(label, color = Color(0xFF888888), fontSize = labelSize)
+        Text(
+            value,
+            color = valueColor,
+            fontSize = valueSize,
+            fontWeight = if (valueColor == Color(0xFF81C784)) FontWeight.Bold else FontWeight.Normal,
+            maxLines = maxLines,
+            overflow = if (maxLines < Int.MAX_VALUE) androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                       else androidx.compose.ui.text.style.TextOverflow.Clip
+        )
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // HELPERS: executam backup em coroutine
 // ═══════════════════════════════════════════════════════════════════════
@@ -358,13 +443,15 @@ private fun performConfigBackup(
 ) {
     scope.launch {
         val result = repo.createConfigBackup { msg -> onStart(msg) }
-        result.fold(
-            onSuccess = {
-                onDone(it, null)
-                Toast.makeText(context, "Backup de configurações salvo!", Toast.LENGTH_SHORT).show()
-            },
-            onFailure = { onDone(null, it.message) }
-        )
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            result.fold(
+                onSuccess = {
+                    onDone(it, null)
+                    Toast.makeText(context, "Backup de configurações salvo!", Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { onDone(null, it.message) }
+            )
+        }
     }
 }
 
@@ -378,12 +465,14 @@ private fun performFullBackup(
 ) {
     scope.launch {
         val result = repo.createFullBackup { msg, prog -> onStart(msg, prog) }
-        result.fold(
-            onSuccess = {
-                onDone(it, null)
-                Toast.makeText(context, "Backup completo salvo!", Toast.LENGTH_SHORT).show()
-            },
-            onFailure = { onDone(null, it.message) }
-        )
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            result.fold(
+                onSuccess = {
+                    onDone(it, null)
+                    Toast.makeText(context, "Backup completo salvo!", Toast.LENGTH_SHORT).show()
+                },
+                onFailure = { onDone(null, it.message) }
+            )
+        }
     }
 }
